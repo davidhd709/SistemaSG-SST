@@ -1,0 +1,152 @@
+{
+  "title": "Elige la dirección visual de SG-SST",
+  "question": "Esta PWA debe hacer visible el estado de seguridad sin añadir fricción. Elige una dirección, la opción estándar o pide otro sorteo.",
+  "options": [
+    {
+      "id": "assigned",
+      "label": "Tablero de habilitación",
+      "kicker": "THE ROLL",
+      "lineage": "tableros físicos de control de turno y tarjetas de liberación",
+      "thesis": "Cada persona entiende en segundos si está lista, qué falta y cuál es el siguiente paso seguro.",
+      "palette": ["#12334a", "#eef5f2", "#eaf43b", "#ee6b3d"],
+      "materials": ["panel mate lavable", "tarjetas de estado", "marcas de control precisas"],
+      "viewport": "En móvil, una cabecera de estado ocupa el primer tercio y la acción principal queda fija al pulgar; en escritorio, el estado se expande a un tablero de turnos y decisiones.",
+      "risk": "Puede sentirse demasiado utilitario si la jerarquía no mantiene zonas de descanso visual.",
+      "raised": [
+        {
+          "from": "Ciclorama de iluminación",
+          "raise": "Los cambios críticos se muestran como fases discretas y nombradas, nunca solo como un cambio de color."
+        },
+        {
+          "from": "Página de léxico",
+          "raise": "Las vistas de escritorio preservan medidas, reglas y lectura densa sin convertir los datos en ruido."
+        },
+        {
+          "from": "Teletexto",
+          "raise": "La navegación usa posiciones y estados consistentes, con una gramática visual que sigue funcionando bajo presión."
+        }
+      ],
+      "comp": ".impeccable/mocks/decision/assigned.webp"
+    },
+    {
+      "id": "model-pick",
+      "label": "Punto de alistamiento",
+      "kicker": "IMPECCABLE’S PICK",
+      "lineage": "puntos de control previos a una operación de campo",
+      "thesis": "El teléfono funciona como una estación de alistamiento personal: confirma, guía y habilita sin distraer.",
+      "palette": ["#102a43", "#f8fbf7", "#24b47e", "#ffb000"],
+      "materials": ["señalización de campo", "superficies claras", "líneas de ruta"],
+      "viewport": "Una ruta vertical de requisitos visibles conduce desde la identidad del colaborador hasta la acción de iniciar el permiso.",
+      "risk": "Es la dirección más familiar y puede perder carácter si se resuelve como un conjunto de tarjetas genéricas.",
+      "comp": ".impeccable/mocks/decision/model-pick.webp"
+    },
+    {
+      "id": "challenger-boarding-pass",
+      "label": "Pase de salida",
+      "verdict": "competitive",
+      "lineage": "pase de abordaje y tablero de puerta",
+      "thesis": "El permiso se lee como un pase secuenciado: requisitos claros, hora, estado y una salida inequívoca.",
+      "palette": ["#f7f7f2", "#172b4d", "#ff6b35", "#2a9d8f"],
+      "materials": ["segmentos impresos", "datos tabulares", "bloques escaneables"],
+      "viewport": "El inicio muestra una ficha de habilitación apilada con un bloque de estado y una acción de avance persistente.",
+      "case": "Hace muy legible la secuencia y los cambios, pero su metáfora de viaje compite con la gravedad propia de la seguridad laboral.",
+      "risk": "Puede llevar la interfaz hacia una experiencia de viaje en vez de una de control operativo.",
+      "comp": ".impeccable/mocks/decision/challenger-boarding-pass.webp",
+      "hero": "https://impeccable.style/worlds/cards/vernacular-ephemera-boarding-pass-and-gate-board-hero.webp",
+      "board": "https://impeccable.style/worlds/cards/vernacular-ephemera-boarding-pass-and-gate-board.webp"
+    },
+    {
+      "id": "challenger-cyclorama",
+      "label": "Ciclorama de seguridad",
+      "verdict": "declined",
+      "lineage": "ciclorama teatral de fases de luz",
+      "thesis": "Un horizonte de luz revela el avance entre bloqueo, revisión y habilitación.",
+      "palette": ["#08131d", "#245ba7", "#f17e7e", "#f9fcff"],
+      "materials": ["bandas de horizonte", "marcas de escena"],
+      "viewport": "Las fases de estado forman bandas de luz detrás del contenido operativo.",
+      "case": "Pierde identificación de campo y claridad funcional frente al tablero de habilitación.",
+      "kept": "Fases de estado discretas y legibles.",
+      "risk": "La atmósfera puede desplazar la tarea.",
+      "comp": ".impeccable/mocks/decision/challenger-cyclorama.webp",
+      "hero": "https://impeccable.style/worlds/cards/stagecraft-theater-lighting-cyclorama-dawn-hero.webp"
+    },
+    {
+      "id": "challenger-cloud-quarry",
+      "label": "Cantera de nubes",
+      "verdict": "declined",
+      "lineage": "paisaje surrealista de bloques meteorológicos",
+      "thesis": "Los requisitos se ensamblan como bloques temporales antes de liberar la labor.",
+      "palette": ["#eef4f5", "#84c6f4", "#59636c", "#c1d4df"],
+      "materials": ["masas de nube", "bordes de corte"],
+      "viewport": "Bloques de requisitos revelan un camino al completar cada condición.",
+      "case": "No identifica el trabajo real y añade una metáfora innecesaria al proceso de seguridad.",
+      "kept": "Progresión de bloques con estados tangibles.",
+      "risk": "Puede parecer lúdica para una decisión crítica.",
+      "comp": ".impeccable/mocks/decision/challenger-cloud-quarry.webp",
+      "hero": "https://impeccable.style/worlds/cards/dream-surreal-impossible-worlds-cloud-quarry-hero.webp"
+    },
+    {
+      "id": "challenger-lexicon",
+      "label": "Registro de consulta",
+      "verdict": "declined",
+      "lineage": "página de léxico con hombro y lámina técnica",
+      "thesis": "La evidencia se lee con medidas constantes y referencias visibles al margen.",
+      "palette": ["#f5f0e5", "#171717", "#1d4ed8", "#c2410c"],
+      "materials": ["papel sin recubrimiento", "reglas impresas", "placas técnicas"],
+      "viewport": "Una cuadrícula editorial densa organiza historial, evidencia y consulta legal.",
+      "case": "Aporta rigor de escritorio, pero no sirve como lenguaje principal para manos ocupadas en un celular.",
+      "kept": "Densidad de escritorio con lectura medida.",
+      "risk": "Se percibe como documento antes que como herramienta viva.",
+      "comp": ".impeccable/mocks/decision/challenger-lexicon.webp",
+      "hero": "https://impeccable.style/worlds/cards/rw-lexicon-shoulder-and-plate-hero.webp"
+    },
+    {
+      "id": "challenger-datamatics",
+      "label": "Campo de datos",
+      "verdict": "declined",
+      "lineage": "campo de datos monocromático de alta densidad",
+      "thesis": "El estado se vuelve una señal numérica de precisión extrema.",
+      "palette": ["#000000", "#ffffff"],
+      "materials": ["barras de datos", "retículas lineales"],
+      "viewport": "Una matriz de estado se enfoca al seleccionar cada requisito.",
+      "case": "Su contraste es fuerte, pero no entrega suficiente calidez ni semántica a usuarios bajo presión.",
+      "kept": "Disciplina de contraste y datos tabulares.",
+      "risk": "La información crítica puede sentirse abstracta.",
+      "comp": ".impeccable/mocks/decision/challenger-datamatics.webp",
+      "hero": "https://impeccable.style/worlds/cards/ikeda-datamatics-hero.webp"
+    },
+    {
+      "id": "challenger-teletext",
+      "label": "Boletín de señal",
+      "verdict": "declined",
+      "lineage": "servicio teletexto de difusión pública",
+      "thesis": "El sistema usa posiciones fijas y avisos directos para tareas críticas.",
+      "palette": ["#06166b", "#ffffff", "#ffe600", "#20d5db"],
+      "materials": ["cuadrícula de celdas", "mosaicos de señal"],
+      "viewport": "Un índice de áreas y estados se ordena en una retícula fija.",
+      "case": "La gramática rígida es memorable, pero la estética retro puede eclipsar la confianza institucional.",
+      "kept": "Posiciones de navegación persistentes y estados inequívocos.",
+      "risk": "Puede sentirse como un homenaje visual y no como una herramienta actual.",
+      "comp": ".impeccable/mocks/decision/challenger-teletext.webp",
+      "hero": "https://impeccable.style/worlds/cards/broadcast-programming-teletext-service-hero.webp"
+    }
+  ],
+  "reroll": {
+    "registers": ["safer", "bolder"]
+  },
+  "buildPath": {
+    "value": "code",
+    "toggle": true
+  },
+  "canon": true,
+  "canonCard": {
+    "label": "La interfaz operativa estándar",
+    "thesis": "La estructura que esta categoría suele usar, ejecutada con máxima claridad.",
+    "palette": ["#ffffff", "#172033", "#005cbb"],
+    "materials": ["rejilla limpia", "tarjetas convencionales"],
+    "viewport": "Una cabecera simple, tarjetas de acceso y tablas de administración ordenadas.",
+    "risk": "Funciona, pero no construye una identidad reconocible para el sistema.",
+    "comp": ".impeccable/mocks/decision/canon.webp"
+  },
+  "steer": true
+}

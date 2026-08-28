@@ -1,0 +1,24 @@
+{
+  "name": "sistema-sg-sst",
+  "version": "0.1.0",
+  "private": true,
+  "description": "PWA y API para el control SG-SST previo al inicio de labores.",
+  "packageManager": "pnpm@11.23.0",
+  "scripts": {
+    "build": "pnpm --filter @sg-sst/api run build && pnpm --filter @sg-sst/web run build",
+    "lint": "pnpm --filter @sg-sst/api run lint && pnpm --filter @sg-sst/web run lint",
+    "format:check": "prettier --check \"**/*.{ts,js,mjs,json,md,yml,yaml,css,html}\"",
+    "test": "pnpm --filter @sg-sst/api run test && pnpm --filter @sg-sst/web run test",
+    "dev:api": "pnpm --filter @sg-sst/api run start:dev",
+    "dev:web": "pnpm --filter @sg-sst/web run start",
+    "db:generate": "pnpm --filter @sg-sst/api run prisma:generate",
+    "db:migrate": "pnpm --filter @sg-sst/api run prisma:migrate"
+  },
+  "engines": {
+    "node": ">=22.0.0",
+    "npm": ">=10.0.0"
+  },
+  "devDependencies": {
+    "prettier": "^3.9.6"
+  }
+}

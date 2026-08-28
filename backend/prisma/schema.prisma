@@ -1,0 +1,318 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model SystemSetting {
+  key       String   @id
+  valueJson Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("system_settings")
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum CollaboratorStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum FormStatus {
+  DRAFT
+  PUBLISHED
+  INACTIVE
+}
+
+enum SubmissionStatus {
+  DRAFT
+  PENDING_APPROVAL
+  APPROVED
+  REJECTED
+}
+
+enum ApprovalDecision {
+  APPROVED
+  REJECTED
+}
+
+model User {
+  id                    String           @id @default(uuid()) @db.Uuid
+  email                 String           @unique
+  passwordHash          String
+  status                UserStatus       @default(ACTIVE)
+  forcePasswordChange   Boolean          @default(false)
+  failedLoginAttempts   Int              @default(0)
+  lockedUntil           DateTime?
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
+  roles                 UserRole[]
+  refreshSessions       RefreshSession[]
+  auditEvents           AuditEvent[]     @relation("AuditActorUser")
+  createdCollaborators  Collaborator[]   @relation("CollaboratorCreatedBy")
+  createdArlAffiliations ArlAffiliation[] @relation("ArlCreatedBy")
+  updatedArlAffiliations ArlAffiliation[] @relation("ArlUpdatedBy")
+  approvals             Approval[]       @relation("ApprovalDecidedBy")
+
+  @@map("users")
+}
+
+model Role {
+  id          String           @id @default(uuid()) @db.Uuid
+  code        String           @unique
+  name        String
+  description String?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  users       UserRole[]
+  permissions RolePermission[]
+
+  @@map("roles")
+}
+
+model Permission {
+  id          String           @id @default(uuid()) @db.Uuid
+  code        String           @unique
+  description String?
+  createdAt   DateTime         @default(now())
+  roles       RolePermission[]
+
+  @@map("permissions")
+}
+
+model UserRole {
+  userId    String   @db.Uuid
+  roleId    String   @db.Uuid
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Restrict)
+  role      Role     @relation(fields: [roleId], references: [id], onDelete: Restrict)
+
+  @@id([userId, roleId])
+  @@map("user_roles")
+}
+
+model RolePermission {
+  roleId       String     @db.Uuid
+  permissionId String     @db.Uuid
+  createdAt    DateTime   @default(now())
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Restrict)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Restrict)
+
+  @@id([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+model RefreshSession {
+  id             String        @id @default(uuid()) @db.Uuid
+  userId         String?       @db.Uuid
+  collaboratorId String?       @db.Uuid
+  sessionType    String
+  tokenHash      String        @unique
+  expiresAt      DateTime
+  revokedAt      DateTime?
+  ip             String?
+  userAgent      String?
+  createdAt      DateTime      @default(now())
+  user           User?         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  collaborator   Collaborator? @relation(fields: [collaboratorId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+  @@index([collaboratorId, expiresAt])
+  @@map("refresh_sessions")
+}
+
+model Collaborator {
+  id                  String            @id @default(uuid()) @db.Uuid
+  documentType        String
+  documentNumber      String            @unique
+  firstName           String
+  lastName            String
+  email               String?
+  phone               String?
+  jobTitle            String?
+  team                String?
+  pinHash             String
+  status              CollaboratorStatus @default(ACTIVE)
+  failedLoginAttempts Int               @default(0)
+  lockedUntil         DateTime?
+  createdById         String?           @db.Uuid
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+  createdBy           User?             @relation("CollaboratorCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  auditEvents         AuditEvent[]      @relation("AuditActorCollaborator")
+  arlAffiliations     ArlAffiliation[]
+  submissions         FormSubmission[]
+  refreshSessions     RefreshSession[]
+
+  @@index([status])
+  @@map("collaborators")
+}
+
+model ArlAffiliation {
+  id             String       @id @default(uuid()) @db.Uuid
+  collaboratorId String       @db.Uuid
+  providerName   String
+  startDate      DateTime     @db.Date
+  endDate        DateTime     @db.Date
+  createdById    String?      @db.Uuid
+  createdAt      DateTime     @default(now())
+  updatedById    String?      @db.Uuid
+  updatedAt      DateTime     @updatedAt
+  collaborator   Collaborator @relation(fields: [collaboratorId], references: [id], onDelete: Restrict)
+  createdBy      User?        @relation("ArlCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  updatedBy      User?        @relation("ArlUpdatedBy", fields: [updatedById], references: [id], onDelete: Restrict)
+  documents      ArlDocument[]
+
+  @@index([collaboratorId, endDate])
+  @@index([endDate])
+  @@map("arl_affiliations")
+}
+
+model FileObject {
+  id              String        @id @default(uuid()) @db.Uuid
+  storageProvider String
+  bucket          String
+  objectKey       String        @unique
+  originalName    String
+  mimeType        String
+  sizeBytes       Int
+  sha256          String
+  createdById     String?       @db.Uuid
+  createdAt       DateTime      @default(now())
+  arlDocuments    ArlDocument[]
+  signatures      Signature[]
+  finalPdfFor     FormSubmission? @relation("SubmissionPdf")
+
+  @@map("file_objects")
+}
+
+model ArlDocument {
+  id            String         @id @default(uuid()) @db.Uuid
+  affiliationId String         @db.Uuid
+  fileId        String         @db.Uuid
+  createdAt     DateTime       @default(now())
+  affiliation   ArlAffiliation @relation(fields: [affiliationId], references: [id], onDelete: Restrict)
+  file          FileObject     @relation(fields: [fileId], references: [id], onDelete: Restrict)
+
+  @@unique([affiliationId, fileId])
+  @@map("arl_documents")
+}
+
+model Form {
+  id               String       @id @default(uuid()) @db.Uuid
+  code             String       @unique
+  name             String
+  description      String?
+  status           FormStatus   @default(DRAFT)
+  currentVersionId String?      @unique @db.Uuid
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+  versions         FormVersion[] @relation("FormVersions")
+  currentVersion   FormVersion? @relation("CurrentFormVersion", fields: [currentVersionId], references: [id], onDelete: SetNull)
+
+  @@map("forms")
+}
+
+model FormVersion {
+  id           String   @id @default(uuid()) @db.Uuid
+  formId       String   @db.Uuid
+  versionNumber Int
+  schemaJson   Json
+  publishedAt  DateTime?
+  createdById  String?  @db.Uuid
+  changeReason String
+  active       Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  form         Form     @relation("FormVersions", fields: [formId], references: [id], onDelete: Restrict)
+  currentFor   Form?    @relation("CurrentFormVersion")
+  submissions  FormSubmission[]
+
+  @@unique([formId, versionNumber])
+  @@index([formId, active])
+  @@map("form_versions")
+}
+
+model FormSubmission {
+  id                    String           @id @default(uuid()) @db.Uuid
+  collaboratorId        String           @db.Uuid
+  formVersionId         String           @db.Uuid
+  status                SubmissionStatus @default(DRAFT)
+  answersJson           Json
+  safetyTalkConfirmed   Boolean
+  safetyTalkConfirmedAt DateTime?
+  arlSnapshotJson       Json
+  submittedAt           DateTime?
+  previousSubmissionId  String?          @db.Uuid
+  createdAt             DateTime         @default(now())
+  collaborator          Collaborator     @relation(fields: [collaboratorId], references: [id], onDelete: Restrict)
+  formVersion           FormVersion      @relation(fields: [formVersionId], references: [id], onDelete: Restrict)
+  previousSubmission    FormSubmission?  @relation("SubmissionCorrections", fields: [previousSubmissionId], references: [id], onDelete: Restrict)
+  correctionAttempts    FormSubmission[] @relation("SubmissionCorrections")
+  signature             Signature?
+  finalPdfFileId        String?          @unique @db.Uuid
+  finalPdfFile          FileObject?      @relation("SubmissionPdf", fields: [finalPdfFileId], references: [id], onDelete: Restrict)
+  approval              Approval?
+
+  @@index([collaboratorId, createdAt])
+  @@index([status, createdAt])
+  @@map("form_submissions")
+}
+
+model Approval {
+  id           String           @id @default(uuid()) @db.Uuid
+  submissionId String           @unique @db.Uuid
+  decision     ApprovalDecision
+  decidedById  String           @db.Uuid
+  decidedAt    DateTime         @default(now())
+  reason       String?
+  submission   FormSubmission   @relation(fields: [submissionId], references: [id], onDelete: Restrict)
+  decidedBy    User             @relation("ApprovalDecidedBy", fields: [decidedById], references: [id], onDelete: Restrict)
+
+  @@index([decidedById, decidedAt])
+  @@map("approvals")
+}
+
+model Signature {
+  id           String         @id @default(uuid()) @db.Uuid
+  submissionId String         @unique @db.Uuid
+  fileId       String         @db.Uuid
+  sha256       String
+  signedAt     DateTime       @default(now())
+  ip           String?
+  userAgent    String?
+  submission   FormSubmission @relation(fields: [submissionId], references: [id], onDelete: Restrict)
+  file         FileObject     @relation(fields: [fileId], references: [id], onDelete: Restrict)
+
+  @@map("signatures")
+}
+
+model AuditEvent {
+  id                  String        @id @default(uuid()) @db.Uuid
+  actorUserId         String?       @db.Uuid
+  actorCollaboratorId String?       @db.Uuid
+  action              String
+  entityType          String
+  entityId            String
+  beforeJson          Json?
+  afterJson           Json?
+  reason              String?
+  evidenceFileId      String?       @db.Uuid
+  ip                  String?
+  userAgent           String?
+  correlationId       String
+  createdAt           DateTime      @default(now())
+  actorUser           User?         @relation("AuditActorUser", fields: [actorUserId], references: [id], onDelete: SetNull)
+  actorCollaborator   Collaborator? @relation("AuditActorCollaborator", fields: [actorCollaboratorId], references: [id], onDelete: SetNull)
+
+  @@index([entityType, entityId, createdAt])
+  @@index([createdAt])
+  @@map("audit_events")
+}

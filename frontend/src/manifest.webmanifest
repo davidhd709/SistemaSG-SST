@@ -1,0 +1,10 @@
+{
+  "name": "Sistema SG-SST",
+  "short_name": "SG-SST",
+  "theme_color": "#1f7a62",
+  "background_color": "#f4f1e9",
+  "display": "standalone",
+  "scope": "/",
+  "start_url": "/",
+  "icons": [{ "src": "favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}

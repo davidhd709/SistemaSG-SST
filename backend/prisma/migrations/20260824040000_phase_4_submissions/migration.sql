@@ -1,0 +1,11 @@
+CREATE TYPE "SubmissionStatus" AS ENUM ('DRAFT', 'PENDING_APPROVAL', 'APPROVED', 'REJECTED');
+CREATE TABLE "form_submissions" ("id" UUID NOT NULL, "collaboratorId" UUID NOT NULL, "formVersionId" UUID NOT NULL, "status" "SubmissionStatus" NOT NULL DEFAULT 'DRAFT', "answersJson" JSONB NOT NULL, "safetyTalkConfirmed" BOOLEAN NOT NULL, "safetyTalkConfirmedAt" TIMESTAMP(3), "arlSnapshotJson" JSONB NOT NULL, "submittedAt" TIMESTAMP(3), "previousSubmissionId" UUID, "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP, CONSTRAINT "form_submissions_pkey" PRIMARY KEY ("id"));
+CREATE INDEX "form_submissions_collaboratorId_createdAt_idx" ON "form_submissions"("collaboratorId", "createdAt");
+CREATE INDEX "form_submissions_status_createdAt_idx" ON "form_submissions"("status", "createdAt");
+CREATE TABLE "signatures" ("id" UUID NOT NULL, "submissionId" UUID NOT NULL, "fileId" UUID NOT NULL, "sha256" TEXT NOT NULL, "signedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP, "ip" TEXT, "userAgent" TEXT, CONSTRAINT "signatures_pkey" PRIMARY KEY ("id"));
+CREATE UNIQUE INDEX "signatures_submissionId_key" ON "signatures"("submissionId");
+ALTER TABLE "form_submissions" ADD CONSTRAINT "form_submissions_collaboratorId_fkey" FOREIGN KEY ("collaboratorId") REFERENCES "collaborators"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "form_submissions" ADD CONSTRAINT "form_submissions_formVersionId_fkey" FOREIGN KEY ("formVersionId") REFERENCES "form_versions"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "form_submissions" ADD CONSTRAINT "form_submissions_previousSubmissionId_fkey" FOREIGN KEY ("previousSubmissionId") REFERENCES "form_submissions"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "signatures" ADD CONSTRAINT "signatures_submissionId_fkey" FOREIGN KEY ("submissionId") REFERENCES "form_submissions"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "signatures" ADD CONSTRAINT "signatures_fileId_fkey" FOREIGN KEY ("fileId") REFERENCES "file_objects"("id") ON DELETE RESTRICT ON UPDATE CASCADE;

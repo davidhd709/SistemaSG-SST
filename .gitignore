@@ -1,0 +1,21 @@
+node_modules/
+package-lock.json
+dist/
+coverage/
+.angular/
+.env
+.env.*
+!.env.example
+apps/api/prisma/dev.db
+storage/
+*.log
+credenciales.txt
+
+# Local AI/editor tooling
+.agent/
+.agents/
+.claude/
+.codex/
+.gemini/
+.impeccable/
+.vscode/
