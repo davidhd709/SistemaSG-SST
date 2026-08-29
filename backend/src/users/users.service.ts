@@ -116,9 +116,7 @@ export class UsersService {
       if (existing) throw new ConflictException('Ya existe un usuario con ese correo.');
     }
     const roleCodes = dto.roleCodes ? [...new Set(dto.roleCodes)] : undefined;
-    const roles = roleCodes
-      ? await this.prisma.role.findMany({ where: { code: { in: roleCodes } } })
-      : undefined;
+    const roles = roleCodes ? await this.prisma.role.findMany({ where: { code: { in: roleCodes } } }) : undefined;
     if (roles && roles.length !== roleCodes!.length) throw new BadRequestException('Uno o más roles no existen.');
     const actorUserId = request.principal?.kind === 'USER' ? request.principal.userId : undefined;
     const updated = await this.prisma.$transaction(async (tx) => {
@@ -140,8 +138,16 @@ export class UsersService {
           action: 'UPDATE_USER',
           entityType: 'USER',
           entityId: id,
-          beforeJson: { email: previous.email, status: previous.status, roleCodes: previous.roles.map(({ role }) => role.code) },
-          afterJson: { email: user.email, status: user.status, roleCodes: roles?.map((role) => role.code) ?? undefined },
+          beforeJson: {
+            email: previous.email,
+            status: previous.status,
+            roleCodes: previous.roles.map(({ role }) => role.code),
+          },
+          afterJson: {
+            email: user.email,
+            status: user.status,
+            roleCodes: roles?.map((role) => role.code) ?? undefined,
+          },
           ip: request.ip,
           userAgent: request.header('user-agent'),
           correlationId: request.correlationId ?? 'unknown',

@@ -107,8 +107,16 @@ const ENTIDADES: Record<string, string> = {
   template: `
     <header class="admin-bar">
       <div class="admin-bar-inner">
-        <a class="admin-wordmark" routerLink="/administracion/panel" (click)="ver('inicio')" aria-label="Ir al inicio de Administración">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 18 5.4v5.4c0 4.1-2.5 7.8-6 9.2-3.5-1.4-6-5.1-6-9.2V5.4L12 3Z"/><path d="m9.2 11.6 1.8 1.8 3.9-4"/></svg>
+        <a
+          class="admin-wordmark"
+          routerLink="/administracion/panel"
+          (click)="ver('inicio')"
+          aria-label="Ir al inicio de Administración"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 3 18 5.4v5.4c0 4.1-2.5 7.8-6 9.2-3.5-1.4-6-5.1-6-9.2V5.4L12 3Z" />
+            <path d="m9.2 11.6 1.8 1.8 3.9-4" />
+          </svg>
           <span>Administración</span>
         </a>
         <sg-logout-button />
@@ -117,33 +125,55 @@ const ENTIDADES: Record<string, string> = {
 
     <main class="app-contenido">
       @if (pestana() !== 'inicio') {
-      <section class="admin-masthead" aria-labelledby="admin-titulo">
-        <div class="admin-resumen">
-          <div>
-            <h1 id="admin-titulo">Administración del sistema</h1>
-            <p>Gestiona cuentas internas, consulta la trazabilidad y revisa los formatos publicados.</p>
+        <section class="admin-masthead" aria-labelledby="admin-titulo">
+          <div class="admin-resumen">
+            <div>
+              <h1 id="admin-titulo">Administración del sistema</h1>
+              <p>Gestiona cuentas internas, consulta la trazabilidad y revisa los formatos publicados.</p>
+            </div>
+            <span class="admin-contexto">Acceso restringido</span>
           </div>
-          <span class="admin-contexto">Acceso restringido</span>
-        </div>
 
-        <div class="pestanas admin-tabs" role="tablist" aria-label="Secciones de Administración">
-          <button role="tab" type="button" [attr.aria-selected]="pestana() === 'accesos'" (click)="ver('accesos')">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 19v-1.5a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4V19"/><circle cx="9.5" cy="7" r="3.2"/><path d="M17 8h4m-2-2v4"/></svg>
-            Cuentas y permisos
-          </button>
-          <button role="tab" type="button" [attr.aria-selected]="pestana() === 'auditoria'" (click)="ver('auditoria')">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h12M4 12h8m-8 7h12"/><circle cx="18" cy="5" r="2"/><circle cx="14" cy="12" r="2"/><circle cx="18" cy="19" r="2"/></svg>
-            Auditoría
-            @if (eventos().length) {
-              <span class="globo">{{ eventos().length }}</span>
-            }
-          </button>
-          <button role="tab" type="button" [attr.aria-selected]="pestana() === 'formularios'" (click)="ver('formularios')">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v5h5M9 13h6m-6 4h6"/></svg>
-            Formatos
-          </button>
-        </div>
-      </section>
+          <div class="pestanas admin-tabs" role="tablist" aria-label="Secciones de Administración">
+            <button role="tab" type="button" [attr.aria-selected]="pestana() === 'accesos'" (click)="ver('accesos')">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M16 19v-1.5a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4V19" />
+                <circle cx="9.5" cy="7" r="3.2" />
+                <path d="M17 8h4m-2-2v4" />
+              </svg>
+              Cuentas y permisos
+            </button>
+            <button
+              role="tab"
+              type="button"
+              [attr.aria-selected]="pestana() === 'auditoria'"
+              (click)="ver('auditoria')"
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M4 5h12M4 12h8m-8 7h12" />
+                <circle cx="18" cy="5" r="2" />
+                <circle cx="14" cy="12" r="2" />
+                <circle cx="18" cy="19" r="2" />
+              </svg>
+              Auditoría
+              @if (eventos().length) {
+                <span class="globo">{{ eventos().length }}</span>
+              }
+            </button>
+            <button
+              role="tab"
+              type="button"
+              [attr.aria-selected]="pestana() === 'formularios'"
+              (click)="ver('formularios')"
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M6 3h8l4 4v14H6z" />
+                <path d="M14 3v5h5M9 13h6m-6 4h6" />
+              </svg>
+              Formatos
+            </button>
+          </div>
+        </section>
       }
 
       @if (error()) {
@@ -157,8 +187,13 @@ const ENTIDADES: Record<string, string> = {
         <section class="admin-inicio" aria-labelledby="inicio-titulo">
           <aside class="admin-rail" aria-label="Secciones de Administración">
             <div class="admin-rail-titulo">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 18 5.4v5.4c0 4.1-2.5 7.8-6 9.2-3.5-1.4-6-5.1-6-9.2V5.4L12 3Z"/><path d="m9.2 11.6 1.8 1.8 3.9-4"/></svg>
-              <div><strong>Administración<br />del sistema</strong><span>Gestiona cuentas internas y trazabilidad</span></div>
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 3 18 5.4v5.4c0 4.1-2.5 7.8-6 9.2-3.5-1.4-6-5.1-6-9.2V5.4L12 3Z" />
+                <path d="m9.2 11.6 1.8 1.8 3.9-4" />
+              </svg>
+              <div>
+                <strong>Administración<br />del sistema</strong><span>Gestiona cuentas internas y trazabilidad</span>
+              </div>
             </div>
             <div class="admin-rail-nav">
               <button type="button" (click)="ver('accesos')">Cuentas y permisos</button>
@@ -195,15 +230,28 @@ const ENTIDADES: Record<string, string> = {
               <section class="admin-accesos-rapidos" aria-labelledby="accesos-rapidos-titulo">
                 <h2 id="accesos-rapidos-titulo">Accesos rápidos</h2>
                 <button type="button" (click)="ver('accesos')">Crear usuario <span aria-hidden="true">›</span></button>
-                <button type="button" (click)="ver('formularios')">Revisar formato <span aria-hidden="true">›</span></button>
-                <button type="button" (click)="ver('auditoria')">Consultar auditoría <span aria-hidden="true">›</span></button>
+                <button type="button" (click)="ver('formularios')">
+                  Revisar formato <span aria-hidden="true">›</span>
+                </button>
+                <button type="button" (click)="ver('auditoria')">
+                  Consultar auditoría <span aria-hidden="true">›</span>
+                </button>
               </section>
               <section class="admin-estado" aria-labelledby="estado-titulo">
-                <div class="admin-estado-cabecera"><h2 id="estado-titulo">Estado del sistema</h2><span>Disponible</span></div>
+                <div class="admin-estado-cabecera">
+                  <h2 id="estado-titulo">Estado del sistema</h2>
+                  <span>Disponible</span>
+                </div>
                 <ul>
                   <li><span>Acceso administrativo protegido</span><small>Activo</small></li>
-                  <li><span>Roles y permisos cargados</span><small>{{ roles().length ? 'Actualizado' : 'Cargando' }}</small></li>
-                  <li><span>Registro de trazabilidad</span><small>{{ eventos().length ? 'Disponible' : 'Sin datos' }}</small></li>
+                  <li>
+                    <span>Roles y permisos cargados</span
+                    ><small>{{ roles().length ? 'Actualizado' : 'Cargando' }}</small>
+                  </li>
+                  <li>
+                    <span>Registro de trazabilidad</span
+                    ><small>{{ eventos().length ? 'Disponible' : 'Sin datos' }}</small>
+                  </li>
                 </ul>
               </section>
             </div>
@@ -225,102 +273,167 @@ const ENTIDADES: Record<string, string> = {
           </div>
 
           @if (cuentaEditando(); as cuenta) {
-          <section class="bloque editar-usuario">
-            <div class="titulo-seccion">
-              <div><h3>Editar {{ cuenta.tipo === 'INTERNO' ? 'usuario interno' : 'colaborador' }}</h3><span class="secundario">{{ cuenta.nombre }}</span></div>
-              <button class="boton secundario compacto" type="button" (click)="cuentaEditando.set(null)">Cancelar</button>
-            </div>
-            <form [formGroup]="formularioEdicion" (ngSubmit)="guardarEdicion()" class="rejilla-campos dos">
-              @if (cuenta.tipo === 'COLABORADOR') {
-                <label class="campo"><span>Nombres</span><input formControlName="firstName" /></label>
-                <label class="campo"><span>Apellidos</span><input formControlName="lastName" /></label>
-                <label class="campo"><span>Teléfono</span><input formControlName="phone" /></label>
-                <label class="campo"><span>Cargo</span><input formControlName="jobTitle" /></label>
-                <label class="campo ancho-total"><span>Equipo</span><input formControlName="team" /></label>
-              }
-              <label class="campo"><span>Correo</span><input formControlName="email" type="email" /></label>
-              <label class="campo"><span>Estado</span><select formControlName="status"><option value="ACTIVE">Activo</option><option value="INACTIVE">Inactivo</option></select></label>
-              @if (cuenta.tipo === 'INTERNO') {
-                <label class="campo ancho-total"><span>Nueva contraseña <small>(opcional)</small></span><input formControlName="password" type="password" autocomplete="new-password" /></label>
-                <div class="campo ancho-total"><span id="roles-edicion">Roles asignados</span><div class="casillas" role="group" aria-labelledby="roles-edicion">@for (rol of roles(); track rol.code) {<label class="casilla"><input type="checkbox" [checked]="tieneRol(rol.code)" (change)="alternarRol(rol.code)" /><span>{{ rol.name }}</span></label>}</div></div>
-              }
-              <div class="acciones ancho-total"><button class="boton" [disabled]="guardando()">{{ guardando() ? 'Guardando…' : 'Guardar cambios' }}</button></div>
-            </form>
-          </section>
+            <section class="bloque editar-usuario">
+              <div class="titulo-seccion">
+                <div>
+                  <h3>Editar {{ cuenta.tipo === 'INTERNO' ? 'usuario interno' : 'colaborador' }}</h3>
+                  <span class="secundario">{{ cuenta.nombre }}</span>
+                </div>
+                <button class="boton secundario compacto" type="button" (click)="cuentaEditando.set(null)">
+                  Cancelar
+                </button>
+              </div>
+              <form [formGroup]="formularioEdicion" (ngSubmit)="guardarEdicion()" class="rejilla-campos dos">
+                @if (cuenta.tipo === 'COLABORADOR') {
+                  <label class="campo"><span>Nombres</span><input formControlName="firstName" /></label>
+                  <label class="campo"><span>Apellidos</span><input formControlName="lastName" /></label>
+                  <label class="campo"><span>Teléfono</span><input formControlName="phone" /></label>
+                  <label class="campo"><span>Cargo</span><input formControlName="jobTitle" /></label>
+                  <label class="campo ancho-total"><span>Equipo</span><input formControlName="team" /></label>
+                }
+                <label class="campo"><span>Correo</span><input formControlName="email" type="email" /></label>
+                <label class="campo"
+                  ><span>Estado</span
+                  ><select formControlName="status">
+                    <option value="ACTIVE">Activo</option>
+                    <option value="INACTIVE">Inactivo</option>
+                  </select></label
+                >
+                @if (cuenta.tipo === 'INTERNO') {
+                  <label class="campo ancho-total"
+                    ><span>Nueva contraseña <small>(opcional)</small></span
+                    ><input formControlName="password" type="password" autocomplete="new-password"
+                  /></label>
+                  <div class="campo ancho-total">
+                    <span id="roles-edicion">Roles asignados</span>
+                    <div class="casillas" role="group" aria-labelledby="roles-edicion">
+                      @for (rol of roles(); track rol.code) {
+                        <label class="casilla"
+                          ><input
+                            type="checkbox"
+                            [checked]="tieneRol(rol.code)"
+                            (change)="alternarRol(rol.code)"
+                          /><span>{{ rol.name }}</span></label
+                        >
+                      }
+                    </div>
+                  </div>
+                }
+                <div class="acciones ancho-total">
+                  <button class="boton" [disabled]="guardando()">
+                    {{ guardando() ? 'Guardando…' : 'Guardar cambios' }}
+                  </button>
+                </div>
+              </form>
+            </section>
           }
 
           @if (mostrarCrear()) {
-          <section class="bloque crear-usuario">
-            <div class="titulo-seccion"><h3>Nuevo usuario administrativo</h3></div>
-            <p class="secundario introduccion">Se crea con contraseña temporal y deberá cambiarla en el primer ingreso.</p>
-          <form [formGroup]="formulario" (ngSubmit)="crearUsuario()" class="rejilla-campos dos">
-            <label class="campo">
-              <span>Correo institucional</span>
-              <input formControlName="email" type="email" autocomplete="off" />
-            </label>
-            <label class="campo">
-              <span>Contraseña temporal</span>
-              <input formControlName="password" type="text" autocomplete="off" />
-              <span class="ayuda">Mínimo 12 caracteres. Entrégala por un canal seguro.</span>
-            </label>
+            <section class="bloque crear-usuario">
+              <div class="titulo-seccion"><h3>Nuevo usuario administrativo</h3></div>
+              <p class="secundario introduccion">
+                Se crea con contraseña temporal y deberá cambiarla en el primer ingreso.
+              </p>
+              <form [formGroup]="formulario" (ngSubmit)="crearUsuario()" class="rejilla-campos dos">
+                <label class="campo">
+                  <span>Correo institucional</span>
+                  <input formControlName="email" type="email" autocomplete="off" />
+                </label>
+                <label class="campo">
+                  <span>Contraseña temporal</span>
+                  <input formControlName="password" type="text" autocomplete="off" />
+                  <span class="ayuda">Mínimo 12 caracteres. Entrégala por un canal seguro.</span>
+                </label>
 
-            <div class="campo ancho-total">
-              <span id="roles-etiqueta">Roles asignados</span>
-              <div class="casillas" role="group" aria-labelledby="roles-etiqueta">
-                @for (rol of roles(); track rol.code) {
-                  <label class="casilla">
-                    <input type="checkbox" [checked]="tieneRol(rol.code)" (change)="alternarRol(rol.code)" />
-                    <span>
-                      {{ rol.name }}
-                      <span class="secundario">{{ permisos(rol).length }} permisos</span>
-                    </span>
-                  </label>
-                }
-              </div>
-              @if (!seleccionados().length) {
-                <span class="ayuda">Selecciona al menos un rol.</span>
-              }
-            </div>
+                <div class="campo ancho-total">
+                  <span id="roles-etiqueta">Roles asignados</span>
+                  <div class="casillas" role="group" aria-labelledby="roles-etiqueta">
+                    @for (rol of roles(); track rol.code) {
+                      <label class="casilla">
+                        <input type="checkbox" [checked]="tieneRol(rol.code)" (change)="alternarRol(rol.code)" />
+                        <span>
+                          {{ rol.name }}
+                          <span class="secundario">{{ permisos(rol).length }} permisos</span>
+                        </span>
+                      </label>
+                    }
+                  </div>
+                  @if (!seleccionados().length) {
+                    <span class="ayuda">Selecciona al menos un rol.</span>
+                  }
+                </div>
 
-            <div class="acciones ancho-total">
-              <button class="boton" [disabled]="formulario.invalid || !seleccionados().length || guardando()">
-                {{ guardando() ? 'Creando…' : 'Crear usuario' }}
-              </button>
-            </div>
-          </form>
-          </section>
+                <div class="acciones ancho-total">
+                  <button class="boton" [disabled]="formulario.invalid || !seleccionados().length || guardando()">
+                    {{ guardando() ? 'Creando…' : 'Crear usuario' }}
+                  </button>
+                </div>
+              </form>
+            </section>
           }
 
           <section class="usuarios-tabla" aria-label="Usuarios internos">
             <div class="usuarios-herramientas">
               <label class="buscador-usuarios">
                 <span class="sr-only">Buscar usuario</span>
-                <input [value]="busqueda()" (input)="busqueda.set($any($event.target).value)" placeholder="Buscar por correo o rol…" type="search" />
+                <input
+                  [value]="busqueda()"
+                  (input)="busqueda.set($any($event.target).value)"
+                  placeholder="Buscar por correo o rol…"
+                  type="search"
+                />
               </label>
               <span>{{ cuentasVisibles().length }} cuentas</span>
             </div>
             @if (cuentasVisibles().length) {
               <div class="tabla-scroll">
                 <table class="datos usuarios-datos">
-                  <thead><tr><th>Usuario</th><th>Rol / cargo</th><th>Estado</th><th>Último acceso</th><th>Acciones</th></tr></thead>
+                  <thead>
+                    <tr>
+                      <th>Usuario</th>
+                      <th>Rol / cargo</th>
+                      <th>Estado</th>
+                      <th>Último acceso</th>
+                      <th>Acciones</th>
+                    </tr>
+                  </thead>
                   <tbody>
                     @for (cuenta of cuentasVisibles(); track cuenta.tipo + cuenta.id) {
                       <tr>
-                        <td><span class="avatar-usuario">{{ iniciales(cuenta.nombre) }}</span><strong>{{ cuenta.nombre }}</strong><span class="secundario">{{ cuenta.email }}</span></td>
+                        <td>
+                          <span class="avatar-usuario">{{ iniciales(cuenta.nombre) }}</span
+                          ><strong>{{ cuenta.nombre }}</strong
+                          ><span class="secundario">{{ cuenta.email }}</span>
+                        </td>
                         <td>{{ cuenta.detalle }}</td>
-                        <td><span class="distintivo" [class.vigente]="cuenta.status === 'ACTIVE'" [class.neutro]="cuenta.status !== 'ACTIVE'">{{ cuenta.status === 'ACTIVE' ? 'Activo' : 'Inactivo' }}</span></td>
+                        <td>
+                          <span
+                            class="distintivo"
+                            [class.vigente]="cuenta.status === 'ACTIVE'"
+                            [class.neutro]="cuenta.status !== 'ACTIVE'"
+                            >{{ cuenta.status === 'ACTIVE' ? 'Activo' : 'Inactivo' }}</span
+                          >
+                        </td>
                         <td>{{ cuenta.ultimoAcceso ? momento(cuenta.ultimoAcceso) : 'Sin acceso registrado' }}</td>
-                        <td><button class="editar-cuenta" type="button" (click)="editarCuenta(cuenta)">Editar</button></td>
+                        <td>
+                          <button class="editar-cuenta" type="button" (click)="editarCuenta(cuenta)">Editar</button>
+                        </td>
                       </tr>
                     }
                   </tbody>
                 </table>
               </div>
             } @else {
-              <p class="vacio"><strong>No hay cuentas para mostrar</strong>{{ busqueda() ? 'Cambia la búsqueda para ver otros resultados.' : 'Crea el primer usuario administrativo o registra un colaborador.' }}</p>
+              <p class="vacio">
+                <strong>No hay cuentas para mostrar</strong
+                >{{
+                  busqueda()
+                    ? 'Cambia la búsqueda para ver otros resultados.'
+                    : 'Crea el primer usuario administrativo o registra un colaborador.'
+                }}
+              </p>
             }
           </section>
-
         </div>
       }
 
@@ -371,10 +484,17 @@ const ENTIDADES: Record<string, string> = {
                 @for (evento of visibles(); track evento.id) {
                   <tr [class.fila-alerta]="esFallo(evento)">
                     <td class="momento">{{ momento(evento.createdAt) }}</td>
-                    <td><span class="evento-etiqueta" [class.evento-alerta]="esFallo(evento)">{{ nombreAccion(evento.action) }}</span></td>
+                    <td>
+                      <span class="evento-etiqueta" [class.evento-alerta]="esFallo(evento)">{{
+                        nombreAccion(evento.action)
+                      }}</span>
+                    </td>
                     <td>{{ nombreActor(evento) }}</td>
                     <td>{{ evento.reason || nombreEntidad(evento.entityType) }}</td>
-                    <td><span class="identificador">{{ evento.ip || 'sin IP' }}</span><span class="secundario">{{ evento.userAgent || 'Sin agente' }}</span></td>
+                    <td>
+                      <span class="identificador">{{ evento.ip || 'sin IP' }}</span
+                      ><span class="secundario">{{ evento.userAgent || 'Sin agente' }}</span>
+                    </td>
                   </tr>
                 }
               </tbody>
@@ -401,48 +521,62 @@ const ENTIDADES: Record<string, string> = {
 
           <div class="formatos-indicadores" aria-label="Resumen de formatos">
             <article><span>Formatos activos</span><strong>1</strong></article>
-            <article><span>Versión publicada</span><strong>v{{ forma.versionNumber }}</strong></article>
-            <article><span>Campos configurados</span><strong>{{ forma.schemaJson.fields.length }}</strong></article>
+            <article>
+              <span>Versión publicada</span><strong>v{{ forma.versionNumber }}</strong>
+            </article>
+            <article>
+              <span>Campos configurados</span><strong>{{ forma.schemaJson.fields.length }}</strong>
+            </article>
             <article><span>Estado</span><strong>Vigente</strong></article>
           </div>
 
           <article class="formato-tarjeta">
-            <div class="formato-tarjeta-cabecera"><span>{{ forma.code }}</span><small>v{{ forma.versionNumber }}</small></div>
+            <div class="formato-tarjeta-cabecera">
+              <span>{{ forma.code }}</span
+              ><small>v{{ forma.versionNumber }}</small>
+            </div>
             <h3>{{ forma.name }}</h3>
             <p>{{ forma.description || 'Formato operativo publicado.' }}</p>
-            <div class="formato-meta"><span>{{ forma.schemaJson.fields.length }} campos</span><span class="distintivo vigente">Vigente</span></div>
-            <button class="boton secundario compacto" type="button" (click)="alternarDetalleFormato()">{{ detalleFormato() ? 'Ocultar campos' : 'Ver campos' }}</button>
+            <div class="formato-meta">
+              <span>{{ forma.schemaJson.fields.length }} campos</span><span class="distintivo vigente">Vigente</span>
+            </div>
+            <button class="boton secundario compacto" type="button" (click)="alternarDetalleFormato()">
+              {{ detalleFormato() ? 'Ocultar campos' : 'Ver campos' }}
+            </button>
           </article>
 
           @if (detalleFormato()) {
-          <section class="formatos-campos">
-            <div class="titulo-seccion"><h3>Campos del formato vigente</h3></div>
-            <div class="tabla-scroll">
-              <table class="datos">
-                <thead>
-                  <tr>
-                    <th>Campo</th>
-                    <th>Tipo</th>
-                    <th>Obligatorio</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  @for (campo of forma.schemaJson.fields; track campo.id) {
+            <section class="formatos-campos">
+              <div class="titulo-seccion"><h3>Campos del formato vigente</h3></div>
+              <div class="tabla-scroll">
+                <table class="datos">
+                  <thead>
                     <tr>
-                      <td>
-                        <strong>{{ campo.label }}</strong>
-                        <span class="secundario identificador">{{ campo.id }}</span>
-                      </td>
-                      <td>{{ campo.type }}</td>
-                      <td>{{ campo.required ? 'Sí' : 'No' }}</td>
+                      <th>Campo</th>
+                      <th>Tipo</th>
+                      <th>Obligatorio</th>
                     </tr>
-                  }
-                </tbody>
-              </table>
-            </div>
-          </section>
+                  </thead>
+                  <tbody>
+                    @for (campo of forma.schemaJson.fields; track campo.id) {
+                      <tr>
+                        <td>
+                          <strong>{{ campo.label }}</strong>
+                          <span class="secundario identificador">{{ campo.id }}</span>
+                        </td>
+                        <td>{{ campo.type }}</td>
+                        <td>{{ campo.required ? 'Sí' : 'No' }}</td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            </section>
           }
-          <p class="formatos-nota">La publicación de nuevas versiones se administra actualmente desde la API; los permisos firmados conservan su versión original.</p>
+          <p class="formatos-nota">
+            La publicación de nuevas versiones se administra actualmente desde la API; los permisos firmados conservan
+            su versión original.
+          </p>
         } @else {
           <p class="secundario">Cargando el formato vigente…</p>
         }
@@ -495,7 +629,9 @@ const ENTIDADES: Record<string, string> = {
         flex: 1 1 auto;
         justify-content: center;
       }
-      .admin-cuentas { width: 100%; }
+      .admin-cuentas {
+        width: 100%;
+      }
       .usuarios-cabecera {
         display: flex;
         align-items: end;
@@ -503,11 +639,27 @@ const ENTIDADES: Record<string, string> = {
         gap: 18px;
         margin-bottom: 20px;
       }
-      .usuarios-cabecera h2 { margin: 0 0 4px; font-size: 1.45rem; letter-spacing: -0.03em; }
-      .usuarios-cabecera p { margin: 0; color: var(--tinta-media); font-size: 0.875rem; }
-      .crear-usuario { margin-bottom: 20px; }
-      .editar-usuario { margin-bottom: 20px; background: #f7fbf8; }
-      .crear-usuario h3 { margin: 0; font-size: 1.08rem; }
+      .usuarios-cabecera h2 {
+        margin: 0 0 4px;
+        font-size: 1.45rem;
+        letter-spacing: -0.03em;
+      }
+      .usuarios-cabecera p {
+        margin: 0;
+        color: var(--tinta-media);
+        font-size: 0.875rem;
+      }
+      .crear-usuario {
+        margin-bottom: 20px;
+      }
+      .editar-usuario {
+        margin-bottom: 20px;
+        background: #f7fbf8;
+      }
+      .crear-usuario h3 {
+        margin: 0;
+        font-size: 1.08rem;
+      }
       .usuarios-tabla {
         padding: 20px;
         border-radius: 14px;
@@ -521,11 +673,23 @@ const ENTIDADES: Record<string, string> = {
         align-items: center;
         margin-bottom: 18px;
       }
-      .usuarios-herramientas > span { color: var(--tinta-suave); font-size: 0.8125rem; }
-      .buscador-usuarios { width: min(100%, 310px); }
-      .buscador-usuarios input { min-height: 40px; font-size: 0.8125rem; }
-      .usuarios-datos td:first-child { min-width: 210px; }
-      .usuarios-datos td:last-child { white-space: nowrap; }
+      .usuarios-herramientas > span {
+        color: var(--tinta-suave);
+        font-size: 0.8125rem;
+      }
+      .buscador-usuarios {
+        width: min(100%, 310px);
+      }
+      .buscador-usuarios input {
+        min-height: 40px;
+        font-size: 0.8125rem;
+      }
+      .usuarios-datos td:first-child {
+        min-width: 210px;
+      }
+      .usuarios-datos td:last-child {
+        white-space: nowrap;
+      }
       .avatar-usuario {
         display: inline-grid;
         place-items: center;
@@ -539,8 +703,14 @@ const ENTIDADES: Record<string, string> = {
         font-weight: 800;
         vertical-align: middle;
       }
-      .usuarios-datos strong { font-size: 0.8125rem; font-weight: 700; }
-      .usuarios-datos td { color: #3c5661; font-size: 0.8125rem; }
+      .usuarios-datos strong {
+        font-size: 0.8125rem;
+        font-weight: 700;
+      }
+      .usuarios-datos td {
+        color: #3c5661;
+        font-size: 0.8125rem;
+      }
       .editar-cuenta {
         border: 0;
         background: transparent;
@@ -563,7 +733,9 @@ const ENTIDADES: Record<string, string> = {
         white-space: nowrap;
         border: 0;
       }
-      .crear-usuario { min-height: 100%; }
+      .crear-usuario {
+        min-height: 100%;
+      }
       .secundario {
         display: block;
         color: var(--tinta-suave);
@@ -589,16 +761,30 @@ const ENTIDADES: Record<string, string> = {
         gap: 18px;
         margin-bottom: 20px;
       }
-      .auditoria-cabecera h2 { margin: 0 0 4px; font-size: 1.45rem; letter-spacing: -0.03em; }
-      .auditoria-cabecera p { margin: 0; color: var(--tinta-media); font-size: 0.875rem; }
+      .auditoria-cabecera h2 {
+        margin: 0 0 4px;
+        font-size: 1.45rem;
+        letter-spacing: -0.03em;
+      }
+      .auditoria-cabecera p {
+        margin: 0;
+        color: var(--tinta-media);
+        font-size: 0.875rem;
+      }
       .auditoria-filtros {
         display: flex;
         justify-content: flex-end;
         gap: 10px;
         margin: -56px 0 20px;
       }
-      .auditoria-filtros .campo { width: auto; }
-      .auditoria-filtros select { min-height: 40px; min-width: 175px; font-size: 0.8125rem; }
+      .auditoria-filtros .campo {
+        width: auto;
+      }
+      .auditoria-filtros select {
+        min-height: 40px;
+        min-width: 175px;
+        font-size: 0.8125rem;
+      }
       .evento-etiqueta {
         display: inline-block;
         padding: 4px 9px;
@@ -609,7 +795,10 @@ const ENTIDADES: Record<string, string> = {
         font-weight: 750;
         white-space: nowrap;
       }
-      .evento-alerta { background: #fbe5e2; color: #9c251e; }
+      .evento-alerta {
+        background: #fbe5e2;
+        color: #9c251e;
+      }
       .formatos-cabecera {
         display: flex;
         align-items: end;
@@ -617,8 +806,16 @@ const ENTIDADES: Record<string, string> = {
         gap: 18px;
         margin-bottom: 20px;
       }
-      .formatos-cabecera h2 { margin: 0 0 4px; font-size: 1.45rem; letter-spacing: -0.03em; }
-      .formatos-cabecera p { margin: 0; color: var(--tinta-media); font-size: 0.875rem; }
+      .formatos-cabecera h2 {
+        margin: 0 0 4px;
+        font-size: 1.45rem;
+        letter-spacing: -0.03em;
+      }
+      .formatos-cabecera p {
+        margin: 0;
+        color: var(--tinta-media);
+        font-size: 0.875rem;
+      }
       .formatos-indicadores {
         display: grid;
         grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -631,8 +828,20 @@ const ENTIDADES: Record<string, string> = {
         border-radius: 12px;
         background: #fff;
       }
-      .formatos-indicadores span { display: block; color: var(--tinta-media); font-size: 0.6875rem; font-weight: 750; letter-spacing: .035em; text-transform: uppercase; }
-      .formatos-indicadores strong { display: block; margin-top: 6px; font-size: 1.35rem; letter-spacing: -0.03em; }
+      .formatos-indicadores span {
+        display: block;
+        color: var(--tinta-media);
+        font-size: 0.6875rem;
+        font-weight: 750;
+        letter-spacing: 0.035em;
+        text-transform: uppercase;
+      }
+      .formatos-indicadores strong {
+        display: block;
+        margin-top: 6px;
+        font-size: 1.35rem;
+        letter-spacing: -0.03em;
+      }
       .formato-tarjeta {
         width: min(100%, 340px);
         padding: 20px;
@@ -642,17 +851,61 @@ const ENTIDADES: Record<string, string> = {
         box-shadow: 0 10px 26px rgb(24 50 68 / 0.06);
       }
       .formato-tarjeta-cabecera,
-      .formato-meta { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-      .formato-tarjeta-cabecera span { padding: 4px 8px; border-radius: 999px; background: #dcefe7; color: #175746; font-size: .6875rem; font-weight: 750; }
-      .formato-tarjeta-cabecera small { color: var(--tinta-suave); font-size: .75rem; font-weight: 700; }
-      .formato-tarjeta h3 { margin: 17px 0 8px; font-size: 1.05rem; }
-      .formato-tarjeta p { min-height: 48px; margin: 0 0 18px; color: var(--tinta-media); font-size: .8125rem; line-height: 1.45; }
-      .formato-meta { padding-top: 14px; border-top: 1px solid #edf0ed; color: var(--tinta-media); font-size: .75rem; }
-      .formato-tarjeta .boton { width: 100%; margin-top: 18px; }
-      .formatos-campos { margin-top: 24px; }
-      .formatos-nota { max-width: 80ch; margin: 18px 0 0; color: var(--tinta-suave); font-size: .8125rem; }
-      .tabla-scroll { background: var(--superficie); }
-      .tabla-scroll table.datos tbody tr { transition: background-color 150ms ease; }
+      .formato-meta {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+      .formato-tarjeta-cabecera span {
+        padding: 4px 8px;
+        border-radius: 999px;
+        background: #dcefe7;
+        color: #175746;
+        font-size: 0.6875rem;
+        font-weight: 750;
+      }
+      .formato-tarjeta-cabecera small {
+        color: var(--tinta-suave);
+        font-size: 0.75rem;
+        font-weight: 700;
+      }
+      .formato-tarjeta h3 {
+        margin: 17px 0 8px;
+        font-size: 1.05rem;
+      }
+      .formato-tarjeta p {
+        min-height: 48px;
+        margin: 0 0 18px;
+        color: var(--tinta-media);
+        font-size: 0.8125rem;
+        line-height: 1.45;
+      }
+      .formato-meta {
+        padding-top: 14px;
+        border-top: 1px solid #edf0ed;
+        color: var(--tinta-media);
+        font-size: 0.75rem;
+      }
+      .formato-tarjeta .boton {
+        width: 100%;
+        margin-top: 18px;
+      }
+      .formatos-campos {
+        margin-top: 24px;
+      }
+      .formatos-nota {
+        max-width: 80ch;
+        margin: 18px 0 0;
+        color: var(--tinta-suave);
+        font-size: 0.8125rem;
+      }
+      .tabla-scroll {
+        background: var(--superficie);
+      }
+      .tabla-scroll table.datos tbody tr {
+        transition: background-color 150ms ease;
+      }
       @media (min-width: 640px) {
         .filtros {
           grid-template-columns: 1fr 1fr;
@@ -675,9 +928,18 @@ const ENTIDADES: Record<string, string> = {
         display: block;
       }
       @media (max-width: 640px) {
-        .admin-resumen { align-items: start; flex-direction: column; gap: 12px; margin-bottom: 22px; }
-        .admin-tabs { margin-inline: -2px; }
-        .admin-tabs button { flex: 0 0 auto; }
+        .admin-resumen {
+          align-items: start;
+          flex-direction: column;
+          gap: 12px;
+          margin-bottom: 22px;
+        }
+        .admin-tabs {
+          margin-inline: -2px;
+        }
+        .admin-tabs button {
+          flex: 0 0 auto;
+        }
       }
 
       /* La consola se apoya en una cabecera sobria y una franja de contexto,
@@ -715,7 +977,9 @@ const ENTIDADES: Record<string, string> = {
         stroke-linejoin: round;
         stroke-width: 1.7px;
       }
-      .admin-bar sg-logout-button { justify-self: end; }
+      .admin-bar sg-logout-button {
+        justify-self: end;
+      }
 
       .app-contenido {
         max-width: 1240px;
@@ -772,7 +1036,9 @@ const ENTIDADES: Record<string, string> = {
         stroke-linejoin: round;
         stroke-width: 1.8px;
       }
-      .admin-tabs button:hover { background: rgb(255 255 255 / 66%); }
+      .admin-tabs button:hover {
+        background: rgb(255 255 255 / 66%);
+      }
       .admin-tabs button[aria-selected='true'] {
         background: #98cbbb;
         color: #123f38;
@@ -808,9 +1074,15 @@ const ENTIDADES: Record<string, string> = {
         box-shadow: none;
       }
       table.datos th,
-      table.datos td { padding: 14px 16px; }
-      table.datos thead th { background: #f1f2ed; }
-      table.datos tbody tr:hover { background: #f2f8f4; }
+      table.datos td {
+        padding: 14px 16px;
+      }
+      table.datos thead th {
+        background: #f1f2ed;
+      }
+      table.datos tbody tr:hover {
+        background: #f2f8f4;
+      }
 
       .admin-inicio {
         display: grid;
@@ -877,9 +1149,15 @@ const ENTIDADES: Record<string, string> = {
         font-weight: 650;
       }
       .admin-rail-nav button:hover,
-      .admin-rail-nav button:focus-visible { background: #fffefa; }
-      .admin-panel-principal { min-width: 0; }
-      .admin-saludo { margin: 0 0 30px; }
+      .admin-rail-nav button:focus-visible {
+        background: #fffefa;
+      }
+      .admin-panel-principal {
+        min-width: 0;
+      }
+      .admin-saludo {
+        margin: 0 0 30px;
+      }
       .admin-saludo h1 {
         margin: 0 0 4px;
         font-size: clamp(1.75rem, 3vw, 2.2rem);
@@ -909,7 +1187,11 @@ const ENTIDADES: Record<string, string> = {
         color: var(--tinta-media);
         font-size: 0.6875rem;
       }
-      .admin-indicadores span { font-weight: 750; letter-spacing: 0.035em; text-transform: uppercase; }
+      .admin-indicadores span {
+        font-weight: 750;
+        letter-spacing: 0.035em;
+        text-transform: uppercase;
+      }
       .admin-indicadores strong {
         display: block;
         margin: 13px 0 7px;
@@ -932,9 +1214,18 @@ const ENTIDADES: Record<string, string> = {
         background: #fff;
       }
       .admin-accesos-rapidos h2,
-      .admin-estado h2 { margin: 0 0 16px; font-size: 1rem; letter-spacing: -0.015em; }
-      .admin-accesos-rapidos { display: grid; gap: 8px; }
-      .admin-accesos-rapidos h2 { margin-bottom: 4px; }
+      .admin-estado h2 {
+        margin: 0 0 16px;
+        font-size: 1rem;
+        letter-spacing: -0.015em;
+      }
+      .admin-accesos-rapidos {
+        display: grid;
+        gap: 8px;
+      }
+      .admin-accesos-rapidos h2 {
+        margin-bottom: 4px;
+      }
       .admin-accesos-rapidos button {
         min-height: 42px;
         padding: 10px 12px;
@@ -943,9 +1234,21 @@ const ENTIDADES: Record<string, string> = {
         font-size: 0.75rem;
         font-weight: 700;
       }
-      .admin-accesos-rapidos button:hover { background: #e0eee7; color: #124b3e; }
-      .admin-accesos-rapidos button span { font-size: 1.4rem; font-weight: 400; line-height: .75; }
-      .admin-estado-cabecera { display: flex; justify-content: space-between; gap: 12px; align-items: start; }
+      .admin-accesos-rapidos button:hover {
+        background: #e0eee7;
+        color: #124b3e;
+      }
+      .admin-accesos-rapidos button span {
+        font-size: 1.4rem;
+        font-weight: 400;
+        line-height: 0.75;
+      }
+      .admin-estado-cabecera {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        align-items: start;
+      }
       .admin-estado-cabecera span {
         padding: 4px 9px;
         border-radius: 999px;
@@ -954,7 +1257,11 @@ const ENTIDADES: Record<string, string> = {
         font-size: 0.6875rem;
         font-weight: 750;
       }
-      .admin-estado ul { margin: 0; padding: 0; list-style: none; }
+      .admin-estado ul {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+      }
       .admin-estado li {
         display: flex;
         justify-content: space-between;
@@ -972,38 +1279,115 @@ const ENTIDADES: Record<string, string> = {
         background: #28785f;
         content: '';
       }
-      .admin-estado li span { margin-right: auto; }
-      .admin-estado li small { color: var(--tinta-media); white-space: nowrap; }
+      .admin-estado li span {
+        margin-right: auto;
+      }
+      .admin-estado li small {
+        color: var(--tinta-media);
+        white-space: nowrap;
+      }
 
       @media (max-width: 640px) {
-        .admin-bar-inner { min-height: 60px; padding: 0 16px; }
-        .admin-masthead { margin-inline: -2px; padding: 18px 16px 12px; }
-        .admin-resumen { align-items: start; }
-        .admin-contexto { display: none; }
-        .admin-tabs { justify-content: flex-start; overflow-x: auto; }
-        .admin-tabs button { padding: 9px 12px; }
-        .bloque { padding: 20px 16px; }
-        .usuarios-cabecera { align-items: start; flex-direction: column; }
-        .usuarios-cabecera .boton { width: 100%; }
-        .usuarios-tabla { padding: 16px; }
-        .usuarios-herramientas { align-items: stretch; flex-direction: column; }
-        .buscador-usuarios { width: 100%; }
-        .auditoria-cabecera { align-items: start; flex-direction: column; }
-        .auditoria-filtros { display: grid; grid-template-columns: 1fr; margin: 0 0 18px; }
-        .auditoria-filtros select { width: 100%; }
-        .formatos-cabecera { align-items: start; flex-direction: column; }
-        .formatos-indicadores { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-        .formatos-indicadores article { padding: 14px; }
-        .formato-tarjeta { width: 100%; }
-        .admin-inicio { grid-template-columns: 1fr; gap: 20px; padding-top: 0; }
-        .admin-rail { padding: 16px; }
-        .admin-rail-nav { grid-template-columns: repeat(3, minmax(0, 1fr)); margin-top: 16px; }
-        .admin-rail-nav button { padding: 8px 5px; font-size: 0.6875rem; text-align: center; justify-content: center; }
-        .admin-saludo { margin-bottom: 22px; }
+        .admin-bar-inner {
+          min-height: 60px;
+          padding: 0 16px;
+        }
+        .admin-masthead {
+          margin-inline: -2px;
+          padding: 18px 16px 12px;
+        }
+        .admin-resumen {
+          align-items: start;
+        }
+        .admin-contexto {
+          display: none;
+        }
+        .admin-tabs {
+          justify-content: flex-start;
+          overflow-x: auto;
+        }
+        .admin-tabs button {
+          padding: 9px 12px;
+        }
+        .bloque {
+          padding: 20px 16px;
+        }
+        .usuarios-cabecera {
+          align-items: start;
+          flex-direction: column;
+        }
+        .usuarios-cabecera .boton {
+          width: 100%;
+        }
+        .usuarios-tabla {
+          padding: 16px;
+        }
+        .usuarios-herramientas {
+          align-items: stretch;
+          flex-direction: column;
+        }
+        .buscador-usuarios {
+          width: 100%;
+        }
+        .auditoria-cabecera {
+          align-items: start;
+          flex-direction: column;
+        }
+        .auditoria-filtros {
+          display: grid;
+          grid-template-columns: 1fr;
+          margin: 0 0 18px;
+        }
+        .auditoria-filtros select {
+          width: 100%;
+        }
+        .formatos-cabecera {
+          align-items: start;
+          flex-direction: column;
+        }
+        .formatos-indicadores {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 10px;
+        }
+        .formatos-indicadores article {
+          padding: 14px;
+        }
+        .formato-tarjeta {
+          width: 100%;
+        }
+        .admin-inicio {
+          grid-template-columns: 1fr;
+          gap: 20px;
+          padding-top: 0;
+        }
+        .admin-rail {
+          padding: 16px;
+        }
+        .admin-rail-nav {
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          margin-top: 16px;
+        }
+        .admin-rail-nav button {
+          padding: 8px 5px;
+          font-size: 0.6875rem;
+          text-align: center;
+          justify-content: center;
+        }
+        .admin-saludo {
+          margin-bottom: 22px;
+        }
         .admin-indicadores,
-        .admin-resumen-grid { grid-template-columns: 1fr; }
-        .admin-indicadores { gap: 10px; margin-bottom: 22px; }
-        .admin-indicadores article { min-height: auto; padding: 16px; }
+        .admin-resumen-grid {
+          grid-template-columns: 1fr;
+        }
+        .admin-indicadores {
+          gap: 10px;
+          margin-bottom: 22px;
+        }
+        .admin-indicadores article {
+          min-height: auto;
+          padding: 16px;
+        }
       }
     `,
   ],
@@ -1131,20 +1515,39 @@ export class AdminDashboardComponent {
     const cuenta = this.cuentaEditando();
     if (!cuenta || this.formularioEdicion.invalid) return;
     const value = this.formularioEdicion.getRawValue();
-    const payload = cuenta.tipo === 'INTERNO'
-      ? { email: value.email, status: value.status, roleCodes: this.seleccionados(), ...(value.password ? { password: value.password } : {}) }
-      : { email: value.email, status: value.status, firstName: value.firstName, lastName: value.lastName, phone: value.phone, jobTitle: value.jobTitle, team: value.team };
+    const payload =
+      cuenta.tipo === 'INTERNO'
+        ? {
+            email: value.email,
+            status: value.status,
+            roleCodes: this.seleccionados(),
+            ...(value.password ? { password: value.password } : {}),
+          }
+        : {
+            email: value.email,
+            status: value.status,
+            firstName: value.firstName,
+            lastName: value.lastName,
+            phone: value.phone,
+            jobTitle: value.jobTitle,
+            team: value.team,
+          };
     this.guardando.set(true);
-    this.http.patch(cuenta.tipo === 'INTERNO' ? `/api/users/${cuenta.id}` : `/api/collaborators/${cuenta.id}`, payload).subscribe({
-      next: () => {
-        this.aviso.set('Los cambios se guardaron correctamente.');
-        this.cuentaEditando.set(null);
-        this.cargarUsuarios();
-        this.cargarColaboradores();
-        this.guardando.set(false);
-      },
-      error: () => { this.error.set('No fue posible guardar los cambios. Revisa los datos e intenta de nuevo.'); this.guardando.set(false); },
-    });
+    this.http
+      .patch(cuenta.tipo === 'INTERNO' ? `/api/users/${cuenta.id}` : `/api/collaborators/${cuenta.id}`, payload)
+      .subscribe({
+        next: () => {
+          this.aviso.set('Los cambios se guardaron correctamente.');
+          this.cuentaEditando.set(null);
+          this.cargarUsuarios();
+          this.cargarColaboradores();
+          this.guardando.set(false);
+        },
+        error: () => {
+          this.error.set('No fue posible guardar los cambios. Revisa los datos e intenta de nuevo.');
+          this.guardando.set(false);
+        },
+      });
   }
 
   tieneRol(code: string): boolean {

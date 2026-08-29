@@ -82,19 +82,19 @@ type Grupo = { seccion: string; respuestas: Respuesta[] };
           <h1 id="coordinacion-titulo">Coordinación</h1>
           <p>Revisa permisos de trabajo y gestiona los perfiles de colaboradores.</p>
         </div>
-      <div class="pestanas area-tabs" role="tablist" aria-label="Secciones de Coordinación">
-        <button
-          role="tab"
-          [attr.aria-selected]="pestana() === 'bandeja'"
-          (click)="pestana.set('bandeja')"
-          type="button"
-        >
-          Bandeja de revisión
-          @if (pending().length) {
-            <span class="globo">{{ pending().length }}</span>
-          }
-        </button>
-      </div>
+        <div class="pestanas area-tabs" role="tablist" aria-label="Secciones de Coordinación">
+          <button
+            role="tab"
+            [attr.aria-selected]="pestana() === 'bandeja'"
+            (click)="pestana.set('bandeja')"
+            type="button"
+          >
+            Bandeja de revisión
+            @if (pending().length) {
+              <span class="globo">{{ pending().length }}</span>
+            }
+          </button>
+        </div>
       </section>
 
       <!-- ══════════════ BANDEJA ══════════════ -->
@@ -494,15 +494,43 @@ type Grupo = { seccion: string; respuestas: Respuesta[] };
         border-radius: 16px;
         background: #efeee8;
       }
-      .area-masthead h1 { margin: 0 0 4px; font-size: clamp(1.45rem, 2.6vw, 2rem); letter-spacing: -0.03em; }
-      .area-masthead p { margin: 0; color: var(--tinta-media); font-size: .875rem; }
-      .area-tabs { margin: 0; border: 0; gap: 6px; }
-      .area-tabs button { border: 0; border-radius: 999px; padding: 9px 14px; }
-      .area-tabs button[aria-selected='true'] { background: #98cbbb; color: #123f38; }
+      .area-masthead h1 {
+        margin: 0 0 4px;
+        font-size: clamp(1.45rem, 2.6vw, 2rem);
+        letter-spacing: -0.03em;
+      }
+      .area-masthead p {
+        margin: 0;
+        color: var(--tinta-media);
+        font-size: 0.875rem;
+      }
+      .area-tabs {
+        margin: 0;
+        border: 0;
+        gap: 6px;
+      }
+      .area-tabs button {
+        border: 0;
+        border-radius: 999px;
+        padding: 9px 14px;
+      }
+      .area-tabs button[aria-selected='true'] {
+        background: #98cbbb;
+        color: #123f38;
+      }
       @media (max-width: 640px) {
-        .area-masthead { align-items: start; flex-direction: column; padding: 18px 16px 12px; }
-        .area-tabs { overflow-x: auto; max-width: 100%; }
-        .area-tabs button { white-space: nowrap; }
+        .area-masthead {
+          align-items: start;
+          flex-direction: column;
+          padding: 18px 16px 12px;
+        }
+        .area-tabs {
+          overflow-x: auto;
+          max-width: 100%;
+        }
+        .area-tabs button {
+          white-space: nowrap;
+        }
       }
     `,
   ],

@@ -80,7 +80,10 @@ import { RouterLink } from '@angular/router';
         box-shadow: var(--sombra);
         color: var(--tinta);
         text-decoration: none;
-        transition: transform 180ms ease, box-shadow 180ms ease, background-color 180ms ease;
+        transition:
+          transform 180ms ease,
+          box-shadow 180ms ease,
+          background-color 180ms ease;
       }
       .puerta:hover {
         background: #f8fdf9;
@@ -116,8 +119,14 @@ import { RouterLink } from '@angular/router';
         color: currentColor;
       }
       .puerta.destacada .detalle,
-      .puerta.destacada .credencial { color: rgb(255 255 255 / 0.84); }
-      @media (max-width: 679px) { .puerta { min-height: 205px; } }
+      .puerta.destacada .credencial {
+        color: rgb(255 255 255 / 0.84);
+      }
+      @media (max-width: 679px) {
+        .puerta {
+          min-height: 205px;
+        }
+      }
     `,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,

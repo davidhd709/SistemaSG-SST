@@ -484,11 +484,32 @@ const ESTADOS: Record<string, string> = {
         border-radius: 16px;
         background: #efeee8;
       }
-      .area-masthead h1 { margin: 0 0 4px; font-size: clamp(1.45rem, 2.6vw, 2rem); letter-spacing: -0.03em; }
-      .area-masthead p { max-width: 68ch; margin: 0; color: var(--tinta-media); font-size: .875rem; }
-      .area-contexto { padding: 6px 10px; border-radius: 999px; background: #dceee5; color: #245d4c; font-size: .75rem; font-weight: 750; white-space: nowrap; }
+      .area-masthead h1 {
+        margin: 0 0 4px;
+        font-size: clamp(1.45rem, 2.6vw, 2rem);
+        letter-spacing: -0.03em;
+      }
+      .area-masthead p {
+        max-width: 68ch;
+        margin: 0;
+        color: var(--tinta-media);
+        font-size: 0.875rem;
+      }
+      .area-contexto {
+        padding: 6px 10px;
+        border-radius: 999px;
+        background: #dceee5;
+        color: #245d4c;
+        font-size: 0.75rem;
+        font-weight: 750;
+        white-space: nowrap;
+      }
       @media (max-width: 640px) {
-        .area-masthead { align-items: start; flex-direction: column; padding: 18px 16px; }
+        .area-masthead {
+          align-items: start;
+          flex-direction: column;
+          padding: 18px 16px;
+        }
       }
     `,
   ],

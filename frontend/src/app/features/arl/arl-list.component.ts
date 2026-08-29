@@ -82,7 +82,9 @@ type CrearColaborador = {
           </div>
           <p class="secundario documento">
             {{ fila.collaborator.documentNumber }} ·
-            <span class="distintivo" [class]="clasePorVencimiento(fila.affiliation?.endDate, fila.arlStatus)">{{ texto(fila.arlStatus) }}</span>
+            <span class="distintivo" [class]="clasePorVencimiento(fila.affiliation?.endDate, fila.arlStatus)">{{
+              texto(fila.arlStatus)
+            }}</span>
           </p>
 
           <h3>{{ fila.affiliation ? 'Actualizar afiliación vigente' : 'Registrar primera afiliación' }}</h3>
@@ -148,7 +150,9 @@ type CrearColaborador = {
                         <span class="secundario">hasta {{ soloFecha(item.endDate) }}</span>
                       </td>
                       <td>
-                        <span class="distintivo" [class]="clasePorVencimiento(item.endDate, item.arlStatus)">{{ texto(item.arlStatus) }}</span>
+                        <span class="distintivo" [class]="clasePorVencimiento(item.endDate, item.arlStatus)">{{
+                          texto(item.arlStatus)
+                        }}</span>
                       </td>
                       <td>
                         @if (item.documents.length) {
@@ -192,16 +196,38 @@ type CrearColaborador = {
           <section class="bloque registro-colaborador">
             <div class="titulo-seccion"><h3>Nuevo colaborador</h3></div>
             <form [formGroup]="formularioColaborador" (ngSubmit)="crearColaborador()" class="rejilla-campos dos">
-              <label class="campo"><span>Tipo de documento</span><select formControlName="documentType"><option value="CC">Cédula de ciudadanía</option><option value="CE">Cédula de extranjería</option><option value="PA">Pasaporte</option><option value="PEP">Permiso especial de permanencia</option></select></label>
-              <label class="campo"><span>Número de documento</span><input formControlName="documentNumber" inputmode="numeric" /></label>
+              <label class="campo"
+                ><span>Tipo de documento</span
+                ><select formControlName="documentType">
+                  <option value="CC">Cédula de ciudadanía</option>
+                  <option value="CE">Cédula de extranjería</option>
+                  <option value="PA">Pasaporte</option>
+                  <option value="PEP">Permiso especial de permanencia</option>
+                </select></label
+              >
+              <label class="campo"
+                ><span>Número de documento</span><input formControlName="documentNumber" inputmode="numeric"
+              /></label>
               <label class="campo"><span>Nombres</span><input formControlName="firstName" /></label>
               <label class="campo"><span>Apellidos</span><input formControlName="lastName" /></label>
               <label class="campo"><span>Cargo</span><input formControlName="jobTitle" placeholder="Opcional" /></label>
               <label class="campo"><span>Equipo</span><input formControlName="team" placeholder="Opcional" /></label>
-              <label class="campo"><span>Correo</span><input formControlName="email" type="email" placeholder="Opcional" /></label>
-              <label class="campo"><span>Teléfono</span><input formControlName="phone" inputmode="tel" placeholder="Opcional" /></label>
-              <label class="campo ancho-total"><span>PIN de acceso</span><input formControlName="pin" inputmode="numeric" /><span class="ayuda">Entre 4 y 12 caracteres. Entrégalo al colaborador por un canal seguro.</span></label>
-              <div class="acciones ancho-total"><button class="boton" [disabled]="formularioColaborador.invalid || creandoColaborador()">{{ creandoColaborador() ? 'Registrando…' : 'Registrar colaborador' }}</button></div>
+              <label class="campo"
+                ><span>Correo</span><input formControlName="email" type="email" placeholder="Opcional"
+              /></label>
+              <label class="campo"
+                ><span>Teléfono</span><input formControlName="phone" inputmode="tel" placeholder="Opcional"
+              /></label>
+              <label class="campo ancho-total"
+                ><span>PIN de acceso</span><input formControlName="pin" inputmode="numeric" /><span class="ayuda"
+                  >Entre 4 y 12 caracteres. Entrégalo al colaborador por un canal seguro.</span
+                ></label
+              >
+              <div class="acciones ancho-total">
+                <button class="boton" [disabled]="formularioColaborador.invalid || creandoColaborador()">
+                  {{ creandoColaborador() ? 'Registrando…' : 'Registrar colaborador' }}
+                </button>
+              </div>
             </form>
           </section>
         }
@@ -274,7 +300,11 @@ type CrearColaborador = {
                       }
                     </td>
                     <td>
-                      <span class="distintivo" [class]="clasePorVencimiento(fila.affiliation?.endDate, fila.arlStatus)">{{ texto(fila.arlStatus) }}</span>
+                      <span
+                        class="distintivo"
+                        [class]="clasePorVencimiento(fila.affiliation?.endDate, fila.arlStatus)"
+                        >{{ texto(fila.arlStatus) }}</span
+                      >
                     </td>
                     <td>
                       <button class="boton compacto" type="button" (click)="abrirFicha(fila)">
@@ -326,9 +356,16 @@ type CrearColaborador = {
         flex-wrap: wrap;
         gap: 6px;
       }
-      .registro-colaborador { margin-bottom: 24px; background: #f7fbf8; }
-      .registro-colaborador h3 { margin: 0; }
-      .lista-arl-cabecera { margin-top: 28px; }
+      .registro-colaborador {
+        margin-bottom: 24px;
+        background: #f7fbf8;
+      }
+      .registro-colaborador h3 {
+        margin: 0;
+      }
+      .lista-arl-cabecera {
+        margin-top: 28px;
+      }
       .area-masthead {
         display: flex;
         align-items: center;
@@ -339,14 +376,47 @@ type CrearColaborador = {
         border-radius: 16px;
         background: #efeee8;
       }
-      .area-masthead h1 { margin: 0 0 4px; font-size: clamp(1.45rem, 2.6vw, 2rem); letter-spacing: -0.03em; }
-      .area-masthead p { max-width: 68ch; margin: 0; color: var(--tinta-media); font-size: .875rem; }
-      .area-contexto { padding: 6px 10px; border-radius: 999px; background: #dceee5; color: #245d4c; font-size: .75rem; font-weight: 750; white-space: nowrap; }
-      .distintivo.urgencia-5 { background: #fff3d6; border-color: #edd38f; color: #875300; }
-      .distintivo.urgencia-3 { background: #ffe4c1; border-color: #e7ad63; color: #974500; }
-      .distintivo.urgencia-1 { background: #fbd8d4; border-color: #dc8077; color: #a1261e; }
+      .area-masthead h1 {
+        margin: 0 0 4px;
+        font-size: clamp(1.45rem, 2.6vw, 2rem);
+        letter-spacing: -0.03em;
+      }
+      .area-masthead p {
+        max-width: 68ch;
+        margin: 0;
+        color: var(--tinta-media);
+        font-size: 0.875rem;
+      }
+      .area-contexto {
+        padding: 6px 10px;
+        border-radius: 999px;
+        background: #dceee5;
+        color: #245d4c;
+        font-size: 0.75rem;
+        font-weight: 750;
+        white-space: nowrap;
+      }
+      .distintivo.urgencia-5 {
+        background: #fff3d6;
+        border-color: #edd38f;
+        color: #875300;
+      }
+      .distintivo.urgencia-3 {
+        background: #ffe4c1;
+        border-color: #e7ad63;
+        color: #974500;
+      }
+      .distintivo.urgencia-1 {
+        background: #fbd8d4;
+        border-color: #dc8077;
+        color: #a1261e;
+      }
       @media (max-width: 640px) {
-        .area-masthead { align-items: start; flex-direction: column; padding: 18px 16px; }
+        .area-masthead {
+          align-items: start;
+          flex-direction: column;
+          padding: 18px 16px;
+        }
       }
     `,
   ],
@@ -383,7 +453,15 @@ export class ArlListComponent {
     endDate: ['', Validators.required],
   });
   readonly valoresColaborador: CrearColaborador = {
-    documentType: 'CC', documentNumber: '', firstName: '', lastName: '', jobTitle: '', team: '', email: '', phone: '', pin: '',
+    documentType: 'CC',
+    documentNumber: '',
+    firstName: '',
+    lastName: '',
+    jobTitle: '',
+    team: '',
+    email: '',
+    phone: '',
+    pin: '',
   };
   readonly formularioColaborador = this.fb.nonNullable.group({
     documentType: ['CC', Validators.required],
@@ -438,7 +516,11 @@ export class ArlListComponent {
         this.cargar();
       },
       error: (respuesta: { status: number }) => {
-        this.error.set(respuesta.status === 409 ? 'Ya existe un colaborador con ese documento.' : 'No fue posible registrar el colaborador.');
+        this.error.set(
+          respuesta.status === 409
+            ? 'Ya existe un colaborador con ese documento.'
+            : 'No fue posible registrar el colaborador.',
+        );
         this.creandoColaborador.set(false);
       },
     });

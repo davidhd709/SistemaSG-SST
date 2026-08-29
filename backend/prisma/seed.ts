@@ -31,7 +31,10 @@ const roles: Record<string, { name: string; permissions: string[] }> = {
     permissions: ['collaborators:read', 'arl:read', 'submissions:review', 'files:read'],
   },
   LEGAL: { name: 'Legal', permissions: ['collaborators:read', 'arl:read', 'files:read', 'legal:read'] },
-  ARL_MANAGER: { name: 'Gestor de ARL', permissions: ['collaborators:create', 'collaborators:read', 'arl:read', 'arl:manage'] },
+  ARL_MANAGER: {
+    name: 'Gestor de ARL',
+    permissions: ['collaborators:create', 'collaborators:read', 'arl:read', 'arl:manage'],
+  },
 };
 
 async function main(): Promise<void> {
