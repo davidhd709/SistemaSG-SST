@@ -5,7 +5,72 @@ import { AuthSessionService } from '../../core/auth-session.service';
 import { fechaCalendario, fechaHora } from '../../core/fechas';
 import { LogoutButtonComponent } from '../../core/logout-button.component';
 
-type Dashboard = { pending: number; approved: number; rejected: number; blockedByArl: number };
+type Dashboard = {
+  pending: number;
+  inProgress: number;
+  approved: number;
+  closed: number;
+  rejected: number;
+  blockedByArl: number;
+  overdue: number;
+};
+
+/** Jornada autorizada que sigue abierta. */
+type JornadaAbierta = {
+  id: string;
+  workDate: string | null;
+  startedAt: string | null;
+  collaborator: { firstName: string; lastName: string; documentNumber: string };
+  crewSize: number;
+  form: { code: string; name: string };
+  overdue: boolean;
+};
+
+type Cumplimiento = {
+  arl: { estado: string };
+  seguridadSocial: { estado: string; reference?: string };
+  alturas: { estado: string; expiresAt?: string };
+  apto: boolean;
+  faltantes: string[];
+};
+
+type FilaCumplimiento = {
+  collaborator: { id: string; firstName: string; lastName: string; documentNumber: string; jobTitle: string | null };
+  cumplimiento: Cumplimiento;
+};
+
+type Planilla = {
+  id: string;
+  reference: string;
+  providerName: string | null;
+  periodStart: string;
+  periodEnd: string;
+  file: { id: string; originalName: string } | null;
+  members: { id: string; firstName: string; lastName: string }[];
+};
+
+type Certificado = {
+  id: string;
+  issuedAt: string;
+  expiresAt: string;
+  trainingEntity: string | null;
+  collaborator: { id: string; firstName: string; lastName: string; documentNumber: string };
+  file: { id: string; originalName: string } | null;
+};
+
+/** Integrante de la cuadrilla tal como lo ve Coordinación al revisar. */
+type Integrante = {
+  id: string;
+  isLead: boolean;
+  collaborator: { id: string; firstName: string; lastName: string; documentNumber: string };
+  jobPosition: { code: string; name: string } | null;
+  signature: { sha256: string; file: { id: string } } | null;
+  members: Integrante[];
+  workDate?: string | null;
+  startedAt?: string | null;
+  closedAt?: string | null;
+  status?: string;
+};
 
 type Submission = {
   id: string;
@@ -25,6 +90,11 @@ type Detail = {
   collaborator: { firstName: string; lastName: string; documentNumber: string; jobTitle?: string; team?: string };
   formVersion: { versionNumber: number; schemaJson: { fields: Campo[] }; form: { code: string; name: string } };
   signature: { sha256: string; file: { id: string } } | null;
+  members: Integrante[];
+  status?: string;
+  workDate?: string | null;
+  startedAt?: string | null;
+  closedAt?: string | null;
 };
 
 type Colaborador = {
@@ -94,8 +164,30 @@ type Grupo = { seccion: string; respuestas: Respuesta[] };
               <span class="globo">{{ pending().length }}</span>
             }
           </button>
+          <button role="tab" [attr.aria-selected]="pestana() === 'jornadas'" (click)="verJornadas()" type="button">
+            Jornadas abiertas
+            @if (jornadas().length) {
+              <span class="globo">{{ jornadas().length }}</span>
+            }
+          </button>
+          <button
+            role="tab"
+            [attr.aria-selected]="pestana() === 'cumplimiento'"
+            (click)="verCumplimiento()"
+            type="button"
+          >
+            Requisitos
+          </button>
         </div>
       </section>
+
+      @if (dashboard()?.overdue) {
+        <p class="mensaje alerta" role="status">
+          Hay {{ dashboard()?.overdue }}
+          {{ dashboard()?.overdue === 1 ? 'jornada de un día anterior' : 'jornadas de días anteriores' }} sin cerrar.
+          <button class="boton secundario compacto" type="button" (click)="verJornadas()">Ver cuáles</button>
+        </p>
+      }
 
       <!-- ══════════════ BANDEJA ══════════════ -->
       @if (pestana() === 'bandeja') {
@@ -106,8 +198,12 @@ type Grupo = { seccion: string; respuestas: Respuesta[] };
               <span class="rotulo">Esperando revisión</span>
             </div>
             <div class="indicador">
-              <span class="cifra">{{ m.approved }}</span>
-              <span class="rotulo">Autorizados</span>
+              <span class="cifra">{{ m.inProgress }}</span>
+              <span class="rotulo">Jornadas en curso</span>
+            </div>
+            <div class="indicador" [class.atencion]="m.overdue > 0">
+              <span class="cifra">{{ m.overdue }}</span>
+              <span class="rotulo">Sin cerrar de días pasados</span>
             </div>
             <div class="indicador">
               <span class="cifra">{{ m.rejected }}</span>
@@ -195,13 +291,49 @@ type Grupo = { seccion: string; respuestas: Respuesta[] };
               </div>
             }
 
-            <h3>Firma manuscrita</h3>
-            @if (firmaUrl(); as url) {
-              <img class="firma" [src]="url" alt="Firma manuscrita del colaborador" />
-            } @else {
-              <p class="secundario">Cargando firma…</p>
-            }
-            <p class="huella">SHA-256 · {{ item.signature?.sha256 || 'No disponible' }}</p>
+            <h3>
+              Cuadrilla y firmas <span class="conteo">({{ item.members.length }})</span>
+            </h3>
+            <p class="secundario">
+              El permiso ampara a estas personas y a nadie más. Cada una firmó la suya al enviarlo.
+            </p>
+            <div class="tabla-scroll">
+              <table class="datos">
+                <thead>
+                  <tr>
+                    <th>Integrante</th>
+                    <th>Cargo</th>
+                    <th>Firma</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (integrante of item.members; track integrante.id) {
+                    <tr>
+                      <td>
+                        <strong>
+                          {{ integrante.collaborator.firstName }} {{ integrante.collaborator.lastName }}
+                        </strong>
+                        <span class="secundario">
+                          {{ integrante.collaborator.documentNumber }}
+                          @if (integrante.isLead) {
+                            · responsable
+                          }
+                        </span>
+                      </td>
+                      <td>{{ integrante.jobPosition?.name || '—' }}</td>
+                      <td>
+                        @if (firmasCuadrilla()[integrante.id]; as url) {
+                          <img class="firma" [src]="url" [alt]="'Firma de ' + integrante.collaborator.firstName" />
+                        } @else {
+                          <span class="secundario">Sin firma</span>
+                        }
+                        <span class="huella">{{ integrante.signature?.sha256 || 'Sin registro' }}</span>
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
 
             <h3>Decisión</h3>
             <div class="rejilla-campos">
@@ -289,78 +421,327 @@ type Grupo = { seccion: string; respuestas: Respuesta[] };
       }
 
       <!-- ══════════════ COLABORADORES ══════════════ -->
-      @if (pestana() === 'colaboradores') {
+      <!-- ══════════════ JORNADAS ABIERTAS ══════════════ -->
+      @if (pestana() === 'jornadas') {
+        <div class="titulo-seccion">
+          <h2>
+            Jornadas sin cerrar <span class="conteo">({{ jornadas().length }})</span>
+          </h2>
+          <button class="boton secundario compacto" type="button" (click)="cargarJornadas()">Actualizar</button>
+        </div>
+        <p class="secundario introduccion">
+          Permisos autorizados cuya cuadrilla aún no registró su hora de finalización. Los de días anteriores necesitan
+          seguimiento: sin cierre no se genera el documento final.
+        </p>
+
+        @if (jornadas().length) {
+          <div class="tabla-scroll">
+            <table class="datos">
+              <thead>
+                <tr>
+                  <th>Responsable</th>
+                  <th>Cuadrilla</th>
+                  <th>Día</th>
+                  <th>Inició</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (jornada of jornadas(); track jornada.id) {
+                  <tr [class.fila-alerta]="jornada.overdue">
+                    <td>
+                      <strong>{{ jornada.collaborator.firstName }} {{ jornada.collaborator.lastName }}</strong>
+                      <span class="secundario">{{ jornada.collaborator.documentNumber }}</span>
+                    </td>
+                    <td>{{ jornada.crewSize }} {{ jornada.crewSize === 1 ? 'persona' : 'personas' }}</td>
+                    <td>
+                      {{ soloFecha(jornada.workDate) }}
+                      @if (jornada.overdue) {
+                        <span class="secundario">día anterior</span>
+                      }
+                    </td>
+                    <td>{{ hora(jornada.startedAt) }}</td>
+                    <td>
+                      <button class="boton compacto" type="button" (click)="abrir(jornada.id)">Ver permiso</button>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        } @else {
+          <p class="vacio">
+            <strong>No hay jornadas abiertas</strong>
+            Todas las cuadrillas cerraron su permiso.
+          </p>
+        }
+      }
+
+      <!-- ══════════════ REQUISITOS ══════════════ -->
+      @if (pestana() === 'cumplimiento') {
         <section class="bloque">
           <div class="titulo-seccion">
-            <h2>Registrar colaborador</h2>
+            <h2>Quién puede subir hoy</h2>
+            <button class="boton secundario compacto" type="button" (click)="cargarCumplimiento()">Actualizar</button>
           </div>
           <p class="secundario introduccion">
-            El colaborador ingresará con su número de documento y el PIN que definas aquí. Queda registrado quién creó
-            el perfil y cuándo.
+            Para integrar una cuadrilla hacen falta los tres requisitos vigentes. Quien no los tenga no aparece en la
+            lista del oficial.
           </p>
 
-          <form [formGroup]="formulario" (ngSubmit)="crear()" class="rejilla-campos dos">
+          @if (cumplimiento().length) {
+            <div class="tabla-scroll">
+              <table class="datos">
+                <thead>
+                  <tr>
+                    <th>Colaborador</th>
+                    <th>ARL</th>
+                    <th>Seguridad social</th>
+                    <th>Alturas</th>
+                    <th>Estado</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (fila of cumplimiento(); track fila.collaborator.id) {
+                    <tr [class.fila-alerta]="!fila.cumplimiento.apto">
+                      <td>
+                        <strong>{{ fila.collaborator.firstName }} {{ fila.collaborator.lastName }}</strong>
+                        <span class="secundario">{{ fila.collaborator.documentNumber }}</span>
+                      </td>
+                      <td>
+                        <span class="distintivo" [class]="claseRequisito(fila.cumplimiento.arl.estado)">
+                          {{ textoRequisito(fila.cumplimiento.arl.estado) }}
+                        </span>
+                      </td>
+                      <td>
+                        <span class="distintivo" [class]="claseRequisito(fila.cumplimiento.seguridadSocial.estado)">
+                          {{ textoRequisito(fila.cumplimiento.seguridadSocial.estado) }}
+                        </span>
+                      </td>
+                      <td>
+                        <span class="distintivo" [class]="claseRequisito(fila.cumplimiento.alturas.estado)">
+                          {{ textoRequisito(fila.cumplimiento.alturas.estado) }}
+                        </span>
+                      </td>
+                      <td>
+                        @if (fila.cumplimiento.apto) {
+                          <span class="distintivo vigente">Puede subir</span>
+                        } @else {
+                          <span class="secundario">Falta {{ fila.cumplimiento.faltantes.join(', ') }}</span>
+                        }
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          }
+        </section>
+
+        <!-- ── Planilla de seguridad social ── -->
+        <section class="bloque">
+          <div class="titulo-seccion">
+            <h2>Registrar planilla de seguridad social</h2>
+          </div>
+          <p class="secundario introduccion">
+            Cubre a todos los colaboradores que elijas por el periodo indicado. Para renovar solo a algunos, registra
+            otra planilla con ese grupo.
+          </p>
+
+          <form [formGroup]="formPlanilla" (ngSubmit)="crearPlanilla()" class="rejilla-campos dos">
             <label class="campo">
-              <span>Tipo de documento</span>
-              <select formControlName="documentType">
-                <option value="CC">Cédula de ciudadanía</option>
-                <option value="CE">Cédula de extranjería</option>
-                <option value="PA">Pasaporte</option>
-                <option value="PEP">Permiso especial de permanencia</option>
-              </select>
+              <span>Referencia de la planilla</span>
+              <input formControlName="reference" autocomplete="off" placeholder="Por ejemplo, PILA-2026-09" />
+            </label>
+            <label class="campo">
+              <span>Operador</span>
+              <input formControlName="providerName" autocomplete="off" placeholder="Opcional" />
+            </label>
+            <label class="campo">
+              <span>Inicio del periodo</span>
+              <input type="date" formControlName="periodStart" />
+            </label>
+            <label class="campo">
+              <span>Fin del periodo</span>
+              <input type="date" formControlName="periodEnd" />
             </label>
 
-            <label class="campo">
-              <span>Número de documento</span>
-              <input formControlName="documentNumber" inputmode="numeric" autocomplete="off" />
-            </label>
-
-            <label class="campo">
-              <span>Nombres</span>
-              <input formControlName="firstName" autocomplete="off" />
-            </label>
-
-            <label class="campo">
-              <span>Apellidos</span>
-              <input formControlName="lastName" autocomplete="off" />
-            </label>
-
-            <label class="campo">
-              <span>Cargo</span>
-              <input formControlName="jobTitle" autocomplete="off" placeholder="Opcional" />
-            </label>
-
-            <label class="campo">
-              <span>Cuadrilla o equipo</span>
-              <input formControlName="team" autocomplete="off" placeholder="Opcional" />
-            </label>
-
-            <label class="campo">
-              <span>Correo</span>
-              <input formControlName="email" type="email" autocomplete="off" placeholder="Opcional" />
-            </label>
-
-            <label class="campo">
-              <span>Teléfono</span>
-              <input formControlName="phone" inputmode="tel" autocomplete="off" placeholder="Opcional" />
-            </label>
-
-            <label class="campo ancho-total">
-              <span>PIN de acceso</span>
-              <input class="numerico" formControlName="pin" inputmode="numeric" autocomplete="off" />
-              <span class="ayuda">Entre 4 y 12 caracteres. Entrégaselo al colaborador en persona.</span>
-            </label>
+            <div class="campo ancho-total">
+              <span id="cubiertos-etiqueta">Colaboradores cubiertos</span>
+              <div class="casillas" role="group" aria-labelledby="cubiertos-etiqueta">
+                @for (fila of cumplimiento(); track fila.collaborator.id) {
+                  <label class="casilla">
+                    <input
+                      type="checkbox"
+                      [checked]="estaCubierto(fila.collaborator.id)"
+                      (change)="alternarCubierto(fila.collaborator.id)"
+                    />
+                    <span>{{ fila.collaborator.firstName }} {{ fila.collaborator.lastName }}</span>
+                  </label>
+                }
+              </div>
+            </div>
 
             <div class="acciones ancho-total">
-              <button class="boton" [disabled]="formulario.invalid || guardando()">
-                {{ guardando() ? 'Registrando…' : 'Registrar colaborador' }}
-              </button>
-              <button class="boton secundario" type="button" (click)="formulario.reset(valoresIniciales)">
-                Limpiar
+              <button class="boton" [disabled]="formPlanilla.invalid || !cubiertos().length || guardando()">
+                {{ guardando() ? 'Registrando…' : 'Registrar planilla' }}
               </button>
             </div>
           </form>
+
+          <h3>Planillas registradas</h3>
+          @if (planillas().length) {
+            <div class="tabla-scroll">
+              <table class="datos">
+                <thead>
+                  <tr>
+                    <th>Referencia</th>
+                    <th>Periodo</th>
+                    <th>Cubre</th>
+                    <th>Soporte</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (planilla of planillas(); track planilla.id) {
+                    <tr>
+                      <td>
+                        <strong>{{ planilla.reference }}</strong>
+                        @if (planilla.providerName) {
+                          <span class="secundario">{{ planilla.providerName }}</span>
+                        }
+                      </td>
+                      <td>
+                        {{ soloFecha(planilla.periodStart) }}
+                        <span class="secundario">hasta {{ soloFecha(planilla.periodEnd) }}</span>
+                      </td>
+                      <td>{{ planilla.members.length }}</td>
+                      <td>
+                        @if (planilla.file) {
+                          <button
+                            class="boton secundario compacto"
+                            type="button"
+                            (click)="descargar(planilla.file.id, planilla.file.originalName)"
+                          >
+                            Ver soporte
+                          </button>
+                        } @else {
+                          <label class="subir">
+                            <input
+                              type="file"
+                              accept="application/pdf,image/png,image/jpeg"
+                              (change)="subirSoportePlanilla(planilla.id, $event)"
+                            />
+                          </label>
+                        }
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          } @else {
+            <p class="secundario">Todavía no hay planillas registradas.</p>
+          }
         </section>
+
+        <!-- ── Certificados de alturas ── -->
+        <section class="bloque">
+          <div class="titulo-seccion">
+            <h2>Certificados de trabajo en alturas</h2>
+          </div>
+
+          <form [formGroup]="formCertificado" (ngSubmit)="crearCertificado()" class="rejilla-campos dos">
+            <label class="campo ancho-total">
+              <span>Colaborador</span>
+              <select formControlName="collaboratorId">
+                <option value="">Selecciona un colaborador</option>
+                @for (fila of cumplimiento(); track fila.collaborator.id) {
+                  <option [value]="fila.collaborator.id">
+                    {{ fila.collaborator.firstName }} {{ fila.collaborator.lastName }}
+                  </option>
+                }
+              </select>
+            </label>
+            <label class="campo">
+              <span>Fecha de expedición</span>
+              <input type="date" formControlName="issuedAt" />
+            </label>
+            <label class="campo">
+              <span>Vence</span>
+              <input type="date" formControlName="expiresAt" />
+            </label>
+            <label class="campo ancho-total">
+              <span>Entidad que capacitó</span>
+              <input formControlName="trainingEntity" autocomplete="off" placeholder="Opcional" />
+            </label>
+            <div class="acciones ancho-total">
+              <button class="boton" [disabled]="formCertificado.invalid || guardando()">
+                {{ guardando() ? 'Registrando…' : 'Registrar certificado' }}
+              </button>
+            </div>
+          </form>
+
+          <h3>Certificados registrados</h3>
+          @if (certificados().length) {
+            <div class="tabla-scroll">
+              <table class="datos">
+                <thead>
+                  <tr>
+                    <th>Colaborador</th>
+                    <th>Vigencia</th>
+                    <th>Entidad</th>
+                    <th>Soporte</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (certificado of certificados(); track certificado.id) {
+                    <tr>
+                      <td>
+                        <strong>
+                          {{ certificado.collaborator.firstName }} {{ certificado.collaborator.lastName }}
+                        </strong>
+                        <span class="secundario">{{ certificado.collaborator.documentNumber }}</span>
+                      </td>
+                      <td>
+                        {{ soloFecha(certificado.issuedAt) }}
+                        <span class="secundario">hasta {{ soloFecha(certificado.expiresAt) }}</span>
+                      </td>
+                      <td>{{ certificado.trainingEntity || '—' }}</td>
+                      <td>
+                        @if (certificado.file) {
+                          <button
+                            class="boton secundario compacto"
+                            type="button"
+                            (click)="descargar(certificado.file.id, certificado.file.originalName)"
+                          >
+                            Ver soporte
+                          </button>
+                        } @else {
+                          <label class="subir">
+                            <input
+                              type="file"
+                              accept="application/pdf,image/png,image/jpeg"
+                              (change)="subirSoporteCertificado(certificado.id, $event)"
+                            />
+                          </label>
+                        }
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          } @else {
+            <p class="secundario">Todavía no hay certificados registrados.</p>
+          }
+        </section>
+      }
+
+      @if (pestana() === 'colaboradores') {
+        <p class="mensaje alerta">
+          Los perfiles de colaboradores los registra el Gestor de ARL, que administra también su afiliación. Aquí se
+          consultan para revisar quién puede iniciar labores.
+        </p>
 
         <section class="bloque">
           <div class="titulo-seccion">
@@ -541,17 +922,40 @@ export class CoordinationComponent {
   private readonly session = inject(AuthSessionService);
   private readonly fb = inject(FormBuilder);
 
-  readonly pestana = signal<'bandeja' | 'colaboradores'>('bandeja');
+  readonly pestana = signal<'bandeja' | 'jornadas' | 'cumplimiento' | 'colaboradores'>('bandeja');
   readonly dashboard = signal<Dashboard | null>(null);
   readonly pending = signal<Submission[]>([]);
   readonly detail = signal<Detail | null>(null);
   readonly firmaUrl = signal<string | null>(null);
+  /** Firmas de la cuadrilla como URL de objeto, por id de integrante. */
+  readonly firmasCuadrilla = signal<Record<string, string>>({});
   readonly motivo = signal('');
   readonly decidiendo = signal(false);
   readonly ultimoPdf = signal<string | null>(null);
   readonly colaboradores = signal<Colaborador[]>([]);
   readonly guardando = signal(false);
   readonly error = signal('');
+
+  // ── Jornadas y requisitos ──
+  readonly jornadas = signal<JornadaAbierta[]>([]);
+  readonly cumplimiento = signal<FilaCumplimiento[]>([]);
+  readonly planillas = signal<Planilla[]>([]);
+  readonly certificados = signal<Certificado[]>([]);
+  readonly cubiertos = signal<string[]>([]);
+
+  readonly formPlanilla = this.fb.nonNullable.group({
+    reference: ['', [Validators.required, Validators.maxLength(100)]],
+    providerName: [''],
+    periodStart: ['', Validators.required],
+    periodEnd: ['', Validators.required],
+  });
+
+  readonly formCertificado = this.fb.nonNullable.group({
+    collaboratorId: ['', Validators.required],
+    issuedAt: ['', Validators.required],
+    expiresAt: ['', Validators.required],
+    trainingEntity: [''],
+  });
   readonly aviso = signal('');
 
   /** Estado de ARL por colaborador, para mostrarlo junto a cada perfil. */
@@ -646,20 +1050,170 @@ export class CoordinationComponent {
     });
   }
 
+  // ── Jornadas abiertas ────────────────────────────────────
+  verJornadas(): void {
+    this.pestana.set('jornadas');
+    this.cargarJornadas();
+  }
+
+  cargarJornadas(): void {
+    this.http.get<JornadaAbierta[]>('/api/coordination/open-workdays').subscribe({
+      next: (lista) => this.jornadas.set(lista),
+      error: () => this.error.set('No fue posible consultar las jornadas abiertas.'),
+    });
+  }
+
+  // ── Requisitos ───────────────────────────────────────────
+  verCumplimiento(): void {
+    this.pestana.set('cumplimiento');
+    if (!this.cumplimiento().length) this.cargarCumplimiento();
+    if (!this.planillas().length) this.cargarPlanillas();
+    if (!this.certificados().length) this.cargarCertificados();
+  }
+
+  cargarCumplimiento(): void {
+    this.http.get<{ rows: FilaCumplimiento[] }>('/api/compliance/overview').subscribe({
+      next: (respuesta) => this.cumplimiento.set(respuesta.rows),
+      error: () => this.error.set('No fue posible consultar el cumplimiento.'),
+    });
+  }
+
+  cargarPlanillas(): void {
+    this.http.get<Planilla[]>('/api/compliance/payrolls').subscribe({
+      next: (lista) => this.planillas.set(lista),
+      error: () => undefined,
+    });
+  }
+
+  cargarCertificados(): void {
+    this.http.get<Certificado[]>('/api/compliance/height-certificates').subscribe({
+      next: (lista) => this.certificados.set(lista),
+      error: () => undefined,
+    });
+  }
+
+  estaCubierto(collaboratorId: string): boolean {
+    return this.cubiertos().includes(collaboratorId);
+  }
+
+  alternarCubierto(collaboratorId: string): void {
+    this.cubiertos.update((lista) =>
+      lista.includes(collaboratorId) ? lista.filter((otro) => otro !== collaboratorId) : [...lista, collaboratorId],
+    );
+  }
+
+  crearPlanilla(): void {
+    if (this.formPlanilla.invalid || !this.cubiertos().length) return;
+    this.guardando.set(true);
+    this.error.set('');
+    const valores = this.formPlanilla.getRawValue();
+    this.http
+      .post('/api/compliance/payrolls', {
+        reference: valores.reference,
+        providerName: valores.providerName || undefined,
+        periodStart: valores.periodStart,
+        periodEnd: valores.periodEnd,
+        collaboratorIds: this.cubiertos(),
+      })
+      .subscribe({
+        next: () => {
+          this.aviso.set('Planilla registrada. Sus integrantes quedaron al día.');
+          this.formPlanilla.reset({ reference: '', providerName: '', periodStart: '', periodEnd: '' });
+          this.cubiertos.set([]);
+          this.guardando.set(false);
+          this.cargarPlanillas();
+          this.cargarCumplimiento();
+        },
+        error: () => {
+          this.error.set('No fue posible registrar la planilla. Revisa las fechas e intenta de nuevo.');
+          this.guardando.set(false);
+        },
+      });
+  }
+
+  crearCertificado(): void {
+    if (this.formCertificado.invalid) return;
+    this.guardando.set(true);
+    this.error.set('');
+    const valores = this.formCertificado.getRawValue();
+    this.http
+      .post('/api/compliance/height-certificates', {
+        collaboratorId: valores.collaboratorId,
+        issuedAt: valores.issuedAt,
+        expiresAt: valores.expiresAt,
+        trainingEntity: valores.trainingEntity || undefined,
+      })
+      .subscribe({
+        next: () => {
+          this.aviso.set('Certificado registrado.');
+          this.formCertificado.reset({ collaboratorId: '', issuedAt: '', expiresAt: '', trainingEntity: '' });
+          this.guardando.set(false);
+          this.cargarCertificados();
+          this.cargarCumplimiento();
+        },
+        error: () => {
+          this.error.set('No fue posible registrar el certificado. Revisa las fechas e intenta de nuevo.');
+          this.guardando.set(false);
+        },
+      });
+  }
+
+  subirSoportePlanilla(payrollId: string, evento: Event): void {
+    this.subirSoporte(`/api/compliance/payrolls/${payrollId}/file`, evento, () => this.cargarPlanillas());
+  }
+
+  subirSoporteCertificado(certificateId: string, evento: Event): void {
+    this.subirSoporte(`/api/compliance/height-certificates/${certificateId}/file`, evento, () =>
+      this.cargarCertificados(),
+    );
+  }
+
+  /** Sin Content-Type explícito: el navegador debe poner su propio separador. */
+  private subirSoporte(url: string, evento: Event, alTerminar: () => void): void {
+    const archivo = (evento.target as HTMLInputElement).files?.[0];
+    if (!archivo) return;
+    const cuerpo = new FormData();
+    cuerpo.append('file', archivo);
+    this.http.post(url, cuerpo).subscribe({
+      next: () => {
+        this.aviso.set('Soporte cargado.');
+        alTerminar();
+      },
+      error: () => this.error.set('No fue posible cargar el soporte. Debe ser PDF, JPG o PNG de máximo 10 MB.'),
+    });
+  }
+
+  claseRequisito(estado: string): string {
+    if (estado === 'VIGENTE') return 'vigente';
+    if (estado === 'PROXIMA_A_VENCER') return 'por-vencer';
+    return 'vencida';
+  }
+
+  textoRequisito(estado: string): string {
+    if (estado === 'VIGENTE') return 'Vigente';
+    if (estado === 'PROXIMA_A_VENCER') return 'Por vencer';
+    return 'Vencida';
+  }
+
+  hora(valor: string | null): string {
+    if (!valor) return '—';
+    return new Date(valor).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
+  }
+
   abrir(id: string): void {
     this.motivo.set('');
     this.firmaUrl.set(null);
     this.http.get<Detail>(`/api/coordination/submissions/${id}`).subscribe({
       next: (detail) => {
         this.detail.set(detail);
-        if (detail.signature) this.cargarFirma(detail.signature.file.id);
+        this.cargarFirmasCuadrilla(detail.members ?? []);
       },
       error: () => this.error.set('No fue posible abrir el envío.'),
     });
   }
 
   cerrarRevision(): void {
-    this.liberarFirma();
+    this.liberarFirmas();
     this.detail.set(null);
     this.motivo.set('');
   }
@@ -693,17 +1247,17 @@ export class CoordinationComponent {
       });
   }
 
-  descargar(id: string): void {
+  descargar(id: string, nombre = 'permiso-sg-sst.pdf'): void {
     this.http.get(`/api/files/${id}/download`, { responseType: 'blob' }).subscribe({
       next: (blob) => {
         const url = URL.createObjectURL(blob);
         const anchor = document.createElement('a');
         anchor.href = url;
-        anchor.download = 'permiso-sg-sst.pdf';
+        anchor.download = nombre;
         anchor.click();
         URL.revokeObjectURL(url);
       },
-      error: () => this.error.set('No fue posible descargar el PDF.'),
+      error: () => this.error.set('No fue posible descargar el documento.'),
     });
   }
 
@@ -767,7 +1321,7 @@ export class CoordinationComponent {
     return fechaHora(valor);
   }
 
-  soloFecha(valor: string): string {
+  soloFecha(valor: string | null): string {
     return fechaCalendario(valor);
   }
 
@@ -790,14 +1344,23 @@ export class CoordinationComponent {
     return String(valor);
   }
 
-  private cargarFirma(fileId: string): void {
-    this.http.get(`/api/files/${fileId}/download`, { responseType: 'blob' }).subscribe({
-      next: (blob) => {
-        this.liberarFirma();
-        this.firmaUrl.set(URL.createObjectURL(blob));
-      },
-      error: () => undefined,
-    });
+  /** Descarga la firma de cada integrante para mostrarlas en la revisión. */
+  private cargarFirmasCuadrilla(integrantes: Integrante[]): void {
+    this.liberarFirmas();
+    for (const integrante of integrantes) {
+      const fileId = integrante.signature?.file.id;
+      if (!fileId) continue;
+      this.http.get(`/api/files/${fileId}/download`, { responseType: 'blob' }).subscribe({
+        next: (blob) =>
+          this.firmasCuadrilla.update((mapa) => ({ ...mapa, [integrante.id]: URL.createObjectURL(blob) })),
+        error: () => undefined,
+      });
+    }
+  }
+
+  private liberarFirmas(): void {
+    for (const url of Object.values(this.firmasCuadrilla())) URL.revokeObjectURL(url);
+    this.firmasCuadrilla.set({});
   }
 
   private liberarFirma(): void {
