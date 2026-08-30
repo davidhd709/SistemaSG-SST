@@ -22,15 +22,29 @@ const roles: Record<string, { name: string; permissions: string[] }> = {
       'submissions:review',
       'files:read',
       'legal:read',
+      'compliance:read',
+      'compliance:manage',
       'settings:manage',
       'audit:read',
     ],
   },
   COORDINATOR: {
     name: 'Coordinadora',
-    permissions: ['collaborators:read', 'arl:read', 'submissions:review', 'files:read'],
+    permissions: [
+      'collaborators:read',
+      'arl:read',
+      'submissions:review',
+      'files:read',
+      // Carga las planillas de seguridad social y los certificados de alturas
+      // de los que depende quién puede integrar una cuadrilla.
+      'compliance:read',
+      'compliance:manage',
+    ],
   },
-  LEGAL: { name: 'Legal', permissions: ['collaborators:read', 'arl:read', 'files:read', 'legal:read'] },
+  LEGAL: {
+    name: 'Legal',
+    permissions: ['collaborators:read', 'arl:read', 'files:read', 'legal:read', 'compliance:read'],
+  },
   ARL_MANAGER: {
     name: 'Gestor de ARL',
     permissions: ['collaborators:create', 'collaborators:read', 'arl:read', 'arl:manage'],
@@ -62,6 +76,21 @@ async function main(): Promise<void> {
       where: { roleId: role.id, permission: { code: { notIn: definition.permissions } } },
     });
   }
+  // Cargos de la cuadrilla. Solo el oficial eléctrico abre permisos de trabajo.
+  const cargos = [
+    { code: 'OFICIAL_ELECTRICO', name: 'Oficial eléctrico', canLead: true },
+    { code: 'AUXILIAR_ELECTRICO', name: 'Auxiliar eléctrico', canLead: false },
+    { code: 'AYUDANTE', name: 'Ayudante', canLead: false },
+    { code: 'SUPERVISOR', name: 'Supervisor', canLead: false },
+  ];
+  for (const cargo of cargos) {
+    await prisma.jobPosition.upsert({
+      where: { code: cargo.code },
+      update: { name: cargo.name, canLead: cargo.canLead },
+      create: cargo,
+    });
+  }
+
   await prisma.systemSetting.upsert({
     where: { key: 'arl_expiring_days' },
     update: { valueJson: 5 },
@@ -76,17 +105,25 @@ async function main(): Promise<void> {
       description: 'Formato basado en HSE-FO-016, versión 00.',
     },
   });
+  // La versión 2 automatiza fecha, horas y verificación de requisitos, y saca
+  // el cargo del formulario porque ahora se define por integrante de cuadrilla.
+  // La 1 se conserva: los permisos firmados con ella deben poder leerse igual.
   const version = await prisma.formVersion.upsert({
-    where: { formId_versionNumber: { formId: form.id, versionNumber: 1 } },
+    where: { formId_versionNumber: { formId: form.id, versionNumber: 2 } },
     update: { schemaJson: workAtHeightSchema },
     create: {
       formId: form.id,
-      versionNumber: 1,
+      versionNumber: 2,
       schemaJson: workAtHeightSchema,
-      changeReason: 'Digitalización inicial del formato HSE-FO-016 versión 00.',
+      changeReason:
+        'Permiso de cuadrilla: fecha y horas automáticas, requisitos verificados por el sistema y cargo por integrante.',
       active: true,
       publishedAt: new Date(),
     },
+  });
+  await prisma.formVersion.updateMany({
+    where: { formId: form.id, versionNumber: { not: 2 } },
+    data: { active: false },
   });
   await prisma.form.update({ where: { id: form.id }, data: { status: 'PUBLISHED', currentVersionId: version.id } });
   const email = process.env.BOOTSTRAP_ADMIN_EMAIL?.trim().toLowerCase();
