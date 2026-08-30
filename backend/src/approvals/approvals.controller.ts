@@ -12,6 +12,10 @@ export class ApprovalsController {
   @Get('dashboard') dashboard() {
     return this.approvals.dashboard();
   }
+  /** Jornadas autorizadas que siguen abiertas; las vencidas van primero. */
+  @Get('open-workdays') openWorkdays() {
+    return this.approvals.openWorkdays();
+  }
   @Get('submissions/pending') pending() {
     return this.approvals.pending();
   }

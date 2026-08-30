@@ -7,6 +7,9 @@ import { StorageService } from '../files/storage.service';
 type PdfSubmission = {
   id: string;
   submittedAt: Date | null;
+  workDate: Date | null;
+  startedAt: Date | null;
+  closedAt: Date | null;
   answersJson: unknown;
   arlSnapshotJson: unknown;
   safetyTalkConfirmedAt: Date | null;
@@ -17,6 +20,15 @@ type PdfSubmission = {
     form: { code: string; name: string };
   };
   approval: { decision: string; reason: string | null; decidedAt: Date; decidedBy: { email: string } };
+};
+
+/** Un integrante de la cuadrilla con su firma ya resuelta como imagen. */
+type PdfMember = {
+  nombre: string;
+  documento: string;
+  cargo: string;
+  esResponsable: boolean;
+  firmaBase64: string | null;
 };
 
 type FormField = {
@@ -39,17 +51,40 @@ export class PdfService {
       include: {
         collaborator: true,
         formVersion: { include: { form: true } },
-        signature: { include: { file: true } },
+        members: {
+          include: {
+            collaborator: true,
+            jobPosition: true,
+            signature: { include: { file: true } },
+          },
+          orderBy: [{ isLead: 'desc' }, { createdAt: 'asc' }],
+        },
         approval: { include: { decidedBy: true } },
         finalPdfFile: true,
       },
     });
     if (!submission) throw new NotFoundException('Envío no encontrado.');
     if (submission.finalPdfFile) return submission.finalPdfFile.id;
-    if (!submission.approval || !submission.signature)
-      throw new Error('El envío debe estar firmado y decidido antes de generar PDF.');
-    const signature = await this.storage.getObject(submission.signature.file.objectKey);
-    const html = this.template(submission as PdfSubmission, signature.toString('base64'));
+    if (!submission.approval) throw new Error('El envío debe estar decidido antes de generar PDF.');
+    if (!submission.members.length) throw new Error('El permiso no tiene integrantes registrados.');
+
+    // Cada integrante firma la suya; si alguna falta, el documento lo deja ver
+    // en lugar de fallar: el permiso ya está decidido y debe quedar constancia.
+    const integrantes: PdfMember[] = await Promise.all(
+      submission.members.map(async (member) => ({
+        nombre: `${member.collaborator.firstName} ${member.collaborator.lastName}`,
+        documento: member.collaborator.documentNumber,
+        cargo: member.jobPosition?.name ?? member.collaborator.jobTitle ?? '—',
+        esResponsable: member.isLead,
+        firmaBase64: member.signature
+          ? await this.storage
+              .getObject(member.signature.file.objectKey)
+              .then((contenido) => contenido.toString('base64'))
+              .catch(() => null)
+          : null,
+      })),
+    );
+    const html = this.template(submission as PdfSubmission, integrantes);
     const browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'] });
     let pdf: Buffer;
     try {
@@ -104,7 +139,7 @@ export class PdfService {
       throw error;
     }
   }
-  private template(submission: PdfSubmission, signatureBase64: string): string {
+  private template(submission: PdfSubmission, integrantes: PdfMember[]): string {
     const answers = submission.answersJson as Record<string, unknown>;
     const schema = submission.formVersion.schemaJson as { fields?: FormField[] };
     const fields = (schema.fields ?? []).slice().sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
@@ -153,7 +188,14 @@ export class PdfService {
       <div class="section"><div class="section-title">4. Medidas de prevención y protección</div><table><tbody>${rows('4. Medidas de prevención y protección')}</tbody></table><p class="small"><b>Elementos de protección personal y sistemas de protección contra caídas</b></p><table class="epp"><tbody>${eppRows}</tbody></table></div>
       <div class="section"><div class="section-title">5. Lista de verificación de seguridad</div><table class="checklist"><thead><tr><th>No.</th><th>Verificación</th><th>Resultado</th></tr></thead><tbody>${checklistRows}</tbody></table></div>
       <div class="section"><div class="section-title">6. Responsables y autorizaciones</div><table><tbody>${rows('6. Responsables y autorizaciones')}<tr><td class="label">Decisión de coordinación</td><td>${this.escape(submission.approval.decision)}</td></tr><tr><td class="label">Responsable que decide</td><td>${this.escape(submission.approval.decidedBy.email)}</td></tr><tr><td class="label">Fecha de decisión</td><td>${decidedAt}</td></tr><tr><td class="label">Observación / motivo</td><td>${this.escape(submission.approval.reason ?? '—')}</td></tr></tbody></table></div>
-      <div class="section"><div class="section-title">Firmas</div><table><tr><td><b>Ejecutor:</b> ${this.escape(fullName)}</td><td><b>Responsable / autorizador:</b> ${this.escape(submission.approval.decidedBy.email)}</td></tr><tr><td class="signature-cell"><img class="signature" src="data:image/png;base64,${signatureBase64}" alt="Firma del ejecutor"></td><td class="signature-cell">${this.escape(submission.approval.decision)}<br><span class="small">Decidido el ${decidedAt}</span></td></tr></table></div>
+      <div class="section"><div class="section-title">Cuadrilla y firmas</div><table><tr><th>Integrante</th><th>Documento</th><th>Cargo</th><th>Firma</th></tr>${integrantes
+        .map(
+          (persona) =>
+            `<tr><td>${this.escape(persona.nombre)}${persona.esResponsable ? ' <span class="small">(responsable)</span>' : ''}</td><td>${this.escape(persona.documento)}</td><td>${this.escape(persona.cargo)}</td><td class="signature-cell">${persona.firmaBase64 ? `<img class="signature" src="data:image/png;base64,${persona.firmaBase64}" alt="Firma de ${this.escape(persona.nombre)}">` : '<span class="small">Sin firma registrada</span>'}</td></tr>`,
+        )
+        .join(
+          '',
+        )}</table></div><div class="section"><div class="section-title">Autorización</div><table><tr><td><b>Responsable:</b> ${this.escape(submission.approval.decidedBy.email)}</td><td>${this.escape(submission.approval.decision)}<br><span class="small">Decidido el ${decidedAt}</span></td></tr></table></div>
       <div class="footer"><span>Registro: ${this.escape(submission.id)}</span><span>Enviado: ${submittedAt}</span><span>Charla de seguridad confirmada: ${submission.safetyTalkConfirmedAt ? 'Sí' : 'No'}</span></div>
     </body></html>`;
   }

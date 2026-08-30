@@ -5,6 +5,7 @@ import { ThrottlerModule } from '@nestjs/throttler';
 import { HealthModule } from './health/health.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuditModule } from './audit/audit.module';
+import { ComplianceModule } from './compliance/compliance.module';
 import { AuthModule } from './auth/auth.module';
 import { AuthGuard } from './auth/auth.guard';
 import { PermissionsGuard } from './auth/permissions.guard';
@@ -30,6 +31,7 @@ import { LegalModule } from './legal/legal.module';
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 100 }]),
     PrismaModule,
     AuditModule,
+    ComplianceModule,
     AuthModule,
     CollaboratorsModule,
     UsersModule,

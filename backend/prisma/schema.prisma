@@ -35,7 +35,10 @@ enum FormStatus {
 enum SubmissionStatus {
   DRAFT
   PENDING_APPROVAL
+  // Autorizado por Coordinación: la cuadrilla está trabajando y la jornada
+  // sigue abierta hasta que el oficial registre la hora de finalización.
   APPROVED
+  CLOSED
   REJECTED
 }
 
@@ -45,22 +48,24 @@ enum ApprovalDecision {
 }
 
 model User {
-  id                    String           @id @default(uuid()) @db.Uuid
-  email                 String           @unique
-  passwordHash          String
-  status                UserStatus       @default(ACTIVE)
-  forcePasswordChange   Boolean          @default(false)
-  failedLoginAttempts   Int              @default(0)
-  lockedUntil           DateTime?
-  createdAt             DateTime         @default(now())
-  updatedAt             DateTime         @updatedAt
-  roles                 UserRole[]
-  refreshSessions       RefreshSession[]
-  auditEvents           AuditEvent[]     @relation("AuditActorUser")
-  createdCollaborators  Collaborator[]   @relation("CollaboratorCreatedBy")
-  createdArlAffiliations ArlAffiliation[] @relation("ArlCreatedBy")
-  updatedArlAffiliations ArlAffiliation[] @relation("ArlUpdatedBy")
-  approvals             Approval[]       @relation("ApprovalDecidedBy")
+  id                     String                  @id @default(uuid()) @db.Uuid
+  email                  String                  @unique
+  passwordHash           String
+  status                 UserStatus              @default(ACTIVE)
+  forcePasswordChange    Boolean                 @default(false)
+  failedLoginAttempts    Int                     @default(0)
+  lockedUntil            DateTime?
+  createdAt              DateTime                @default(now())
+  updatedAt              DateTime                @updatedAt
+  roles                  UserRole[]
+  refreshSessions        RefreshSession[]
+  auditEvents            AuditEvent[]            @relation("AuditActorUser")
+  createdCollaborators   Collaborator[]          @relation("CollaboratorCreatedBy")
+  createdArlAffiliations ArlAffiliation[]        @relation("ArlCreatedBy")
+  updatedArlAffiliations ArlAffiliation[]        @relation("ArlUpdatedBy")
+  approvals              Approval[]              @relation("ApprovalDecidedBy")
+  createdPayrolls        SocialSecurityPayroll[] @relation("PayrollCreatedBy")
+  createdHeightCerts     HeightCertificate[]     @relation("HeightCertificateCreatedBy")
 
   @@map("users")
 }
@@ -130,9 +135,9 @@ model RefreshSession {
 }
 
 model Collaborator {
-  id                  String            @id @default(uuid()) @db.Uuid
+  id                  String              @id @default(uuid()) @db.Uuid
   documentType        String
-  documentNumber      String            @unique
+  documentNumber      String              @unique
   firstName           String
   lastName            String
   email               String?
@@ -140,16 +145,20 @@ model Collaborator {
   jobTitle            String?
   team                String?
   pinHash             String
-  status              CollaboratorStatus @default(ACTIVE)
-  failedLoginAttempts Int               @default(0)
+  status              CollaboratorStatus  @default(ACTIVE)
+  failedLoginAttempts Int                 @default(0)
   lockedUntil         DateTime?
-  createdById         String?           @db.Uuid
-  createdAt           DateTime          @default(now())
-  updatedAt           DateTime          @updatedAt
-  createdBy           User?             @relation("CollaboratorCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
-  auditEvents         AuditEvent[]      @relation("AuditActorCollaborator")
+  createdById         String?             @db.Uuid
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+  createdBy           User?               @relation("CollaboratorCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  auditEvents         AuditEvent[]        @relation("AuditActorCollaborator")
   arlAffiliations     ArlAffiliation[]
   submissions         FormSubmission[]
+  closedSubmissions   FormSubmission[]    @relation("SubmissionClosedBy")
+  crewMemberships     SubmissionMember[]
+  payrollMemberships  PayrollMembership[]
+  heightCertificates  HeightCertificate[]
   refreshSessions     RefreshSession[]
 
   @@index([status])
@@ -157,18 +166,18 @@ model Collaborator {
 }
 
 model ArlAffiliation {
-  id             String       @id @default(uuid()) @db.Uuid
-  collaboratorId String       @db.Uuid
+  id             String        @id @default(uuid()) @db.Uuid
+  collaboratorId String        @db.Uuid
   providerName   String
-  startDate      DateTime     @db.Date
-  endDate        DateTime     @db.Date
-  createdById    String?      @db.Uuid
-  createdAt      DateTime     @default(now())
-  updatedById    String?      @db.Uuid
-  updatedAt      DateTime     @updatedAt
-  collaborator   Collaborator @relation(fields: [collaboratorId], references: [id], onDelete: Restrict)
-  createdBy      User?        @relation("ArlCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
-  updatedBy      User?        @relation("ArlUpdatedBy", fields: [updatedById], references: [id], onDelete: Restrict)
+  startDate      DateTime      @db.Date
+  endDate        DateTime      @db.Date
+  createdById    String?       @db.Uuid
+  createdAt      DateTime      @default(now())
+  updatedById    String?       @db.Uuid
+  updatedAt      DateTime      @updatedAt
+  collaborator   Collaborator  @relation(fields: [collaboratorId], references: [id], onDelete: Restrict)
+  createdBy      User?         @relation("ArlCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  updatedBy      User?         @relation("ArlUpdatedBy", fields: [updatedById], references: [id], onDelete: Restrict)
   documents      ArlDocument[]
 
   @@index([collaboratorId, endDate])
@@ -177,19 +186,21 @@ model ArlAffiliation {
 }
 
 model FileObject {
-  id              String        @id @default(uuid()) @db.Uuid
-  storageProvider String
-  bucket          String
-  objectKey       String        @unique
-  originalName    String
-  mimeType        String
-  sizeBytes       Int
-  sha256          String
-  createdById     String?       @db.Uuid
-  createdAt       DateTime      @default(now())
-  arlDocuments    ArlDocument[]
-  signatures      Signature[]
-  finalPdfFor     FormSubmission? @relation("SubmissionPdf")
+  id                 String                  @id @default(uuid()) @db.Uuid
+  storageProvider    String
+  bucket             String
+  objectKey          String                  @unique
+  originalName       String
+  mimeType           String
+  sizeBytes          Int
+  sha256             String
+  createdById        String?                 @db.Uuid
+  createdAt          DateTime                @default(now())
+  arlDocuments       ArlDocument[]
+  signatures         Signature[]
+  payrolls           SocialSecurityPayroll[] @relation("PayrollFile")
+  heightCertificates HeightCertificate[]     @relation("HeightCertificateFile")
+  finalPdfFor        FormSubmission?         @relation("SubmissionPdf")
 
   @@map("file_objects")
 }
@@ -207,33 +218,33 @@ model ArlDocument {
 }
 
 model Form {
-  id               String       @id @default(uuid()) @db.Uuid
-  code             String       @unique
+  id               String        @id @default(uuid()) @db.Uuid
+  code             String        @unique
   name             String
   description      String?
-  status           FormStatus   @default(DRAFT)
-  currentVersionId String?      @unique @db.Uuid
-  createdAt        DateTime     @default(now())
-  updatedAt        DateTime     @updatedAt
+  status           FormStatus    @default(DRAFT)
+  currentVersionId String?       @unique @db.Uuid
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
   versions         FormVersion[] @relation("FormVersions")
-  currentVersion   FormVersion? @relation("CurrentFormVersion", fields: [currentVersionId], references: [id], onDelete: SetNull)
+  currentVersion   FormVersion?  @relation("CurrentFormVersion", fields: [currentVersionId], references: [id], onDelete: SetNull)
 
   @@map("forms")
 }
 
 model FormVersion {
-  id           String   @id @default(uuid()) @db.Uuid
-  formId       String   @db.Uuid
+  id            String           @id @default(uuid()) @db.Uuid
+  formId        String           @db.Uuid
   versionNumber Int
-  schemaJson   Json
-  publishedAt  DateTime?
-  createdById  String?  @db.Uuid
-  changeReason String
-  active       Boolean  @default(false)
-  createdAt    DateTime @default(now())
-  form         Form     @relation("FormVersions", fields: [formId], references: [id], onDelete: Restrict)
-  currentFor   Form?    @relation("CurrentFormVersion")
-  submissions  FormSubmission[]
+  schemaJson    Json
+  publishedAt   DateTime?
+  createdById   String?          @db.Uuid
+  changeReason  String
+  active        Boolean          @default(false)
+  createdAt     DateTime         @default(now())
+  form          Form             @relation("FormVersions", fields: [formId], references: [id], onDelete: Restrict)
+  currentFor    Form?            @relation("CurrentFormVersion")
+  submissions   FormSubmission[]
 
   @@unique([formId, versionNumber])
   @@index([formId, active])
@@ -241,29 +252,60 @@ model FormVersion {
 }
 
 model FormSubmission {
-  id                    String           @id @default(uuid()) @db.Uuid
-  collaboratorId        String           @db.Uuid
-  formVersionId         String           @db.Uuid
-  status                SubmissionStatus @default(DRAFT)
+  id                    String             @id @default(uuid()) @db.Uuid
+  // Oficial que diligencia y responde por el permiso ante Coordinación.
+  collaboratorId        String             @db.Uuid
+  formVersionId         String             @db.Uuid
+  status                SubmissionStatus   @default(DRAFT)
   answersJson           Json
   safetyTalkConfirmed   Boolean
   safetyTalkConfirmedAt DateTime?
   arlSnapshotJson       Json
   submittedAt           DateTime?
-  previousSubmissionId  String?          @db.Uuid
-  createdAt             DateTime         @default(now())
-  collaborator          Collaborator     @relation(fields: [collaboratorId], references: [id], onDelete: Restrict)
-  formVersion           FormVersion      @relation(fields: [formVersionId], references: [id], onDelete: Restrict)
-  previousSubmission    FormSubmission?  @relation("SubmissionCorrections", fields: [previousSubmissionId], references: [id], onDelete: Restrict)
-  correctionAttempts    FormSubmission[] @relation("SubmissionCorrections")
-  signature             Signature?
-  finalPdfFileId        String?          @unique @db.Uuid
-  finalPdfFile          FileObject?      @relation("SubmissionPdf", fields: [finalPdfFileId], references: [id], onDelete: Restrict)
+  // La jornada: el día de trabajo y sus horas reales de apertura y cierre.
+  // El permiso solo vale para el día en que se diligencia.
+  workDate              DateTime?          @db.Date
+  startedAt             DateTime?
+  closedAt              DateTime?
+  closedById            String?            @db.Uuid
+  previousSubmissionId  String?            @db.Uuid
+  createdAt             DateTime           @default(now())
+  collaborator          Collaborator       @relation(fields: [collaboratorId], references: [id], onDelete: Restrict)
+  closedBy              Collaborator?      @relation("SubmissionClosedBy", fields: [closedById], references: [id], onDelete: Restrict)
+  formVersion           FormVersion        @relation(fields: [formVersionId], references: [id], onDelete: Restrict)
+  previousSubmission    FormSubmission?    @relation("SubmissionCorrections", fields: [previousSubmissionId], references: [id], onDelete: Restrict)
+  correctionAttempts    FormSubmission[]   @relation("SubmissionCorrections")
+  members               SubmissionMember[]
+  signatures            Signature[]
+  finalPdfFileId        String?            @unique @db.Uuid
+  finalPdfFile          FileObject?        @relation("SubmissionPdf", fields: [finalPdfFileId], references: [id], onDelete: Restrict)
   approval              Approval?
 
   @@index([collaboratorId, createdAt])
   @@index([status, createdAt])
+  @@index([status, workDate])
   @@map("form_submissions")
+}
+
+/// Integrante de la cuadrilla que ejecuta el permiso. Guarda el cumplimiento
+/// de cada persona en el momento del envío: dentro de seis meses hay que poder
+/// demostrar que quien subió estaba al día, no solo el oficial.
+model SubmissionMember {
+  id             String         @id @default(uuid()) @db.Uuid
+  submissionId   String         @db.Uuid
+  collaboratorId String         @db.Uuid
+  jobPositionId  String?        @db.Uuid
+  isLead         Boolean        @default(false)
+  complianceJson Json
+  createdAt      DateTime       @default(now())
+  submission     FormSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  collaborator   Collaborator   @relation(fields: [collaboratorId], references: [id], onDelete: Restrict)
+  jobPosition    JobPosition?   @relation(fields: [jobPositionId], references: [id], onDelete: Restrict)
+  signature      Signature?
+
+  @@unique([submissionId, collaboratorId])
+  @@index([collaboratorId])
+  @@map("submission_members")
 }
 
 model Approval {
@@ -280,18 +322,93 @@ model Approval {
   @@map("approvals")
 }
 
+/// Firma manuscrita. Cada integrante de la cuadrilla firma la suya, así que
+/// hay tantas como personas ejecutan el permiso.
 model Signature {
-  id           String         @id @default(uuid()) @db.Uuid
-  submissionId String         @unique @db.Uuid
-  fileId       String         @db.Uuid
+  id           String            @id @default(uuid()) @db.Uuid
+  submissionId String            @db.Uuid
+  memberId     String?           @unique @db.Uuid
+  fileId       String            @db.Uuid
   sha256       String
-  signedAt     DateTime       @default(now())
+  signedAt     DateTime          @default(now())
   ip           String?
   userAgent    String?
-  submission   FormSubmission @relation(fields: [submissionId], references: [id], onDelete: Restrict)
-  file         FileObject     @relation(fields: [fileId], references: [id], onDelete: Restrict)
+  submission   FormSubmission    @relation(fields: [submissionId], references: [id], onDelete: Restrict)
+  member       SubmissionMember? @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  file         FileObject        @relation(fields: [fileId], references: [id], onDelete: Restrict)
 
+  @@index([submissionId])
   @@map("signatures")
+}
+
+/// Catálogo de cargos de la cuadrilla. Evita que el cargo sea texto libre y
+/// permite distinguir quién puede diligenciar el permiso.
+model JobPosition {
+  id        String             @id @default(uuid()) @db.Uuid
+  code      String             @unique
+  name      String
+  /// Solo los cargos marcados así pueden abrir un permiso de trabajo.
+  canLead   Boolean            @default(false)
+  active    Boolean            @default(true)
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+  members   SubmissionMember[]
+
+  @@map("job_positions")
+}
+
+/// Planilla de seguridad social. Cubre a varios colaboradores por un periodo:
+/// al registrarla, todos sus integrantes quedan al día de una sola vez. Para
+/// renovar solo a algunos se registra otra planilla con ese subconjunto.
+model SocialSecurityPayroll {
+  id           String              @id @default(uuid()) @db.Uuid
+  reference    String
+  providerName String?
+  periodStart  DateTime            @db.Date
+  periodEnd    DateTime            @db.Date
+  fileId       String?             @db.Uuid
+  createdById  String?             @db.Uuid
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+  file         FileObject?         @relation("PayrollFile", fields: [fileId], references: [id], onDelete: Restrict)
+  createdBy    User?               @relation("PayrollCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  memberships  PayrollMembership[]
+
+  @@index([periodEnd])
+  @@map("social_security_payrolls")
+}
+
+model PayrollMembership {
+  payrollId      String                @db.Uuid
+  collaboratorId String                @db.Uuid
+  createdAt      DateTime              @default(now())
+  payroll        SocialSecurityPayroll @relation(fields: [payrollId], references: [id], onDelete: Cascade)
+  collaborator   Collaborator          @relation(fields: [collaboratorId], references: [id], onDelete: Restrict)
+
+  @@id([payrollId, collaboratorId])
+  @@index([collaboratorId])
+  @@map("payroll_memberships")
+}
+
+/// Certificado de trabajo seguro en alturas, por colaborador. Lo carga
+/// Coordinación y su vigencia decide si la persona puede integrar una cuadrilla.
+model HeightCertificate {
+  id             String       @id @default(uuid()) @db.Uuid
+  collaboratorId String       @db.Uuid
+  issuedAt       DateTime     @db.Date
+  expiresAt      DateTime     @db.Date
+  trainingEntity String?
+  fileId         String?      @db.Uuid
+  createdById    String?      @db.Uuid
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  collaborator   Collaborator @relation(fields: [collaboratorId], references: [id], onDelete: Restrict)
+  file           FileObject?  @relation("HeightCertificateFile", fields: [fileId], references: [id], onDelete: Restrict)
+  createdBy      User?        @relation("HeightCertificateCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+
+  @@index([collaboratorId, expiresAt])
+  @@index([expiresAt])
+  @@map("height_certificates")
 }
 
 model AuditEvent {

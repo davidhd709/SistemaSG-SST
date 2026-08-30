@@ -51,7 +51,14 @@ export class LegalService {
         submissions: {
           include: {
             formVersion: { include: { form: { select: { code: true, name: true } } } },
-            signature: { include: { file: { select: { id: true, sha256: true } } } },
+            members: {
+              include: {
+                collaborator: { select: { id: true, firstName: true, lastName: true, documentNumber: true } },
+                jobPosition: { select: { code: true, name: true } },
+                signature: { include: { file: { select: { id: true, sha256: true } } } },
+              },
+            },
+            signatures: { include: { file: { select: { id: true, sha256: true } } } },
             approval: { include: { decidedBy: { select: { email: true } } } },
             finalPdfFile: { select: { id: true, sha256: true, originalName: true } },
           },

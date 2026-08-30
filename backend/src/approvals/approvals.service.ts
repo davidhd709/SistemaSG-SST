@@ -18,12 +18,53 @@ export class ApprovalsService {
     const groups = await this.prisma.formSubmission.groupBy({ by: ['status'], _count: { _all: true } });
     const counts = Object.fromEntries(groups.map((item) => [item.status, item._count._all]));
     const arl = await this.arl.list('VENCIDA');
+    const sinCerrarDeAyer = await this.prisma.formSubmission.count({
+      where: { status: 'APPROVED', workDate: { lt: this.hoy() } },
+    });
     return {
       pending: counts.PENDING_APPROVAL ?? 0,
-      approved: counts.APPROVED ?? 0,
+      // Autorizado equivale a jornada en curso: la cuadrilla está trabajando.
+      inProgress: counts.APPROVED ?? 0,
+      approved: (counts.APPROVED ?? 0) + (counts.CLOSED ?? 0),
+      closed: counts.CLOSED ?? 0,
       rejected: counts.REJECTED ?? 0,
       blockedByArl: arl.length,
+      /** Jornadas de días anteriores que nadie cerró: requieren seguimiento. */
+      overdue: sinCerrarDeAyer,
     };
+  }
+
+  /**
+   * Jornadas todavía abiertas, con las de días pasados primero: son las que
+   * Coordinación debe perseguir porque nadie registró su finalización.
+   */
+  async openWorkdays() {
+    const abiertas = await this.prisma.formSubmission.findMany({
+      where: { status: 'APPROVED' },
+      include: {
+        collaborator: { select: { firstName: true, lastName: true, documentNumber: true } },
+        members: { select: { id: true } },
+        formVersion: { include: { form: { select: { code: true, name: true } } } },
+      },
+      orderBy: { workDate: 'asc' },
+      take: 100,
+    });
+    const hoy = this.hoy();
+    return abiertas.map((item) => ({
+      id: item.id,
+      workDate: item.workDate,
+      startedAt: item.startedAt,
+      collaborator: item.collaborator,
+      crewSize: item.members.length,
+      form: { code: item.formVersion.form.code, name: item.formVersion.form.name },
+      overdue: Boolean(item.workDate && item.workDate < hoy),
+    }));
+  }
+
+  /** Hoy como día calendario UTC, igual que se guarda `workDate`. */
+  private hoy(): Date {
+    const ahora = new Date();
+    return new Date(Date.UTC(ahora.getUTCFullYear(), ahora.getUTCMonth(), ahora.getUTCDate()));
   }
   async pending() {
     const submissions = await this.prisma.formSubmission.findMany({
@@ -53,7 +94,14 @@ export class ApprovalsService {
           select: { id: true, firstName: true, lastName: true, documentNumber: true, jobTitle: true, team: true },
         },
         formVersion: { include: { form: { select: { code: true, name: true } } } },
-        signature: { include: { file: { select: { id: true, originalName: true, mimeType: true, sha256: true } } } },
+        members: {
+          include: {
+            collaborator: { select: { id: true, firstName: true, lastName: true, documentNumber: true } },
+            jobPosition: { select: { code: true, name: true } },
+            signature: { include: { file: { select: { id: true, sha256: true } } } },
+          },
+        },
+        signatures: { include: { file: { select: { id: true, originalName: true, mimeType: true, sha256: true } } } },
         approval: { include: { decidedBy: { select: { id: true, email: true } } } },
       },
     });
@@ -99,15 +147,18 @@ export class ApprovalsService {
       });
       return { submissionId: id, status: newStatus, decision: approval.decision, decidedAt: approval.decidedAt };
     });
-    // La decisión ya está comprometida en la transacción anterior. Si el PDF
-    // falla, devolverlo como error haría creer que no se decidió nada y el
-    // reintento chocaría con un 409. Se informa sin PDF y queda por regenerar.
-    try {
-      const pdfFileId = await this.pdf.generateFinalPdf(id, actorUserId);
-      return { ...decision, pdfFileId };
-    } catch (error) {
-      this.logger.error(`No fue posible generar el PDF final del envío ${id}`, error as Error);
-      return { ...decision, pdfFileId: null };
+    // El PDF final se genera al cerrar la jornada, no aquí: hasta que la
+    // cuadrilla no registre su hora de finalización el documento estaría
+    // incompleto. Un rechazo sí cierra el proceso y se documenta de una vez.
+    if (dto.decision === 'REJECTED') {
+      try {
+        const pdfFileId = await this.pdf.generateFinalPdf(id, actorUserId);
+        return { ...decision, pdfFileId };
+      } catch (error) {
+        this.logger.error(`No fue posible generar el PDF del envío rechazado ${id}`, error as Error);
+        return { ...decision, pdfFileId: null };
+      }
     }
+    return { ...decision, pdfFileId: null };
   }
 }
