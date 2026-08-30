@@ -14,7 +14,7 @@ import { AuthSessionService } from '../../core/auth-session.service';
 import { fechaCalendario } from '../../core/fechas';
 import { LogoutButtonComponent } from '../../core/logout-button.component';
 
-type TipoCampo = 'text' | 'textarea' | 'yes_no' | 'select' | 'multi_select' | 'number' | 'date';
+type TipoCampo = 'text' | 'textarea' | 'yes_no' | 'select' | 'multi_select' | 'number' | 'date' | 'auto';
 
 type Campo = {
   id: string;
@@ -24,6 +24,8 @@ type Campo = {
   options?: string[];
   order: number;
   section?: string;
+  /** Para los campos `auto`: de dónde toma el sistema el valor. */
+  source?: string;
 };
 
 type Definicion = { name: string; versionNumber: number; schemaJson: { fields: Campo[] } };
@@ -31,18 +33,50 @@ type Definicion = { name: string; versionNumber: number; schemaJson: { fields: C
 type Flujo = {
   collaborator: { firstName: string; lastName: string; documentNumber: string };
   arl: { status: string; providerName?: string; endDate?: string };
+  cumplimiento?: {
+    apto: boolean;
+    faltantes: string[];
+    alturas?: { estado: string };
+    seguridadSocial?: { estado: string };
+  };
+  /** Permiso autorizado y aún sin cerrar, si lo hay. */
+  jornadaAbierta?: { id: string; workDate: string | null; startedAt: string | null } | false | null;
   canContinue: boolean;
 };
 
 type Envio = {
-  status: 'PENDING_APPROVAL' | 'APPROVED' | 'REJECTED';
+  id: string;
+  status: 'PENDING_APPROVAL' | 'APPROVED' | 'CLOSED' | 'REJECTED';
+  submittedAt?: string | null;
+  workDate?: string | null;
+  startedAt?: string | null;
+  closedAt?: string | null;
   approval?: { reason?: string | null } | null;
 } | null;
 
 /** Un paso del formulario: una sección del esquema publicado. */
 type Bloque = { titulo: string; campos: Campo[] };
 
-type Etapa = 'arl' | 'charla' | 'formulario' | 'revision' | 'firma' | 'resultado';
+type Etapa = 'arl' | 'charla' | 'cuadrilla' | 'formulario' | 'revision' | 'firma' | 'resultado';
+
+/** Colaborador que hoy cumple los requisitos y puede integrar la cuadrilla. */
+type Candidato = {
+  id: string;
+  firstName: string;
+  lastName: string;
+  documentNumber: string;
+  jobTitle: string | null;
+  team: string | null;
+};
+
+type Cargo = { id: string; code: string; name: string; canLead: boolean };
+
+/** Integrante elegido, con su cargo y su firma una vez capturada. */
+type Integrante = {
+  candidato: Candidato;
+  jobPositionId: string;
+  firmaDataUrl: string | null;
+};
 
 const BORRADOR = 'sg-sst.borrador';
 
@@ -152,6 +186,79 @@ const BORRADOR = 'sg-sst.borrador';
         </div>
       }
 
+      <!-- ═══ 3. Cuadrilla ═══ -->
+      @if (etapa() === 'cuadrilla') {
+        <h1 class="paso-titulo">¿Quiénes trabajan hoy?</h1>
+        <p class="paso-ayuda">Elige a los integrantes de tu cuadrilla. Cada uno firmará su permiso antes de enviar.</p>
+
+        @if (excluidos() > 0) {
+          <p class="mensaje alerta">
+            {{ excluidos() }}
+            {{ excluidos() === 1 ? 'colaborador no aparece' : 'colaboradores no aparecen' }} en la lista porque tienen
+            vencida la ARL, la seguridad social o el certificado de alturas. Avisa a tu coordinadora.
+          </p>
+        }
+
+        <div class="bloque">
+          <div class="titulo-seccion">
+            <h2>
+              Integrantes <span class="conteo">({{ integrantes().length }})</span>
+            </h2>
+          </div>
+
+          @if (candidatos().length) {
+            <div class="casillas">
+              @for (persona of candidatos(); track persona.id) {
+                <label class="casilla">
+                  <input
+                    type="checkbox"
+                    [checked]="estaEnCuadrilla(persona.id)"
+                    [disabled]="persona.id === yoId()"
+                    (change)="alternarIntegrante(persona)"
+                  />
+                  <span>
+                    {{ persona.firstName }} {{ persona.lastName }}
+                    <span class="secundario">
+                      {{ persona.documentNumber }}
+                      @if (persona.id === yoId()) {
+                        · tú diligencias este permiso
+                      }
+                    </span>
+                  </span>
+                </label>
+              }
+            </div>
+          } @else {
+            <p class="secundario">No hay colaboradores disponibles hoy. Comunícate con tu coordinadora.</p>
+          }
+        </div>
+
+        @if (integrantes().length) {
+          <div class="bloque">
+            <div class="titulo-seccion">
+              <h2>Cargo de cada integrante</h2>
+            </div>
+            @for (integrante of integrantes(); track integrante.candidato.id) {
+              <label class="campo">
+                <span>{{ integrante.candidato.firstName }} {{ integrante.candidato.lastName }}</span>
+                <select
+                  [value]="integrante.jobPositionId"
+                  (change)="asignarCargo(integrante.candidato.id, $any($event.target).value)"
+                >
+                  <!-- La marca va en la opción: el valor del select se aplica
+                       antes de que las opciones existan y no seleccionaría. -->
+                  @for (cargo of cargos(); track cargo.id) {
+                    <option [value]="cargo.id" [selected]="cargo.id === integrante.jobPositionId">
+                      {{ cargo.name }}
+                    </option>
+                  }
+                </select>
+              </label>
+            }
+          </div>
+        }
+      }
+
       <!-- ═══ 3. Formulario por secciones ═══ -->
       @if (etapa() === 'formulario' && bloqueActual(); as bloque) {
         <h1 class="paso-titulo">{{ bloque.titulo }}</h1>
@@ -169,7 +276,15 @@ const BORRADOR = 'sg-sst.borrador';
 
         <form [formGroup]="respuestas" class="bloque">
           @for (campo of bloque.campos; track campo.id; let i = $index) {
-            @if (esBotonera(campo)) {
+            @if (campo.type === 'auto') {
+              <div class="campo automatico">
+                <span>{{ campo.label }}</span>
+                <p class="valor-auto">
+                  {{ valorAutomatico(campo) }}
+                  <span class="secundario">{{ explicacionAuto(campo) }}</span>
+                </p>
+              </div>
+            } @else if (esBotonera(campo)) {
               <div class="pregunta" [class.invalido]="invalido(campo)">
                 <span class="enunciado" [id]="campo.id + '-etiqueta'">
                   @if (bloque.campos.length > 6) {
@@ -282,28 +397,43 @@ const BORRADOR = 'sg-sst.borrador';
 
       <!-- ═══ 5. Firma ═══ -->
       @if (etapa() === 'firma') {
-        <h1 class="paso-titulo">Tu firma</h1>
-        <p class="paso-ayuda">Firma con el dedo dentro del recuadro. Confirmas que la información es verdadera.</p>
+        @if (firmante(); as persona) {
+          <h1 class="paso-titulo">Firma {{ persona.candidato.firstName }} {{ persona.candidato.lastName }}</h1>
+          <p class="paso-ayuda">
+            Firmante {{ indiceFirma() + 1 }} de {{ integrantes().length }}. Pásale el dispositivo y que firme dentro del
+            recuadro: confirma que la información es verdadera.
+          </p>
 
-        <div class="bloque">
-          <canvas
-            #lienzo
-            class="lienzo"
-            [class.firmado]="hayFirma()"
-            (pointerdown)="iniciarTrazo($event)"
-            (pointermove)="trazar($event)"
-            (pointerup)="terminarTrazo($event)"
-            (pointercancel)="terminarTrazo($event)"
-          ></canvas>
-          <div class="acciones">
-            <button class="boton secundario compacto" type="button" (click)="limpiarFirma()" [disabled]="!hayFirma()">
-              Borrar y firmar de nuevo
-            </button>
+          <div class="bloque">
+            <p class="secundario documento-firmante">
+              {{ persona.candidato.documentNumber }} · {{ nombreCargo(persona.jobPositionId) }}
+            </p>
+            <canvas
+              #lienzo
+              class="lienzo"
+              [class.firmado]="hayFirma()"
+              (pointerdown)="iniciarTrazo($event)"
+              (pointermove)="trazar($event)"
+              (pointerup)="terminarTrazo($event)"
+              (pointercancel)="terminarTrazo($event)"
+            ></canvas>
+            <div class="acciones">
+              <button class="boton secundario compacto" type="button" (click)="limpiarFirma()" [disabled]="!hayFirma()">
+                Borrar y firmar de nuevo
+              </button>
+            </div>
+            @if (!hayFirma()) {
+              <p class="secundario">Aún no ha firmado.</p>
+            }
           </div>
-          @if (!hayFirma()) {
-            <p class="secundario">Aún no has firmado.</p>
+
+          @if (firmadas() > 0) {
+            <p class="secundario centrado">
+              {{ firmadas() }} de {{ integrantes().length }}
+              {{ firmadas() === 1 ? 'firma capturada' : 'firmas capturadas' }}
+            </p>
           }
-        </div>
+        }
       }
 
       <!-- ═══ 6. Resultado ═══ -->
@@ -313,7 +443,40 @@ const BORRADOR = 'sg-sst.borrador';
             <div class="resultado aprobado">
               <span class="simbolo" aria-hidden="true">✓</span>
               <h2>Autorizado para iniciar labores</h2>
-              <p>Coordinación revisó y aprobó tu permiso. Ya puedes comenzar.</p>
+              <p>Coordinación aprobó el permiso. Al terminar, cierra la jornada desde aquí.</p>
+            </div>
+
+            <div class="bloque jornada">
+              <div class="titulo-seccion">
+                <h2>Cerrar la jornada</h2>
+              </div>
+              <p class="secundario">
+                Inició a las {{ hora(resultado.startedAt) }}. La hora de finalización se registra al cerrar y el permiso
+                queda completo con su documento final.
+              </p>
+              <label class="campo">
+                <span>Novedades de la jornada</span>
+                <textarea
+                  rows="2"
+                  [value]="novedades()"
+                  (input)="novedades.set($any($event.target).value)"
+                  placeholder="Opcional. Queda en el documento final."
+                ></textarea>
+              </label>
+              <div class="acciones">
+                <button class="boton" type="button" [disabled]="cerrando()" (click)="cerrarJornada(resultado.id)">
+                  {{ cerrando() ? 'Cerrando…' : 'Terminamos: cerrar jornada' }}
+                </button>
+              </div>
+            </div>
+          } @else if (resultado.status === 'CLOSED') {
+            <div class="resultado aprobado">
+              <span class="simbolo" aria-hidden="true">✓</span>
+              <h2>Jornada cerrada</h2>
+              <p>
+                De {{ hora(resultado.startedAt) }} a {{ hora(resultado.closedAt) }}. El permiso quedó completo y
+                archivado.
+              </p>
             </div>
           } @else if (resultado.status === 'REJECTED') {
             <div class="resultado rechazado">
@@ -350,8 +513,14 @@ const BORRADOR = 'sg-sst.borrador';
           }
           @switch (etapa()) {
             @case ('firma') {
-              <button class="boton" type="button" [disabled]="!hayFirma() || enviando()" (click)="enviar()">
-                {{ enviando() ? 'Enviando…' : 'Firmar y enviar' }}
+              <button class="boton" type="button" [disabled]="!hayFirma() || enviando()" (click)="confirmarFirma()">
+                @if (enviando()) {
+                  Enviando…
+                } @else if (esUltimoFirmante()) {
+                  Firmar y enviar permiso
+                } @else {
+                  Guardar firma y continuar
+                }
               </button>
             }
             @case ('revision') {
@@ -403,6 +572,19 @@ const BORRADOR = 'sg-sst.borrador';
         color: var(--tinta-suave);
         font-size: 0.9375rem;
       }
+      .automatico .valor-auto {
+        margin: 0;
+        padding: 12px 14px;
+        border: 1px dashed var(--borde-fuerte);
+        border-radius: var(--radio);
+        background: var(--fondo);
+        font-weight: 600;
+      }
+      .automatico .valor-auto .secundario {
+        display: block;
+        font-weight: 400;
+        font-size: 0.8125rem;
+      }
       .centrado {
         justify-content: center;
         text-align: center;
@@ -436,6 +618,23 @@ export class WorkAtHeightFormComponent implements OnDestroy {
   readonly consultando = signal(false);
   readonly envio = signal<Envio>(null);
   readonly error = signal('');
+
+  // ── Cuadrilla y firmas ──
+  readonly candidatos = signal<Candidato[]>([]);
+  readonly cargos = signal<Cargo[]>([]);
+  readonly excluidos = signal(0);
+  readonly integrantes = signal<Integrante[]>([]);
+  readonly indiceFirma = signal(0);
+  readonly yoId = signal<string | null>(null);
+
+  // ── Cierre de jornada ──
+  readonly novedades = signal('');
+  readonly cerrando = signal(false);
+
+  /** A quién le toca firmar ahora. */
+  readonly firmante = computed<Integrante | null>(() => this.integrantes()[this.indiceFirma()] ?? null);
+  readonly firmadas = computed(() => this.integrantes().filter((persona) => persona.firmaDataUrl).length);
+  readonly esUltimoFirmante = computed(() => this.indiceFirma() >= this.integrantes().length - 1);
 
   readonly respuestas = new FormGroup<Record<string, FormControl<unknown>>>({});
 
@@ -472,13 +671,14 @@ export class WorkAtHeightFormComponent implements OnDestroy {
   });
 
   readonly porcentaje = computed(() => {
-    const total = 3 + this.bloques().length; // ARL, charla, secciones, revisión y firma
+    const total = 4 + this.bloques().length; // ARL, charla, cuadrilla, secciones, revisión y firma
     const orden: Record<Etapa, number> = {
       arl: 0,
       charla: 1,
-      formulario: 2 + this.indiceBloque(),
-      revision: 2 + this.bloques().length,
-      firma: 3 + this.bloques().length,
+      cuadrilla: 2,
+      formulario: 3 + this.indiceBloque(),
+      revision: 3 + this.bloques().length,
+      firma: 4 + this.bloques().length,
       resultado: total + 1,
     };
     return Math.min(100, Math.round((orden[this.etapa()] / (total + 1)) * 100));
@@ -490,12 +690,14 @@ export class WorkAtHeightFormComponent implements OnDestroy {
         return 'Verificación de ARL';
       case 'charla':
         return 'Charla de seguridad';
+      case 'cuadrilla':
+        return 'Cuadrilla del día';
       case 'formulario':
         return `${this.bloqueActual()?.titulo ?? ''} · ${this.indiceBloque() + 1} de ${this.bloques().length}`;
       case 'revision':
         return 'Revisión final';
       case 'firma':
-        return 'Firma';
+        return `Firmas · ${this.indiceFirma() + 1} de ${this.integrantes().length}`;
       default:
         return 'Resultado';
     }
@@ -514,13 +716,16 @@ export class WorkAtHeightFormComponent implements OnDestroy {
     const etapa = this.etapa();
     if (etapa === 'arl') return this.flujo()?.canContinue === true;
     if (etapa === 'charla') return this.charla() === true;
+    // Al menos el oficial; el resto de la cuadrilla es opcional.
+    if (etapa === 'cuadrilla') return this.integrantes().length > 0;
     return true;
   }
 
   siguiente(): void {
     const etapa = this.etapa();
     if (etapa === 'arl') return this.etapa.set('charla');
-    if (etapa === 'charla') return this.etapa.set('formulario');
+    if (etapa === 'charla') return this.etapa.set('cuadrilla');
+    if (etapa === 'cuadrilla') return this.etapa.set('formulario');
     if (etapa !== 'formulario') return;
 
     // Solo se valida la sección visible: exigir el formulario completo aquí
@@ -545,13 +750,21 @@ export class WorkAtHeightFormComponent implements OnDestroy {
     this.faltantes.set([]);
     const etapa = this.etapa();
     if (etapa === 'charla') return this.etapa.set('arl');
-    if (etapa === 'firma') return this.etapa.set('revision');
+    if (etapa === 'cuadrilla') return this.etapa.set('charla');
+    if (etapa === 'firma') {
+      if (this.indiceFirma() > 0) {
+        this.indiceFirma.update((indice) => indice - 1);
+        this.limpiarFirma();
+        return;
+      }
+      return this.etapa.set('revision');
+    }
     if (etapa === 'revision') {
       this.indiceBloque.set(this.bloques().length - 1);
       return this.etapa.set('formulario');
     }
     if (etapa === 'formulario') {
-      if (this.indiceBloque() === 0) return this.etapa.set('charla');
+      if (this.indiceBloque() === 0) return this.etapa.set('cuadrilla');
       this.indiceBloque.update((indice) => indice - 1);
     }
   }
@@ -567,6 +780,131 @@ export class WorkAtHeightFormComponent implements OnDestroy {
   responderCharla(recibida: boolean): void {
     this.charla.set(recibida);
     this.error.set('');
+  }
+
+  // ── Cuadrilla ────────────────────────────────────────────
+  estaEnCuadrilla(collaboratorId: string): boolean {
+    return this.integrantes().some((persona) => persona.candidato.id === collaboratorId);
+  }
+
+  alternarIntegrante(candidato: Candidato): void {
+    // El oficial no puede quitarse: es quien responde por el permiso.
+    if (candidato.id === this.yoId()) return;
+    this.integrantes.update((lista) =>
+      lista.some((persona) => persona.candidato.id === candidato.id)
+        ? lista.filter((persona) => persona.candidato.id !== candidato.id)
+        : [...lista, { candidato, jobPositionId: this.cargoPorDefecto(candidato), firmaDataUrl: null }],
+    );
+  }
+
+  asignarCargo(collaboratorId: string, jobPositionId: string): void {
+    this.integrantes.update((lista) =>
+      lista.map((persona) => (persona.candidato.id === collaboratorId ? { ...persona, jobPositionId } : persona)),
+    );
+  }
+
+  /** Lo que el sistema pondrá en un campo automático, mostrado por adelantado. */
+  valorAutomatico(campo: Campo): string {
+    const ahora = new Date();
+    const cumplimiento = this.flujo()?.cumplimiento;
+    switch (campo.source) {
+      case 'workDate':
+        return ahora.toLocaleDateString('es-CO', { day: '2-digit', month: 'long', year: 'numeric' });
+      case 'startedAt':
+        return ahora.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
+      case 'closedAt':
+        return 'Se registra al cerrar la jornada';
+      case 'heightCertificate':
+        return this.textoRequisito(cumplimiento?.alturas?.estado);
+      case 'socialSecurity':
+        return this.textoRequisito(cumplimiento?.seguridadSocial?.estado);
+      default:
+        return '—';
+    }
+  }
+
+  explicacionAuto(campo: Campo): string {
+    switch (campo.source) {
+      case 'workDate':
+        return 'El permiso rige solo hoy.';
+      case 'startedAt':
+        return 'Es la hora en que estás diligenciando.';
+      case 'closedAt':
+        return 'Cuando terminen, cierra la jornada desde la app.';
+      case 'heightCertificate':
+      case 'socialSecurity':
+        return 'Verificado con lo que cargó Coordinación.';
+      default:
+        return '';
+    }
+  }
+
+  private textoRequisito(estado?: string): string {
+    if (estado === 'VIGENTE') return 'Vigente y verificado';
+    if (estado === 'PROXIMA_A_VENCER') return 'Vigente, próximo a vencer';
+    return 'No vigente';
+  }
+
+  nombreCargo(jobPositionId: string): string {
+    return this.cargos().find((cargo) => cargo.id === jobPositionId)?.name ?? 'Sin cargo';
+  }
+
+  // ── Firma guiada, una persona a la vez ───────────────────
+  /**
+   * Guarda la firma del integrante actual y pasa al siguiente. Cuando ya
+   * firmaron todos, envía el permiso completo.
+   */
+  confirmarFirma(): void {
+    const lienzo = this.lienzo?.nativeElement;
+    const actual = this.firmante();
+    if (!lienzo || !actual || !this.hayFirma()) return;
+
+    const dataUrl = this.firmaSobreBlanco(lienzo);
+    this.integrantes.update((lista) =>
+      lista.map((persona) =>
+        persona.candidato.id === actual.candidato.id ? { ...persona, firmaDataUrl: dataUrl } : persona,
+      ),
+    );
+
+    if (!this.esUltimoFirmante()) {
+      this.indiceFirma.update((indice) => indice + 1);
+      this.limpiarFirma();
+      globalThis.scrollTo({ top: 0 });
+      return;
+    }
+    this.enviar();
+  }
+
+  // ── Cierre de jornada ────────────────────────────────────
+  cerrarJornada(submissionId: string): void {
+    if (this.cerrando()) return;
+    this.cerrando.set(true);
+    this.error.set('');
+    this.http
+      .post<Envio>(`/api/submissions/${submissionId}/close`, { notes: this.novedades().trim() || undefined })
+      .subscribe({
+        next: (resultado) => {
+          this.envio.set(resultado);
+          this.cerrando.set(false);
+          globalThis.scrollTo({ top: 0 });
+        },
+        error: () => {
+          this.error.set('No fue posible cerrar la jornada. Revisa tu conexión e inténtalo de nuevo.');
+          this.cerrando.set(false);
+        },
+      });
+  }
+
+  hora(valor: string | null | undefined): string {
+    if (!valor) return '—';
+    return new Date(valor).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
+  }
+
+  /** Al oficial se le propone su cargo habilitante; al resto, auxiliar. */
+  private cargoPorDefecto(candidato: Candidato): string {
+    const lista = this.cargos();
+    const preferido = candidato.id === this.yoId() ? lista.find((cargo) => cargo.canLead) : undefined;
+    return (preferido ?? lista.find((cargo) => !cargo.canLead) ?? lista[0])?.id ?? '';
   }
 
   // ── Campos ───────────────────────────────────────────────
@@ -592,6 +930,10 @@ export class WorkAtHeightFormComponent implements OnDestroy {
   }
 
   textoValor(id: string): string {
+    const campo = this.bloques()
+      .flatMap((bloque) => bloque.campos)
+      .find((candidato) => candidato.id === id);
+    if (campo?.type === 'auto') return this.valorAutomatico(campo);
     const valor = this.valor(id);
     if (valor === null || valor === undefined || valor === '') return '—';
     if (Array.isArray(valor)) return valor.length ? valor.join(', ') : '—';
@@ -684,15 +1026,19 @@ export class WorkAtHeightFormComponent implements OnDestroy {
 
   // ── Envío ────────────────────────────────────────────────
   enviar(): void {
-    const lienzo = this.lienzo?.nativeElement;
-    if (!lienzo || !this.hayFirma() || this.enviando()) return;
+    const cuadrilla = this.integrantes();
+    if (this.enviando() || !cuadrilla.every((persona) => persona.firmaDataUrl)) return;
     this.enviando.set(true);
     this.error.set('');
     this.http
       .post<Envio>('/api/submissions/forms/HSE-FO-016', {
         answers: this.respuestasNormalizadas(),
         safetyTalkConfirmed: true,
-        signatureDataUrl: this.firmaSobreBlanco(lienzo),
+        members: cuadrilla.map((persona) => ({
+          collaboratorId: persona.candidato.id,
+          jobPositionId: persona.jobPositionId || undefined,
+          signatureDataUrl: persona.firmaDataUrl,
+        })),
       })
       .subscribe({
         next: (resultado) => {
@@ -745,10 +1091,46 @@ export class WorkAtHeightFormComponent implements OnDestroy {
     this.http.get<Flujo>('/api/submissions/workflow').subscribe({
       next: (flujo) => {
         this.flujo.set(flujo);
+        // Una jornada sin cerrar se retoma donde quedó, no se empieza otra.
+        if (flujo.jornadaAbierta) return this.retomarJornada();
         if (!flujo.canContinue) return;
         this.cargarDefinicion();
+        this.cargarCuadrilla();
       },
-      error: () => this.error.set('No fue posible validar tu estado de ARL. Revisa tu conexión.'),
+      error: () => this.error.set('No fue posible validar tu estado. Revisa tu conexión.'),
+    });
+  }
+
+  /** Candidatos elegibles y cargos; el oficial entra ya seleccionado. */
+  private cargarCuadrilla(): void {
+    this.http.get<Cargo[]>('/api/submissions/job-positions').subscribe({
+      next: (cargos) => {
+        this.cargos.set(cargos);
+        this.http.get<{ candidates: Candidato[]; excluded: number }>('/api/submissions/crew-candidates').subscribe({
+          next: (respuesta) => {
+            this.candidatos.set(respuesta.candidates);
+            this.excluidos.set(respuesta.excluded);
+            const documento = this.flujo()?.collaborator.documentNumber;
+            const yo = respuesta.candidates.find((persona) => persona.documentNumber === documento);
+            if (!yo) return;
+            this.yoId.set(yo.id);
+            this.integrantes.set([{ candidato: yo, jobPositionId: this.cargoPorDefecto(yo), firmaDataUrl: null }]);
+          },
+          error: () => this.error.set('No fue posible cargar los colaboradores disponibles.'),
+        });
+      },
+      error: () => this.error.set('No fue posible cargar los cargos.'),
+    });
+  }
+
+  /** Salta al resultado para que el colaborador pueda cerrar lo que dejó abierto. */
+  private retomarJornada(): void {
+    this.http.get<Envio>('/api/submissions/mine/latest').subscribe({
+      next: (resultado) => {
+        this.envio.set(resultado);
+        this.etapa.set('resultado');
+      },
+      error: () => this.error.set('No fue posible recuperar tu jornada en curso.'),
     });
   }
 
@@ -756,6 +1138,8 @@ export class WorkAtHeightFormComponent implements OnDestroy {
     this.http.get<Definicion>('/api/forms/HSE-FO-016/current').subscribe({
       next: (definicion) => {
         for (const campo of definicion.schemaJson.fields) {
+          // Un campo automático no se diligencia: lo completa el servidor.
+          if (campo.type === 'auto') continue;
           this.respuestas.addControl(
             campo.id,
             new FormControl<unknown>(
@@ -772,7 +1156,7 @@ export class WorkAtHeightFormComponent implements OnDestroy {
   }
 
   private faltaValor(campo: Campo): boolean {
-    if (!campo.required) return false;
+    if (!campo.required || campo.type === 'auto') return false;
     const valor = this.valor(campo.id);
     if (Array.isArray(valor)) return valor.length === 0;
     return valor === null || valor === undefined || valor === '';
