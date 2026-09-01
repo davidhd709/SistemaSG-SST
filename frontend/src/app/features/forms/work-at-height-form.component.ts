@@ -118,7 +118,7 @@ const BORRADOR = 'sg-sst.borrador';
       @if (etapa() === 'arl') {
         @if (flujo(); as datos) {
           <h1 class="paso-titulo">Hola, {{ datos.collaborator.firstName }}</h1>
-          <p class="paso-ayuda">Antes de iniciar labores verificamos tu afiliación a la ARL.</p>
+          <p class="paso-ayuda">Antes de iniciar labores verificamos que tus requisitos estén vigentes.</p>
 
           <div class="bloque">
             <div class="titulo-seccion">
@@ -140,7 +140,8 @@ const BORRADOR = 'sg-sst.borrador';
 
             @if (!datos.canContinue) {
               <p class="mensaje error">
-                No puedes continuar con la ARL vencida. Comunícate con tu coordinadora para actualizar tu afiliación.
+                No puedes continuar porque falta actualizar: {{ requisitosPendientes() }}. Comunícate con tu
+                coordinadora.
               </p>
             } @else if (datos.arl.status === 'PROXIMA_A_VENCER') {
               <p class="mensaje alerta">
@@ -241,18 +242,22 @@ const BORRADOR = 'sg-sst.borrador';
             @for (integrante of integrantes(); track integrante.candidato.id) {
               <label class="campo">
                 <span>{{ integrante.candidato.firstName }} {{ integrante.candidato.lastName }}</span>
-                <select
-                  [value]="integrante.jobPositionId"
-                  (change)="asignarCargo(integrante.candidato.id, $any($event.target).value)"
-                >
-                  <!-- La marca va en la opción: el valor del select se aplica
-                       antes de que las opciones existan y no seleccionaría. -->
-                  @for (cargo of cargos(); track cargo.id) {
-                    <option [value]="cargo.id" [selected]="cargo.id === integrante.jobPositionId">
-                      {{ cargo.name }}
-                    </option>
-                  }
-                </select>
+                @if (cargos().length) {
+                  <select
+                    [value]="integrante.jobPositionId"
+                    (change)="asignarCargo(integrante.candidato.id, $any($event.target).value)"
+                  >
+                    <!-- La marca va en la opción: el valor del select se aplica
+                         antes de que las opciones existan y no seleccionaría. -->
+                    @for (cargo of cargos(); track cargo.id) {
+                      <option [value]="cargo.id" [selected]="cargo.id === integrante.jobPositionId">
+                        {{ cargo.name }}
+                      </option>
+                    }
+                  </select>
+                } @else {
+                  <span class="error-campo">No hay cargos configurados. Comunícate con tu coordinadora.</span>
+                }
               </label>
             }
           </div>
@@ -276,7 +281,8 @@ const BORRADOR = 'sg-sst.borrador';
 
         <form [formGroup]="respuestas" class="bloque">
           @for (campo of bloque.campos; track campo.id; let i = $index) {
-            @if (campo.type === 'auto') {
+            @if (debeMostrarCampo(campo.id)) {
+              @if (campo.type === 'auto') {
               <div class="campo automatico">
                 <span>{{ campo.label }}</span>
                 <p class="valor-auto">
@@ -337,7 +343,7 @@ const BORRADOR = 'sg-sst.borrador';
                   <span class="error-campo">Selecciona al menos una opción.</span>
                 }
               </div>
-            } @else {
+            } @else if (campo.type === 'select') {
               <label class="campo" [class.invalido]="invalido(campo)">
                 <span
                   >{{ campo.label }}
@@ -355,6 +361,27 @@ const BORRADOR = 'sg-sst.borrador';
                   <span class="error-campo">Este campo es obligatorio.</span>
                 }
               </label>
+            } @else {
+              <label class="campo" [class.invalido]="invalido(campo)">
+                <span
+                  >{{ campo.label }}
+                  @if (campo.required) {
+                    <span aria-hidden="true">*</span>
+                  }
+                </span>
+                @if (campo.type === 'textarea') {
+                  <textarea rows="3" [formControlName]="campo.id"></textarea>
+                } @else {
+                  <input
+                    [type]="campo.type === 'number' ? 'number' : campo.type === 'date' ? 'date' : 'text'"
+                    [formControlName]="campo.id"
+                  />
+                }
+                @if (invalido(campo)) {
+                  <span class="error-campo">Este campo es obligatorio.</span>
+                }
+              </label>
+              }
             }
           }
         </form>
@@ -900,11 +927,14 @@ export class WorkAtHeightFormComponent implements OnDestroy {
     return new Date(valor).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
   }
 
-  /** Al oficial se le propone su cargo habilitante; al resto, auxiliar. */
+  /** El oficial diligencia el permiso y el resto de la cuadrilla inicia como ayudante. */
   private cargoPorDefecto(candidato: Candidato): string {
     const lista = this.cargos();
-    const preferido = candidato.id === this.yoId() ? lista.find((cargo) => cargo.canLead) : undefined;
-    return (preferido ?? lista.find((cargo) => !cargo.canLead) ?? lista[0])?.id ?? '';
+    const esLider = candidato.id === this.yoId();
+    const preferido = esLider
+      ? lista.find((cargo) => cargo.code === 'OFICIAL_ELECTRICO') ?? lista.find((cargo) => cargo.canLead)
+      : lista.find((cargo) => cargo.code === 'AYUDANTE') ?? lista.find((cargo) => !cargo.canLead);
+    return (preferido ?? lista[0])?.id ?? '';
   }
 
   // ── Campos ───────────────────────────────────────────────
@@ -942,7 +972,15 @@ export class WorkAtHeightFormComponent implements OnDestroy {
 
   elegir(id: string, opcion: string): void {
     this.respuestas.get(id)?.setValue(opcion);
+    if (id === 'epp_otros' && opcion !== 'SI') this.respuestas.get('epp_otros_detalle')?.setValue('');
     this.descartarFaltante(id);
+  }
+
+  /** Muestra los campos de detalle solo cuando la respuesta que los activa está seleccionada. */
+  debeMostrarCampo(id: string): boolean {
+    if (id === 'otras_tar_detalle') return this.tieneOpcion('otras_tar', 'Otras');
+    if (id === 'epp_otros_detalle') return this.valor('epp_otros') === 'SI';
+    return true;
   }
 
   tieneOpcion(id: string, opcion: string): boolean {
@@ -954,8 +992,11 @@ export class WorkAtHeightFormComponent implements OnDestroy {
     const control = this.respuestas.get(id);
     const actual = Array.isArray(control?.value) ? [...(control.value as string[])] : [];
     const indice = actual.indexOf(opcion);
-    if (indice >= 0) actual.splice(indice, 1);
-    else actual.push(opcion);
+    if (indice >= 0) {
+      actual.splice(indice, 1);
+      // Un detalle oculto no debe viajar como respuesta si ya no se marcó “Otras”.
+      if (id === 'otras_tar' && opcion === 'Otras') this.respuestas.get('otras_tar_detalle')?.setValue('');
+    } else actual.push(opcion);
     control?.setValue(actual);
     this.descartarFaltante(id);
   }
@@ -1084,6 +1125,12 @@ export class WorkAtHeightFormComponent implements OnDestroy {
     if (estado === 'VIGENTE') return 'Vigente';
     if (estado === 'PROXIMA_A_VENCER') return 'Próxima a vencer';
     return 'Vencida';
+  }
+
+  /** Indica el requisito real que bloquea el permiso; no atribuye el bloqueo a la ARL si está vigente. */
+  requisitosPendientes(): string {
+    const faltantes = this.flujo()?.cumplimiento?.faltantes ?? [];
+    return faltantes.length ? faltantes.join(', ') : 'un requisito obligatorio';
   }
 
   // ── Interno ──────────────────────────────────────────────

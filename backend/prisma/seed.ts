@@ -29,16 +29,11 @@ const roles: Record<string, { name: string; permissions: string[] }> = {
     ],
   },
   COORDINATOR: {
-    name: 'Coordinadora',
+    name: 'Coordinador operativo',
     permissions: [
-      'collaborators:read',
-      'arl:read',
       'submissions:review',
       'files:read',
-      // Carga las planillas de seguridad social y los certificados de alturas
-      // de los que depende quién puede integrar una cuadrilla.
-      'compliance:read',
-      'compliance:manage',
+      'signatures:manage',
     ],
   },
   LEGAL: {

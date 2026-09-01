@@ -120,8 +120,7 @@ type Grupo = { seccion: string; respuestas: Respuesta[] };
 
 /**
  * Puesto de trabajo de la coordinadora. La especificación le asigna dos
- * responsabilidades: autorizar el inicio de labores y crear los perfiles de
- * los colaboradores. Ambas viven aquí, separadas en pestañas.
+ * responsabilidad: revisar y autorizar el inicio de labores.
  */
 @Component({
   imports: [ReactiveFormsModule, LogoutButtonComponent],
@@ -150,7 +149,7 @@ type Grupo = { seccion: string; respuestas: Respuesta[] };
       <section class="area-masthead" aria-labelledby="coordinacion-titulo">
         <div class="area-masthead-texto">
           <h1 id="coordinacion-titulo">Coordinación</h1>
-          <p>Revisa permisos de trabajo y gestiona los perfiles de colaboradores.</p>
+          <p>Revisa y autoriza los permisos de trabajo pendientes.</p>
         </div>
         <div class="pestanas area-tabs" role="tablist" aria-label="Secciones de Coordinación">
           <button
@@ -163,20 +162,6 @@ type Grupo = { seccion: string; respuestas: Respuesta[] };
             @if (pending().length) {
               <span class="globo">{{ pending().length }}</span>
             }
-          </button>
-          <button role="tab" [attr.aria-selected]="pestana() === 'jornadas'" (click)="verJornadas()" type="button">
-            Jornadas abiertas
-            @if (jornadas().length) {
-              <span class="globo">{{ jornadas().length }}</span>
-            }
-          </button>
-          <button
-            role="tab"
-            [attr.aria-selected]="pestana() === 'cumplimiento'"
-            (click)="verCumplimiento()"
-            type="button"
-          >
-            Requisitos
           </button>
         </div>
       </section>
