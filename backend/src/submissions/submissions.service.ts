@@ -456,6 +456,10 @@ export class SubmissionsService {
       // Los campos automáticos los completa el servidor tras validar; exigirlos
       // aquí rechazaría todo envío legítimo.
       if (field.type === 'auto') continue;
+      // Esta selección solo existe cuando el trabajador respondió que sí hay
+      // tareas adicionales de alto riesgo. El cliente oculta y limpia el campo
+      // al responder "No", por lo que no puede exigirse en ese caso.
+      if (field.id === 'otras_tar' && source.otras_tar_involucradas !== 'SI') continue;
       const value = source[field.id];
       if (
         field.required &&

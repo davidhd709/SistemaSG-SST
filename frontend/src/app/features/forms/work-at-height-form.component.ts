@@ -8,7 +8,7 @@ import {
   inject,
   signal,
 } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { AuthSessionService } from '../../core/auth-session.service';
 import { fechaCalendario } from '../../core/fechas';
@@ -1180,8 +1180,13 @@ export class WorkAtHeightFormComponent implements OnDestroy {
           this.sondearEstado();
           globalThis.scrollTo({ top: 0 });
         },
-        error: () => {
-          this.error.set('No fue posible enviar el permiso. Revisa tu conexión e inténtalo de nuevo.');
+        error: (respuesta: HttpErrorResponse) => {
+          const detalle = respuesta.error?.message;
+          this.error.set(
+            typeof detalle === 'string'
+              ? detalle
+              : 'No fue posible enviar el permiso. Revisa los datos diligenciados e inténtalo de nuevo.',
+          );
           this.enviando.set(false);
         },
       });
