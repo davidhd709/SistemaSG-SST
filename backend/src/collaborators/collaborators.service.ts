@@ -1,5 +1,5 @@
 import * as argon2 from 'argon2';
-import { ConflictException, Injectable } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable } from '@nestjs/common';
 import type { Collaborator } from '@prisma/client';
 import type { AuthenticatedRequest } from '../common/request-context';
 import { PrismaService } from '../prisma/prisma.service';
@@ -15,6 +15,10 @@ export class CollaboratorsService {
       where: { documentNumber: dto.documentNumber.trim() },
     });
     if (existing) throw new ConflictException('Ya existe un colaborador con ese documento.');
+    const esOficial = this.esOficialElectrico(dto.jobTitle);
+    if (esOficial && !dto.pin) {
+      throw new BadRequestException('El Oficial eléctrico debe tener un PIN de acceso.');
+    }
     const actorUserId = request.principal?.kind === 'USER' ? request.principal.userId : undefined;
     const collaborator = await this.prisma.$transaction(async (tx) => {
       const created = await tx.collaborator.create({
@@ -27,7 +31,7 @@ export class CollaboratorsService {
           phone: dto.phone?.trim(),
           jobTitle: dto.jobTitle?.trim(),
           team: dto.team?.trim(),
-          pinHash: await argon2.hash(dto.pin, { type: argon2.argon2id }),
+          pinHash: esOficial && dto.pin ? await argon2.hash(dto.pin, { type: argon2.argon2id }) : null,
           createdById: actorUserId,
         },
       });
@@ -62,6 +66,10 @@ export class CollaboratorsService {
 
   async update(id: string, dto: UpdateCollaboratorDto, request: AuthenticatedRequest) {
     const previous = await this.prisma.collaborator.findUniqueOrThrow({ where: { id } });
+    const cargoFinal = dto.jobTitle !== undefined ? dto.jobTitle.trim() : previous.jobTitle;
+    if (this.esOficialElectrico(cargoFinal) && !previous.pinHash && !dto.pin) {
+      throw new BadRequestException('El Oficial eléctrico debe tener un PIN de acceso.');
+    }
     const actorUserId = request.principal?.kind === 'USER' ? request.principal.userId : undefined;
     const collaborator = await this.prisma.$transaction(async (tx) => {
       const updated = await tx.collaborator.update({
@@ -74,7 +82,11 @@ export class CollaboratorsService {
           ...(dto.jobTitle !== undefined ? { jobTitle: dto.jobTitle.trim() || null } : {}),
           ...(dto.team !== undefined ? { team: dto.team.trim() || null } : {}),
           ...(dto.status ? { status: dto.status } : {}),
-          ...(dto.pin ? { pinHash: await argon2.hash(dto.pin, { type: argon2.argon2id }) } : {}),
+          ...(dto.jobTitle !== undefined && !this.esOficialElectrico(cargoFinal)
+            ? { pinHash: null }
+            : dto.pin
+              ? { pinHash: await argon2.hash(dto.pin, { type: argon2.argon2id }) }
+              : {}),
         },
       });
       await tx.auditEvent.create({
@@ -106,6 +118,15 @@ export class CollaboratorsService {
       team: collaborator.team,
       status: collaborator.status,
     };
+  }
+  private esOficialElectrico(cargo?: string | null): boolean {
+    return (
+      (cargo ?? '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .trim()
+        .toUpperCase() === 'OFICIAL ELECTRICO'
+    );
   }
   private serialize({
     pinHash: _pinHash,

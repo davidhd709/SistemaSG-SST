@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Req } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query, Req } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { RequirePermissions } from '../auth/auth.decorators';
 import type { AuthenticatedRequest } from '../common/request-context';
@@ -18,6 +18,10 @@ export class ApprovalsController {
   }
   @Get('submissions/pending') pending() {
     return this.approvals.pending();
+  }
+  /** Archivo documental filtrable por mes o por una fecha de trabajo exacta. */
+  @Get('submissions') custody(@Query('month') month?: string, @Query('date') date?: string) {
+    return this.approvals.custody(month, date);
   }
   @Get('submissions/:id') detail(@Param('id') id: string) {
     return this.approvals.detail(id);

@@ -144,7 +144,7 @@ model Collaborator {
   phone               String?
   jobTitle            String?
   team                String?
-  pinHash             String
+  pinHash             String?
   status              CollaboratorStatus  @default(ACTIVE)
   failedLoginAttempts Int                 @default(0)
   lockedUntil         DateTime?

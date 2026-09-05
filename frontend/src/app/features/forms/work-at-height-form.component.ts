@@ -71,6 +71,16 @@ type Candidato = {
 
 type Cargo = { id: string; code: string; name: string; canLead: boolean };
 
+/**
+ * Videos disponibles para la charla previa al inicio de labores.
+ * Agrega los archivos con estos nombres en `src/assets/videos/charlas-seguridad/`.
+ */
+const CHARLAS_DE_SEGURIDAD = [
+  '/assets/videos/charlas-seguridad/charla-01.mp4',
+  '/assets/videos/charlas-seguridad/charla-02.mp4',
+  '/assets/videos/charlas-seguridad/charla-03.mp4',
+];
+
 /** Integrante elegido, con su cargo y su firma una vez capturada. */
 type Integrante = {
   candidato: Candidato;
@@ -157,33 +167,46 @@ const BORRADOR = 'sg-sst.borrador';
       <!-- ═══ 2. Charla de seguridad ═══ -->
       @if (etapa() === 'charla') {
         <h1 class="paso-titulo">Charla de seguridad</h1>
-        <p class="paso-ayuda">Responde con sinceridad. Queda registrado con la fecha y la hora.</p>
+        <p class="paso-ayuda">Mira la charla completa antes de continuar con el permiso.</p>
 
-        <div class="bloque">
-          <p class="pregunta-principal">¿Recibiste hoy la charla de seguridad?</p>
-          <div class="opciones">
-            <button
-              class="opcion"
-              type="button"
-              [attr.aria-pressed]="charla() === true"
-              (click)="responderCharla(true)"
-            >
-              Sí, la recibí
-            </button>
-            <button
-              class="opcion negativa"
-              type="button"
-              [attr.aria-pressed]="charla() === false"
-              (click)="responderCharla(false)"
-            >
-              No la recibí
+        <div class="bloque charla-video">
+          <video
+            #videoCharla
+            class="reproductor-charla"
+            [src]="charlaActual()"
+            playsinline
+            preload="metadata"
+            controlsList="nodownload noplaybackrate noremoteplayback"
+            disablePictureInPicture
+            (timeupdate)="registrarProgresoCharla()"
+            (seeking)="bloquearAdelanto()"
+            (ended)="finalizarCharla()"
+            (error)="reportarErrorVideo()"
+          ></video>
+
+          @if (!charlaTerminada()) {
+            <p class="estado-charla" aria-live="polite">
+              Debes reproducir el video completo. No es posible adelantarlo.
+            </p>
+          } @else {
+            <p class="estado-charla completada" role="status">Charla completada. Puedes repetirla o continuar.</p>
+          }
+
+          <div class="acciones charla-acciones">
+            <button class="boton" type="button" (click)="reproducirCharla()">
+              {{ charlaTerminada() ? 'Repetir charla' : 'Reproducir charla' }}
             </button>
           </div>
-          @if (charla() === false) {
-            <p class="mensaje error">
-              No puedes continuar sin la charla del día. Busca a tu coordinadora y vuelve a intentarlo.
-            </p>
-          }
+
+          <label class="casilla declaracion-charla" [class.deshabilitada]="!charlaTerminada()">
+            <input
+              type="checkbox"
+              [checked]="charlaConfirmada()"
+              [disabled]="!charlaTerminada()"
+              (change)="charlaConfirmada.set($any($event.target).checked)"
+            />
+            <span>Declaro haber visto y entendido las indicaciones de seguridad de esta charla.</span>
+          </label>
         </div>
       }
 
@@ -283,104 +306,104 @@ const BORRADOR = 'sg-sst.borrador';
           @for (campo of bloque.campos; track campo.id; let i = $index) {
             @if (debeMostrarCampo(campo.id)) {
               @if (campo.type === 'auto') {
-              <div class="campo automatico">
-                <span>{{ campo.label }}</span>
-                <p class="valor-auto">
-                  {{ valorAutomatico(campo) }}
-                  <span class="secundario">{{ explicacionAuto(campo) }}</span>
-                </p>
-              </div>
-            } @else if (esBotonera(campo)) {
-              <div class="pregunta" [class.invalido]="invalido(campo)">
-                <span class="enunciado" [id]="campo.id + '-etiqueta'">
-                  @if (bloque.campos.length > 6) {
-                    <span class="numero">{{ i + 1 }}.</span>
-                  }
-                  {{ campo.label }}
-                  @if (campo.required) {
-                    <span aria-hidden="true">*</span>
-                  }
-                </span>
-                <div class="opciones" role="group" [attr.aria-labelledby]="campo.id + '-etiqueta'">
-                  @for (opcion of opcionesDe(campo); track opcion) {
-                    <button
-                      type="button"
-                      class="opcion"
-                      [class.negativa]="opcion === 'NO'"
-                      [class.neutra]="opcion === 'N/A'"
-                      [attr.aria-pressed]="valor(campo.id) === opcion"
-                      (click)="elegir(campo.id, opcion)"
-                    >
-                      {{ textoOpcion(opcion) }}
-                    </button>
+                <div class="campo automatico">
+                  <span>{{ campo.label }}</span>
+                  <p class="valor-auto">
+                    {{ valorAutomatico(campo) }}
+                    <span class="secundario">{{ explicacionAuto(campo) }}</span>
+                  </p>
+                </div>
+              } @else if (esBotonera(campo)) {
+                <div class="pregunta" [class.invalido]="invalido(campo)">
+                  <span class="enunciado" [id]="campo.id + '-etiqueta'">
+                    @if (bloque.campos.length > 6) {
+                      <span class="numero">{{ i + 1 }}.</span>
+                    }
+                    {{ campo.label }}
+                    @if (campo.required) {
+                      <span aria-hidden="true">*</span>
+                    }
+                  </span>
+                  <div class="opciones" role="group" [attr.aria-labelledby]="campo.id + '-etiqueta'">
+                    @for (opcion of opcionesDe(campo); track opcion) {
+                      <button
+                        type="button"
+                        class="opcion"
+                        [class.negativa]="opcion === 'NO'"
+                        [class.neutra]="opcion === 'N/A'"
+                        [attr.aria-pressed]="valor(campo.id) === opcion"
+                        (click)="elegir(campo.id, opcion)"
+                      >
+                        {{ textoOpcion(opcion) }}
+                      </button>
+                    }
+                  </div>
+                  @if (invalido(campo)) {
+                    <span class="error-campo">Selecciona una opción.</span>
                   }
                 </div>
-                @if (invalido(campo)) {
-                  <span class="error-campo">Selecciona una opción.</span>
-                }
-              </div>
-            } @else if (campo.type === 'multi_select') {
-              <div class="campo" [class.invalido]="invalido(campo)">
-                <span [id]="campo.id + '-etiqueta'"
-                  >{{ campo.label }}
-                  @if (campo.required) {
-                    <span aria-hidden="true">*</span>
-                  }
-                </span>
-                <div class="casillas" role="group" [attr.aria-labelledby]="campo.id + '-etiqueta'">
-                  @for (opcion of campo.options; track opcion) {
-                    <label class="casilla">
-                      <input
-                        type="checkbox"
-                        [checked]="tieneOpcion(campo.id, opcion)"
-                        (change)="alternar(campo.id, opcion)"
-                      />
-                      {{ opcion }}
-                    </label>
+              } @else if (campo.type === 'multi_select') {
+                <div class="campo" [class.invalido]="invalido(campo)">
+                  <span [id]="campo.id + '-etiqueta'"
+                    >{{ campo.label }}
+                    @if (campo.required) {
+                      <span aria-hidden="true">*</span>
+                    }
+                  </span>
+                  <div class="casillas" role="group" [attr.aria-labelledby]="campo.id + '-etiqueta'">
+                    @for (opcion of campo.options; track opcion) {
+                      <label class="casilla">
+                        <input
+                          type="checkbox"
+                          [checked]="tieneOpcion(campo.id, opcion)"
+                          (change)="alternar(campo.id, opcion)"
+                        />
+                        {{ opcion }}
+                      </label>
+                    }
+                  </div>
+                  @if (invalido(campo)) {
+                    <span class="error-campo">Selecciona al menos una opción.</span>
                   }
                 </div>
-                @if (invalido(campo)) {
-                  <span class="error-campo">Selecciona al menos una opción.</span>
-                }
-              </div>
-            } @else if (campo.type === 'select') {
-              <label class="campo" [class.invalido]="invalido(campo)">
-                <span
-                  >{{ campo.label }}
-                  @if (campo.required) {
-                    <span aria-hidden="true">*</span>
+              } @else if (campo.type === 'select') {
+                <label class="campo" [class.invalido]="invalido(campo)">
+                  <span
+                    >{{ campo.label }}
+                    @if (campo.required) {
+                      <span aria-hidden="true">*</span>
+                    }
+                  </span>
+                  <select [formControlName]="campo.id">
+                    <option value="">Selecciona una opción</option>
+                    @for (opcion of campo.options; track opcion) {
+                      <option [value]="opcion">{{ opcion }}</option>
+                    }
+                  </select>
+                  @if (invalido(campo)) {
+                    <span class="error-campo">Este campo es obligatorio.</span>
                   }
-                </span>
-                <select [formControlName]="campo.id">
-                  <option value="">Selecciona una opción</option>
-                  @for (opcion of campo.options; track opcion) {
-                    <option [value]="opcion">{{ opcion }}</option>
+                </label>
+              } @else {
+                <label class="campo" [class.invalido]="invalido(campo)">
+                  <span
+                    >{{ campo.label }}
+                    @if (campo.required) {
+                      <span aria-hidden="true">*</span>
+                    }
+                  </span>
+                  @if (campo.type === 'textarea') {
+                    <textarea rows="3" [formControlName]="campo.id"></textarea>
+                  } @else {
+                    <input
+                      [type]="campo.type === 'number' ? 'number' : campo.type === 'date' ? 'date' : 'text'"
+                      [formControlName]="campo.id"
+                    />
                   }
-                </select>
-                @if (invalido(campo)) {
-                  <span class="error-campo">Este campo es obligatorio.</span>
-                }
-              </label>
-            } @else {
-              <label class="campo" [class.invalido]="invalido(campo)">
-                <span
-                  >{{ campo.label }}
-                  @if (campo.required) {
-                    <span aria-hidden="true">*</span>
+                  @if (invalido(campo)) {
+                    <span class="error-campo">Este campo es obligatorio.</span>
                   }
-                </span>
-                @if (campo.type === 'textarea') {
-                  <textarea rows="3" [formControlName]="campo.id"></textarea>
-                } @else {
-                  <input
-                    [type]="campo.type === 'number' ? 'number' : campo.type === 'date' ? 'date' : 'text'"
-                    [formControlName]="campo.id"
-                  />
-                }
-                @if (invalido(campo)) {
-                  <span class="error-campo">Este campo es obligatorio.</span>
-                }
-              </label>
+                </label>
               }
             }
           }
@@ -584,6 +607,35 @@ const BORRADOR = 'sg-sst.borrador';
         font-size: 1.125rem;
         font-weight: 600;
       }
+      .charla-video {
+        display: grid;
+        gap: 16px;
+      }
+      .reproductor-charla {
+        display: block;
+        width: 100%;
+        max-height: 58vh;
+        background: #101a1d;
+        border-radius: var(--radio);
+      }
+      .estado-charla {
+        margin: 0;
+        color: var(--tinta-media);
+        font-weight: 600;
+      }
+      .estado-charla.completada {
+        color: var(--ok);
+      }
+      .charla-acciones {
+        margin-top: -4px;
+      }
+      .declaracion-charla {
+        align-items: flex-start;
+      }
+      .declaracion-charla.deshabilitada {
+        cursor: not-allowed;
+        opacity: 0.62;
+      }
       .campo-nombre {
         width: 46%;
         color: var(--tinta-media);
@@ -633,11 +685,15 @@ export class WorkAtHeightFormComponent implements OnDestroy {
   private readonly http = inject(HttpClient);
   private readonly session = inject(AuthSessionService);
   @ViewChild('lienzo') lienzo?: ElementRef<HTMLCanvasElement>;
+  @ViewChild('videoCharla') videoCharla?: ElementRef<HTMLVideoElement>;
 
   readonly etapa = signal<Etapa>('arl');
   readonly flujo = signal<Flujo | null>(null);
   readonly definicion = signal<Definicion | null>(null);
-  readonly charla = signal<boolean | null>(null);
+  readonly charlaActual = signal(CHARLAS_DE_SEGURIDAD[Math.floor(Math.random() * CHARLAS_DE_SEGURIDAD.length)]);
+  readonly charlaTerminada = signal(false);
+  readonly charlaConfirmada = signal(false);
+  private ultimoSegundoPermitido = 0;
   readonly indiceBloque = signal(0);
   readonly faltantes = signal<string[]>([]);
   readonly hayFirma = signal(false);
@@ -742,7 +798,7 @@ export class WorkAtHeightFormComponent implements OnDestroy {
   puedeAvanzar(): boolean {
     const etapa = this.etapa();
     if (etapa === 'arl') return this.flujo()?.canContinue === true;
-    if (etapa === 'charla') return this.charla() === true;
+    if (etapa === 'charla') return this.charlaTerminada() && this.charlaConfirmada();
     // Al menos el oficial; el resto de la cuadrilla es opcional.
     if (etapa === 'cuadrilla') return this.integrantes().length > 0;
     return true;
@@ -804,9 +860,38 @@ export class WorkAtHeightFormComponent implements OnDestroy {
     globalThis.scrollTo({ top: 0 });
   }
 
-  responderCharla(recibida: boolean): void {
-    this.charla.set(recibida);
+  reproducirCharla(): void {
+    const video = this.videoCharla?.nativeElement;
+    if (!video) return;
+    if (this.charlaTerminada()) {
+      video.currentTime = 0;
+      this.charlaTerminada.set(false);
+      this.charlaConfirmada.set(false);
+    }
+    void video.play().catch(() => {
+      this.error.set('No fue posible reproducir la charla. Inténtalo de nuevo.');
+    });
+  }
+
+  bloquearAdelanto(): void {
+    const video = this.videoCharla?.nativeElement;
+    if (!video || this.charlaTerminada()) return;
+    if (video.currentTime > this.ultimoSegundoPermitido + 1) video.currentTime = this.ultimoSegundoPermitido;
+  }
+
+  registrarProgresoCharla(): void {
+    const video = this.videoCharla?.nativeElement;
+    if (video && !video.seeking) this.ultimoSegundoPermitido = Math.max(this.ultimoSegundoPermitido, video.currentTime);
+  }
+
+  finalizarCharla(): void {
+    this.charlaTerminada.set(true);
+    this.ultimoSegundoPermitido = 0;
     this.error.set('');
+  }
+
+  reportarErrorVideo(): void {
+    this.error.set('No se encontró la charla de seguridad. Verifica que los videos estén en la carpeta configurada.');
   }
 
   // ── Cuadrilla ────────────────────────────────────────────
@@ -932,8 +1017,8 @@ export class WorkAtHeightFormComponent implements OnDestroy {
     const lista = this.cargos();
     const esLider = candidato.id === this.yoId();
     const preferido = esLider
-      ? lista.find((cargo) => cargo.code === 'OFICIAL_ELECTRICO') ?? lista.find((cargo) => cargo.canLead)
-      : lista.find((cargo) => cargo.code === 'AYUDANTE') ?? lista.find((cargo) => !cargo.canLead);
+      ? (lista.find((cargo) => cargo.code === 'OFICIAL_ELECTRICO') ?? lista.find((cargo) => cargo.canLead))
+      : (lista.find((cargo) => cargo.code === 'AYUDANTE') ?? lista.find((cargo) => !cargo.canLead));
     return (preferido ?? lista[0])?.id ?? '';
   }
 
@@ -973,11 +1058,16 @@ export class WorkAtHeightFormComponent implements OnDestroy {
   elegir(id: string, opcion: string): void {
     this.respuestas.get(id)?.setValue(opcion);
     if (id === 'epp_otros' && opcion !== 'SI') this.respuestas.get('epp_otros_detalle')?.setValue('');
+    if (id === 'otras_tar_involucradas' && opcion !== 'SI') {
+      this.respuestas.get('otras_tar')?.setValue([]);
+      this.respuestas.get('otras_tar_detalle')?.setValue('');
+    }
     this.descartarFaltante(id);
   }
 
   /** Muestra los campos de detalle solo cuando la respuesta que los activa está seleccionada. */
   debeMostrarCampo(id: string): boolean {
+    if (id === 'otras_tar') return this.valor('otras_tar_involucradas') === 'SI';
     if (id === 'otras_tar_detalle') return this.tieneOpcion('otras_tar', 'Otras');
     if (id === 'epp_otros_detalle') return this.valor('epp_otros') === 'SI';
     return true;
@@ -1203,6 +1293,7 @@ export class WorkAtHeightFormComponent implements OnDestroy {
   }
 
   private faltaValor(campo: Campo): boolean {
+    if (!this.debeMostrarCampo(campo.id)) return false;
     if (!campo.required || campo.type === 'auto') return false;
     const valor = this.valor(campo.id);
     if (Array.isArray(valor)) return valor.length === 0;

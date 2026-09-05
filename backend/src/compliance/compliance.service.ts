@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { calculateArlStatus, type ArlStatus } from '../arl/arl-status';
 
-export type RequisitoEstado = 'VIGENTE' | 'PROXIMA_A_VENCER' | 'VENCIDA';
+export type RequisitoEstado = 'VIGENTE' | 'PROXIMA_A_VENCER' | 'VENCIDA' | 'NO_APLICA';
 
 /** Cumplimiento de una persona en un instante dado. */
 export interface Cumplimiento {
@@ -30,7 +30,7 @@ export class ComplianceService {
     if (!collaboratorIds.length) return new Map();
     const diasAviso = await this.diasParaAviso();
 
-    const [afiliaciones, coberturas, certificados] = await Promise.all([
+    const [afiliaciones, coberturas, certificados, colaboradores] = await Promise.all([
       this.prisma.arlAffiliation.findMany({
         where: { collaboratorId: { in: collaboratorIds } },
         orderBy: { endDate: 'desc' },
@@ -44,7 +44,12 @@ export class ComplianceService {
         where: { collaboratorId: { in: collaboratorIds } },
         orderBy: { expiresAt: 'desc' },
       }),
+      this.prisma.collaborator.findMany({
+        where: { id: { in: collaboratorIds } },
+        select: { id: true, jobTitle: true },
+      }),
     ]);
+    const cargos = new Map(colaboradores.map((colaborador) => [colaborador.id, colaborador.jobTitle]));
 
     const resultado = new Map<string, Cumplimiento>();
     for (const collaboratorId of collaboratorIds) {
@@ -73,14 +78,17 @@ export class ComplianceService {
       const seguridadSocial = cobertura
         ? this.estadoPorVigencia(cobertura.payroll.periodStart, cobertura.payroll.periodEnd, diasAviso, now)
         : 'VENCIDA';
-      const alturas = certificado
-        ? this.estadoPorVigencia(certificado.issuedAt, certificado.expiresAt, diasAviso, now)
-        : 'VENCIDA';
+      const requiereAlturas = this.esOficialElectrico(cargos.get(collaboratorId));
+      const alturas: RequisitoEstado = requiereAlturas
+        ? certificado
+          ? this.estadoPorVigencia(certificado.issuedAt, certificado.expiresAt, diasAviso, now)
+          : 'VENCIDA'
+        : 'NO_APLICA';
 
       const faltantes: string[] = [];
       if (arl === 'VENCIDA') faltantes.push('ARL');
       if (seguridadSocial === 'VENCIDA') faltantes.push('Seguridad social');
-      if (alturas === 'VENCIDA') faltantes.push('Certificado de alturas');
+      if (requiereAlturas && alturas === 'VENCIDA') faltantes.push('Certificado de alturas');
 
       resultado.set(collaboratorId, {
         collaboratorId,
@@ -135,5 +143,15 @@ export class ComplianceService {
   private async diasParaAviso(): Promise<number> {
     const ajuste = await this.prisma.systemSetting.findUnique({ where: { key: 'arl_expiring_days' } });
     return typeof ajuste?.valueJson === 'number' && Number.isInteger(ajuste.valueJson) ? ajuste.valueJson : 30;
+  }
+
+  private esOficialElectrico(cargo: string | null | undefined): boolean {
+    return (
+      (cargo ?? '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .trim()
+        .toUpperCase() === 'OFICIAL ELECTRICO'
+    );
   }
 }

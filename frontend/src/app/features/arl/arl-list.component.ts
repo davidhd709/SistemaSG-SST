@@ -4,6 +4,7 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { AuthSessionService } from '../../core/auth-session.service';
 import { diasHasta, fechaCalendario, textoVencimiento } from '../../core/fechas';
 import { LogoutButtonComponent } from '../../core/logout-button.component';
+import { RouterLink, RouterLinkActive } from '@angular/router';
 
 type EstadoArl = 'VIGENTE' | 'PROXIMA_A_VENCER' | 'VENCIDA';
 
@@ -16,7 +17,17 @@ type Afiliacion = {
 };
 
 type Fila = {
-  collaborator: { id: string; documentNumber: string; firstName: string; lastName: string; status: string };
+  collaborator: {
+    id: string;
+    documentNumber: string;
+    firstName: string;
+    lastName: string;
+    email: string | null;
+    phone: string | null;
+    jobTitle: string | null;
+    team: string | null;
+    status: string;
+  };
   affiliation: Afiliacion | null;
   arlStatus: EstadoArl;
 };
@@ -42,7 +53,7 @@ type CrearColaborador = {
  * ocurre aquí, sobre la misma lista desde la que detecta a quién le falta.
  */
 @Component({
-  imports: [ReactiveFormsModule, LogoutButtonComponent],
+  imports: [ReactiveFormsModule, LogoutButtonComponent, RouterLink, RouterLinkActive],
   template: `
     <header class="app-cabecera">
       <div class="fila">
@@ -73,6 +84,11 @@ type CrearColaborador = {
         <span class="area-contexto">Gestor ARL</span>
       </section>
 
+      <nav class="modulos" aria-label="Gestión de requisitos">
+        <a routerLink="/gestor-arl" routerLinkActive="activo" [routerLinkActiveOptions]="{ exact: true }">ARL</a>
+        <a routerLink="/seguridad-social" routerLinkActive="activo">Seguridad social</a>
+      </nav>
+
       @if (seleccionada(); as fila) {
         <!-- ══════════ Ficha del colaborador ══════════ -->
         <section class="bloque">
@@ -86,6 +102,44 @@ type CrearColaborador = {
               texto(fila.arlStatus)
             }}</span>
           </p>
+
+          <h3>Datos del colaborador</h3>
+          <form [formGroup]="formularioEdicion" (ngSubmit)="actualizarColaborador()" class="rejilla-campos dos">
+            <label class="campo ancho-total">
+              <span>Número de documento</span>
+              <input [value]="fila.collaborator.documentNumber" disabled />
+              <span class="ayuda">El documento identifica al colaborador y no se modifica desde este formulario.</span>
+            </label>
+            <label class="campo"><span>Nombres</span><input formControlName="firstName" /></label>
+            <label class="campo"><span>Apellidos</span><input formControlName="lastName" /></label>
+            <label class="campo">
+              <span>Cargo</span>
+              <select formControlName="jobTitle">
+                <option value="">Selecciona un cargo</option>
+                <option value="Oficial eléctrico">Oficial eléctrico</option>
+                <option value="Auxiliar eléctrico">Auxiliar eléctrico</option>
+                <option value="Ayudante">Ayudante</option>
+                <option value="Supervisor">Supervisor</option>
+              </select>
+            </label>
+            <label class="campo"><span>Equipo</span><input formControlName="team" placeholder="Opcional" /></label>
+            <label class="campo"><span>Correo</span><input formControlName="email" type="email" placeholder="Opcional" /></label>
+            <label class="campo"><span>Teléfono</span><input formControlName="phone" inputmode="tel" placeholder="Opcional" /></label>
+            @if (requierePinEdicion()) {
+              <label class="campo ancho-total">
+                <span>PIN de acceso del Oficial eléctrico</span>
+                <input formControlName="pin" type="password" inputmode="numeric" autocomplete="new-password" />
+                <span class="ayuda">
+                  {{ pinObligatorioEdicion() ? 'Asigna un PIN de 4 a 12 caracteres para habilitar su acceso.' : 'Déjalo vacío para conservar el PIN actual.' }}
+                </span>
+              </label>
+            }
+            <div class="acciones ancho-total">
+              <button class="boton" [disabled]="formularioEdicion.invalid || actualizandoColaborador()">
+                {{ actualizandoColaborador() ? 'Guardando…' : 'Guardar datos del colaborador' }}
+              </button>
+            </div>
+          </form>
 
           <h3>{{ fila.affiliation ? 'Actualizar afiliación vigente' : 'Registrar primera afiliación' }}</h3>
           <form [formGroup]="formulario" (ngSubmit)="guardar()" class="rejilla-campos dos">
@@ -210,7 +264,16 @@ type CrearColaborador = {
               /></label>
               <label class="campo"><span>Nombres</span><input formControlName="firstName" /></label>
               <label class="campo"><span>Apellidos</span><input formControlName="lastName" /></label>
-              <label class="campo"><span>Cargo</span><input formControlName="jobTitle" placeholder="Opcional" /></label>
+              <label class="campo"
+                ><span>Cargo</span
+                ><select formControlName="jobTitle">
+                  <option value="">Selecciona un cargo</option>
+                  <option value="Oficial eléctrico">Oficial eléctrico</option>
+                  <option value="Auxiliar eléctrico">Auxiliar eléctrico</option>
+                  <option value="Ayudante">Ayudante</option>
+                  <option value="Supervisor">Supervisor</option>
+                </select></label
+              >
               <label class="campo"><span>Equipo</span><input formControlName="team" placeholder="Opcional" /></label>
               <label class="campo"
                 ><span>Correo</span><input formControlName="email" type="email" placeholder="Opcional"
@@ -218,11 +281,19 @@ type CrearColaborador = {
               <label class="campo"
                 ><span>Teléfono</span><input formControlName="phone" inputmode="tel" placeholder="Opcional"
               /></label>
-              <label class="campo ancho-total"
-                ><span>PIN de acceso</span><input formControlName="pin" inputmode="numeric" /><span class="ayuda"
-                  >Entre 4 y 12 caracteres. Entrégalo al colaborador por un canal seguro.</span
-                ></label
-              >
+              @if (requierePin()) {
+                <label class="campo ancho-total"
+                  ><span>PIN de acceso del Oficial eléctrico</span
+                  ><input formControlName="pin" inputmode="numeric" /><span class="ayuda"
+                    >Entre 4 y 12 caracteres. Es la única persona que ingresa para iniciar el permiso de la
+                    cuadrilla.</span
+                  ></label
+                >
+              } @else {
+                <p class="ayuda ancho-total">
+                  Este cargo no requiere PIN y no podrá iniciar permisos desde el celular.
+                </p>
+              }
               <div class="acciones ancho-total">
                 <button class="boton" [disabled]="formularioColaborador.invalid || creandoColaborador()">
                   {{ creandoColaborador() ? 'Registrando…' : 'Registrar colaborador' }}
@@ -396,6 +467,28 @@ type CrearColaborador = {
         font-weight: 750;
         white-space: nowrap;
       }
+      .modulos {
+        display: flex;
+        gap: 8px;
+        margin: -12px 0 28px;
+      }
+      .modulos a {
+        min-height: 42px;
+        padding: 10px 14px;
+        border-radius: 10px;
+        color: var(--tinta-media);
+        font-weight: 700;
+        text-decoration: none;
+      }
+      .modulos a:hover,
+      .modulos a:focus-visible {
+        background: #e5eee8;
+        color: #245d4c;
+      }
+      .modulos a.activo {
+        background: #245d4c;
+        color: #fff;
+      }
       .distintivo.urgencia-5 {
         background: #fff3d6;
         border-color: #edd38f;
@@ -437,6 +530,8 @@ export class ArlListComponent {
   readonly seleccionado = signal<File | null>(null);
   readonly mostrandoRegistro = signal(false);
   readonly creandoColaborador = signal(false);
+  readonly actualizandoColaborador = signal(false);
+  readonly cargoOriginalEdicion = signal('');
   readonly error = signal('');
   readonly aviso = signal('');
 
@@ -468,11 +563,20 @@ export class ArlListComponent {
     documentNumber: ['', [Validators.required, Validators.pattern(/^[0-9A-Za-z-]{5,30}$/)]],
     firstName: ['', [Validators.required, Validators.maxLength(100)]],
     lastName: ['', [Validators.required, Validators.maxLength(100)]],
-    jobTitle: ['', Validators.maxLength(150)],
+    jobTitle: ['', Validators.required],
     team: ['', Validators.maxLength(100)],
     email: ['', Validators.email],
     phone: ['', Validators.maxLength(30)],
-    pin: ['', [Validators.required, Validators.minLength(4), Validators.maxLength(12)]],
+    pin: [''],
+  });
+  readonly formularioEdicion = this.fb.nonNullable.group({
+    firstName: ['', [Validators.required, Validators.maxLength(100)]],
+    lastName: ['', [Validators.required, Validators.maxLength(100)]],
+    jobTitle: ['', Validators.required],
+    team: ['', Validators.maxLength(100)],
+    email: ['', Validators.email],
+    phone: ['', Validators.maxLength(30)],
+    pin: [''],
   });
 
   readonly visibles = computed(() => {
@@ -482,6 +586,46 @@ export class ArlListComponent {
 
   constructor() {
     this.cargar();
+    this.formularioColaborador.controls.jobTitle.valueChanges.subscribe(() => this.actualizarReglaPin());
+    this.formularioEdicion.controls.jobTitle.valueChanges.subscribe(() => this.actualizarReglaPinEdicion());
+  }
+
+  requierePin(): boolean {
+    return this.formularioColaborador.controls.jobTitle.value === 'Oficial eléctrico';
+  }
+
+  private actualizarReglaPin(): void {
+    const pin = this.formularioColaborador.controls.pin;
+    if (this.requierePin()) pin.setValidators([Validators.required, Validators.minLength(4), Validators.maxLength(12)]);
+    else {
+      pin.clearValidators();
+      pin.setValue('', { emitEvent: false });
+    }
+    pin.updateValueAndValidity({ emitEvent: false });
+  }
+
+  requierePinEdicion(): boolean {
+    return this.formularioEdicion.controls.jobTitle.value === 'Oficial eléctrico';
+  }
+
+  pinObligatorioEdicion(): boolean {
+    return this.requierePinEdicion() && this.cargoOriginalEdicion() !== 'Oficial eléctrico';
+  }
+
+  private actualizarReglaPinEdicion(): void {
+    const pin = this.formularioEdicion.controls.pin;
+    if (this.requierePinEdicion()) {
+      pin.setValidators([
+        ...(this.pinObligatorioEdicion() ? [Validators.required] : []),
+        Validators.minLength(4),
+        Validators.maxLength(12),
+      ]);
+    }
+    else {
+      pin.clearValidators();
+      pin.setValue('', { emitEvent: false });
+    }
+    pin.updateValueAndValidity({ emitEvent: false });
   }
 
   cargar(): void {
@@ -507,7 +651,11 @@ export class ArlListComponent {
     if (this.formularioColaborador.invalid) return;
     this.creandoColaborador.set(true);
     this.error.set('');
-    this.http.post('/api/collaborators', this.formularioColaborador.getRawValue()).subscribe({
+    const valores = this.formularioColaborador.getRawValue();
+    const cuerpo = Object.fromEntries(
+      Object.entries(valores).filter(([, valor]) => typeof valor !== 'string' || valor.trim() !== ''),
+    );
+    this.http.post('/api/collaborators', cuerpo).subscribe({
       next: () => {
         this.aviso.set('Colaborador registrado. Ahora puedes crear o actualizar su afiliación ARL.');
         this.formularioColaborador.reset(this.valoresColaborador);
@@ -539,6 +687,17 @@ export class ArlListComponent {
       startDate: fila.affiliation?.startDate?.slice(0, 10) ?? '',
       endDate: fila.affiliation?.endDate?.slice(0, 10) ?? '',
     });
+    this.cargoOriginalEdicion.set(fila.collaborator.jobTitle ?? '');
+    this.formularioEdicion.reset({
+      firstName: fila.collaborator.firstName,
+      lastName: fila.collaborator.lastName,
+      jobTitle: fila.collaborator.jobTitle ?? '',
+      team: fila.collaborator.team ?? '',
+      email: fila.collaborator.email ?? '',
+      phone: fila.collaborator.phone ?? '',
+      pin: '',
+    });
+    this.actualizarReglaPinEdicion();
     this.cargarHistorial(fila.collaborator.id);
     globalThis.scrollTo({ top: 0 });
   }
@@ -547,6 +706,27 @@ export class ArlListComponent {
     this.seleccionada.set(null);
     this.historial.set([]);
     this.seleccionado.set(null);
+  }
+
+  actualizarColaborador(): void {
+    const fila = this.seleccionada();
+    if (!fila || this.formularioEdicion.invalid) return;
+    this.actualizandoColaborador.set(true);
+    this.error.set('');
+    const valores = this.formularioEdicion.getRawValue();
+    const { pin, ...datos } = valores;
+    const cuerpo = { ...datos, ...(pin.trim() ? { pin: pin.trim() } : {}) };
+    this.http.patch(`/api/collaborators/${fila.collaborator.id}`, cuerpo).subscribe({
+      next: () => {
+        this.aviso.set('Datos del colaborador actualizados. El cambio quedó registrado en la auditoría.');
+        this.actualizandoColaborador.set(false);
+        this.refrescarFicha(fila.collaborator.id);
+      },
+      error: () => {
+        this.error.set('No fue posible actualizar los datos del colaborador. Revisa la información e inténtalo de nuevo.');
+        this.actualizandoColaborador.set(false);
+      },
+    });
   }
 
   rangoInvalido(): boolean {

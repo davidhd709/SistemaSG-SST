@@ -22,8 +22,25 @@ type JornadaAbierta = {
   startedAt: string | null;
   collaborator: { firstName: string; lastName: string; documentNumber: string };
   crewSize: number;
+  members: { collaborator: { firstName: string; lastName: string }; jobPosition: { name: string } | null }[];
   form: { code: string; name: string };
   overdue: boolean;
+};
+
+type DocumentoCustodia = {
+  id: string;
+  status: string;
+  workDate: string | null;
+  submittedAt: string | null;
+  startedAt: string | null;
+  closedAt: string | null;
+  collaborator: { firstName: string; lastName: string; documentNumber: string };
+  members: {
+    collaborator: { firstName: string; lastName: string; documentNumber: string };
+    jobPosition: { name: string } | null;
+  }[];
+  form: { code: string; name: string; version: number };
+  finalPdfFile: { id: string; originalName: string } | null;
 };
 
 type Cumplimiento = {
@@ -162,6 +179,28 @@ type Grupo = { seccion: string; respuestas: Respuesta[] };
             @if (pending().length) {
               <span class="globo">{{ pending().length }}</span>
             }
+          </button>
+          <button role="tab" [attr.aria-selected]="pestana() === 'jornadas'" (click)="verJornadas()" type="button">
+            Cuadrillas activas
+          </button>
+          <button
+            role="tab"
+            [attr.aria-selected]="pestana() === 'cumplimiento'"
+            (click)="verCumplimiento()"
+            type="button"
+          >
+            Curso de alturas
+          </button>
+          <button
+            role="tab"
+            [attr.aria-selected]="pestana() === 'colaboradores'"
+            (click)="verColaboradores()"
+            type="button"
+          >
+            Colaboradores
+          </button>
+          <button role="tab" [attr.aria-selected]="pestana() === 'custodia'" (click)="verCustodia()" type="button">
+            Custodia documental
           </button>
         </div>
       </section>
@@ -438,14 +477,20 @@ type Grupo = { seccion: string; respuestas: Respuesta[] };
                       <strong>{{ jornada.collaborator.firstName }} {{ jornada.collaborator.lastName }}</strong>
                       <span class="secundario">{{ jornada.collaborator.documentNumber }}</span>
                     </td>
-                    <td>{{ jornada.crewSize }} {{ jornada.crewSize === 1 ? 'persona' : 'personas' }}</td>
+                    <td>
+                      {{ jornada.crewSize }} {{ jornada.crewSize === 1 ? 'persona' : 'personas' }}
+                      <span class="secundario">{{ integrantesTexto(jornada.members) }}</span>
+                    </td>
                     <td>
                       {{ soloFecha(jornada.workDate) }}
                       @if (jornada.overdue) {
                         <span class="secundario">día anterior</span>
                       }
                     </td>
-                    <td>{{ hora(jornada.startedAt) }}</td>
+                    <td>
+                      {{ hora(jornada.startedAt) }}
+                      <span class="secundario">{{ duracionDesde(jornada.startedAt) }}</span>
+                    </td>
                     <td>
                       <button class="boton compacto" type="button" (click)="abrir(jornada.id)">Ver permiso</button>
                     </td>
@@ -462,6 +507,88 @@ type Grupo = { seccion: string; respuestas: Respuesta[] };
         }
       }
 
+      <!-- ══════════════ CUSTODIA DOCUMENTAL ══════════════ -->
+      @if (pestana() === 'custodia') {
+        <section class="bloque">
+          <div class="titulo-seccion">
+            <h2>Formularios diligenciados</h2>
+            <button class="boton secundario compacto" type="button" (click)="cargarCustodia()">Actualizar</button>
+          </div>
+          <p class="secundario introduccion">
+            Consulta y descarga los permisos para su custodia física y digital. Filtra por un mes completo o por una
+            fecha específica.
+          </p>
+          <form [formGroup]="formCustodia" (ngSubmit)="cargarCustodia()" class="rejilla-campos dos">
+            <label class="campo"><span>Mes</span><input type="month" formControlName="month" /></label>
+            <label class="campo"><span>Fecha específica</span><input type="date" formControlName="date" /></label>
+            <div class="acciones ancho-total">
+              <button class="boton" type="submit">Consultar formularios</button>
+              <button class="boton secundario" type="button" (click)="limpiarCustodia()">Limpiar filtros</button>
+              <button
+                class="boton secundario"
+                type="button"
+                [disabled]="!pdfsCustodia().length"
+                (click)="descargarCustodia()"
+              >
+                Descargar PDFs disponibles ({{ pdfsCustodia().length }})
+              </button>
+            </div>
+          </form>
+
+          @if (documentosCustodia().length) {
+            <div class="tabla-scroll custodia-tabla">
+              <table class="datos">
+                <thead>
+                  <tr>
+                    <th>Fecha</th>
+                    <th>Responsable y cuadrilla</th>
+                    <th>Jornada</th>
+                    <th>Estado</th>
+                    <th>Documento</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (documento of documentosCustodia(); track documento.id) {
+                    <tr>
+                      <td>{{ soloFecha(documento.workDate || documento.submittedAt) }}</td>
+                      <td>
+                        <strong>{{ documento.collaborator.firstName }} {{ documento.collaborator.lastName }}</strong>
+                        <span class="secundario"
+                          >{{ documento.collaborator.documentNumber }} · {{ integrantesTexto(documento.members) }}</span
+                        >
+                      </td>
+                      <td>{{ intervaloJornada(documento.startedAt, documento.closedAt) }}</td>
+                      <td>
+                        <span class="distintivo" [class]="claseEstadoDocumento(documento.status)">{{
+                          textoEstadoDocumento(documento.status)
+                        }}</span>
+                      </td>
+                      <td>
+                        @if (documento.finalPdfFile) {
+                          <button
+                            class="boton secundario compacto"
+                            type="button"
+                            (click)="descargar(documento.finalPdfFile.id, documento.finalPdfFile.originalName)"
+                          >
+                            Descargar PDF
+                          </button>
+                        } @else {
+                          <span class="secundario">PDF pendiente de cierre</span>
+                        }
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          } @else {
+            <p class="vacio">
+              <strong>No hay formularios para este filtro</strong>Prueba con otro mes, fecha o sin filtros.
+            </p>
+          }
+        </section>
+      }
+
       <!-- ══════════════ REQUISITOS ══════════════ -->
       @if (pestana() === 'cumplimiento') {
         <section class="bloque">
@@ -470,8 +597,8 @@ type Grupo = { seccion: string; respuestas: Respuesta[] };
             <button class="boton secundario compacto" type="button" (click)="cargarCumplimiento()">Actualizar</button>
           </div>
           <p class="secundario introduccion">
-            Para integrar una cuadrilla hacen falta los tres requisitos vigentes. Quien no los tenga no aparece en la
-            lista del oficial.
+            Registra aquí el curso de trabajo en alturas de los Oficiales eléctricos. Para auxiliares, ayudantes y
+            supervisores este requisito no aplica.
           </p>
 
           @if (cumplimiento().length) {
@@ -639,13 +766,14 @@ type Grupo = { seccion: string; respuestas: Respuesta[] };
             <label class="campo ancho-total">
               <span>Colaborador</span>
               <select formControlName="collaboratorId">
-                <option value="">Selecciona un colaborador</option>
-                @for (fila of cumplimiento(); track fila.collaborator.id) {
+                <option value="">Selecciona un Oficial eléctrico</option>
+                @for (fila of oficialesElectricos(); track fila.collaborator.id) {
                   <option [value]="fila.collaborator.id">
                     {{ fila.collaborator.firstName }} {{ fila.collaborator.lastName }}
                   </option>
                 }
               </select>
+              <span class="ayuda">Solo los Oficiales eléctricos requieren certificado de trabajo en alturas.</span>
             </label>
             <label class="campo">
               <span>Fecha de expedición</span>
@@ -907,7 +1035,7 @@ export class CoordinationComponent {
   private readonly session = inject(AuthSessionService);
   private readonly fb = inject(FormBuilder);
 
-  readonly pestana = signal<'bandeja' | 'jornadas' | 'cumplimiento' | 'colaboradores'>('bandeja');
+  readonly pestana = signal<'bandeja' | 'jornadas' | 'cumplimiento' | 'colaboradores' | 'custodia'>('bandeja');
   readonly dashboard = signal<Dashboard | null>(null);
   readonly pending = signal<Submission[]>([]);
   readonly detail = signal<Detail | null>(null);
@@ -927,6 +1055,7 @@ export class CoordinationComponent {
   readonly planillas = signal<Planilla[]>([]);
   readonly certificados = signal<Certificado[]>([]);
   readonly cubiertos = signal<string[]>([]);
+  readonly documentosCustodia = signal<DocumentoCustodia[]>([]);
 
   readonly formPlanilla = this.fb.nonNullable.group({
     reference: ['', [Validators.required, Validators.maxLength(100)]],
@@ -941,6 +1070,7 @@ export class CoordinationComponent {
     expiresAt: ['', Validators.required],
     trainingEntity: [''],
   });
+  readonly formCustodia = this.fb.nonNullable.group({ month: [''], date: [''] });
   readonly aviso = signal('');
 
   /** Estado de ARL por colaborador, para mostrarlo junto a cada perfil. */
@@ -963,11 +1093,11 @@ export class CoordinationComponent {
     documentNumber: ['', [Validators.required, Validators.pattern(/^[0-9A-Za-z-]{5,30}$/)]],
     firstName: ['', [Validators.required, Validators.maxLength(100)]],
     lastName: ['', [Validators.required, Validators.maxLength(100)]],
-    jobTitle: ['', Validators.maxLength(150)],
+    jobTitle: ['', Validators.required],
     team: ['', Validators.maxLength(100)],
     email: ['', Validators.email],
     phone: ['', Validators.maxLength(30)],
-    pin: ['', [Validators.required, Validators.minLength(4), Validators.maxLength(12)]],
+    pin: [''],
   });
 
   /**
@@ -1012,6 +1142,14 @@ export class CoordinationComponent {
     this.grupos().flatMap((grupo) => grupo.respuestas.filter((respuesta) => respuesta.alerta)),
   );
 
+  /** Auxiliares, ayudantes y supervisores no requieren el certificado de alturas. */
+  readonly oficialesElectricos = computed(() =>
+    this.cumplimiento().filter((fila) => fila.collaborator.jobTitle === 'Oficial eléctrico'),
+  );
+  readonly pdfsCustodia = computed(() =>
+    this.documentosCustodia().filter((documento) => documento.finalPdfFile !== null),
+  );
+
   private agregar(grupos: Grupo[], seccion: string, respuesta: Respuesta): void {
     const grupo = grupos.find((candidato) => candidato.seccion === seccion);
     if (grupo) grupo.respuestas.push(respuesta);
@@ -1046,6 +1184,35 @@ export class CoordinationComponent {
       next: (lista) => this.jornadas.set(lista),
       error: () => this.error.set('No fue posible consultar las jornadas abiertas.'),
     });
+  }
+
+  // ── Custodia documental ──────────────────────────────────
+  verCustodia(): void {
+    this.pestana.set('custodia');
+    this.cargarCustodia();
+  }
+
+  cargarCustodia(): void {
+    const { month, date } = this.formCustodia.getRawValue();
+    const parametros = new URLSearchParams();
+    if (date) parametros.set('date', date);
+    else if (month) parametros.set('month', month);
+    const consulta = parametros.size ? `?${parametros.toString()}` : '';
+    this.http.get<DocumentoCustodia[]>(`/api/coordination/submissions${consulta}`).subscribe({
+      next: (documentos) => this.documentosCustodia.set(documentos),
+      error: () => this.error.set('No fue posible consultar el archivo documental.'),
+    });
+  }
+
+  limpiarCustodia(): void {
+    this.formCustodia.reset({ month: '', date: '' });
+    this.cargarCustodia();
+  }
+
+  descargarCustodia(): void {
+    for (const documento of this.pdfsCustodia()) {
+      if (documento.finalPdfFile) this.descargar(documento.finalPdfFile.id, documento.finalPdfFile.originalName);
+    }
   }
 
   // ── Requisitos ───────────────────────────────────────────
@@ -1171,18 +1338,50 @@ export class CoordinationComponent {
   claseRequisito(estado: string): string {
     if (estado === 'VIGENTE') return 'vigente';
     if (estado === 'PROXIMA_A_VENCER') return 'por-vencer';
+    if (estado === 'NO_APLICA') return 'neutro';
     return 'vencida';
   }
 
   textoRequisito(estado: string): string {
     if (estado === 'VIGENTE') return 'Vigente';
     if (estado === 'PROXIMA_A_VENCER') return 'Por vencer';
+    if (estado === 'NO_APLICA') return 'No aplica';
     return 'Vencida';
   }
 
   hora(valor: string | null): string {
     if (!valor) return '—';
     return new Date(valor).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
+  }
+
+  duracionDesde(inicio: string | null): string {
+    if (!inicio) return 'Hora no registrada';
+    const minutos = Math.max(0, Math.floor((Date.now() - new Date(inicio).getTime()) / 60_000));
+    const horas = Math.floor(minutos / 60);
+    return horas ? `${horas} h ${minutos % 60} min en labor` : `${minutos} min en labor`;
+  }
+
+  integrantesTexto(integrantes: { collaborator: { firstName: string; lastName: string } }[]): string {
+    return integrantes.map((item) => `${item.collaborator.firstName} ${item.collaborator.lastName}`).join(', ');
+  }
+
+  intervaloJornada(inicio: string | null, fin: string | null): string {
+    if (!inicio) return 'Sin hora de inicio';
+    return fin ? `${this.hora(inicio)} a ${this.hora(fin)}` : `${this.hora(inicio)} · en curso`;
+  }
+
+  claseEstadoDocumento(estado: string): string {
+    if (estado === 'CLOSED') return 'vigente';
+    if (estado === 'REJECTED') return 'vencida';
+    return 'por-vencer';
+  }
+
+  textoEstadoDocumento(estado: string): string {
+    if (estado === 'CLOSED') return 'Cerrado';
+    if (estado === 'APPROVED') return 'En curso';
+    if (estado === 'PENDING_APPROVAL') return 'Pendiente';
+    if (estado === 'REJECTED') return 'Rechazado';
+    return estado;
   }
 
   abrir(id: string): void {

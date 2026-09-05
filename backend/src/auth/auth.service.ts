@@ -241,10 +241,26 @@ export class AuthService {
   }
 
   private async canAuthenticateCollaborator(collaborator: Collaborator, pin: string): Promise<boolean> {
-    if (collaborator.status !== 'ACTIVE' || this.isLocked(collaborator.lockedUntil)) return false;
+    if (
+      collaborator.status !== 'ACTIVE' ||
+      this.isLocked(collaborator.lockedUntil) ||
+      !this.esOficialElectrico(collaborator.jobTitle) ||
+      !collaborator.pinHash
+    )
+      return false;
     const valid = await argon2.verify(collaborator.pinHash, pin);
     if (!valid) await this.registerCollaboratorFailure(collaborator);
     return valid;
+  }
+
+  private esOficialElectrico(cargo: string | null): boolean {
+    return (
+      (cargo ?? '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .trim()
+        .toUpperCase() === 'OFICIAL ELECTRICO'
+    );
   }
 
   private async registerUserFailure(user: User): Promise<void> {

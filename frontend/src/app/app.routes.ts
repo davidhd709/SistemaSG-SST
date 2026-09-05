@@ -4,6 +4,7 @@ import { AdminLoginComponent } from './features/auth/admin-login.component';
 import { AdminDashboardComponent } from './features/admin/admin-dashboard.component';
 import { CollaboratorLoginComponent } from './features/auth/collaborator-login.component';
 import { ArlListComponent } from './features/arl/arl-list.component';
+import { SocialSecurityComponent } from './features/compliance/social-security.component';
 import { WorkAtHeightFormComponent } from './features/forms/work-at-height-form.component';
 import { CoordinationComponent } from './features/coordination/coordination.component';
 import { LegalSearchComponent } from './features/legal/legal-search.component';
@@ -32,6 +33,7 @@ export const routes: Routes = [
   { path: 'coordinacion', component: CoordinationComponent, canActivate: interna, title: 'Coordinación' },
   { path: 'arl', component: ArlListComponent, canActivate: interna, title: 'Estado ARL' },
   { path: 'gestor-arl', component: ArlListComponent, canActivate: interna, title: 'Gestor ARL' },
+  { path: 'seguridad-social', component: SocialSecurityComponent, canActivate: interna, title: 'Seguridad social' },
   { path: 'legal', component: LegalSearchComponent, canActivate: interna, title: 'Consulta Legal' },
 
   { path: '**', redirectTo: '' },

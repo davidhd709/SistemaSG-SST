@@ -202,7 +202,14 @@ export class ComplianceAdminService {
     const issuedAt = this.fecha(dto.issuedAt);
     const expiresAt = this.fecha(dto.expiresAt);
     if (expiresAt < issuedAt) throw new BadRequestException('El vencimiento no puede ser anterior a la expedición.');
-    await this.verificarColaboradores([dto.collaboratorId]);
+    const colaborador = await this.prisma.collaborator.findUnique({
+      where: { id: dto.collaboratorId },
+      select: { jobTitle: true },
+    });
+    if (!colaborador) throw new BadRequestException('El colaborador no existe.');
+    if (!this.esOficialElectrico(colaborador.jobTitle)) {
+      throw new BadRequestException('El certificado de alturas solo aplica para Oficiales eléctricos.');
+    }
     const actorUserId = this.actor(request);
 
     return this.prisma.$transaction(async (tx) => {
@@ -302,6 +309,16 @@ export class ComplianceAdminService {
     const unicos = [...new Set(ids)];
     const existentes = await this.prisma.collaborator.count({ where: { id: { in: unicos } } });
     if (existentes !== unicos.length) throw new BadRequestException('Uno o más colaboradores no existen.');
+  }
+
+  private esOficialElectrico(cargo: string | null | undefined): boolean {
+    return (
+      (cargo ?? '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .trim()
+        .toUpperCase() === 'OFICIAL ELECTRICO'
+    );
   }
 
   private fecha(valor: string): Date {

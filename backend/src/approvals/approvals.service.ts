@@ -4,6 +4,7 @@ import { ArlService } from '../arl/arl.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { DecideSubmissionDto } from './dto/decide-submission.dto';
 import { PdfService } from '../pdf/pdf.service';
+import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class ApprovalsService {
@@ -43,7 +44,12 @@ export class ApprovalsService {
       where: { status: 'APPROVED' },
       include: {
         collaborator: { select: { firstName: true, lastName: true, documentNumber: true } },
-        members: { select: { id: true } },
+        members: {
+          include: {
+            collaborator: { select: { firstName: true, lastName: true } },
+            jobPosition: { select: { name: true } },
+          },
+        },
         formVersion: { include: { form: { select: { code: true, name: true } } } },
       },
       orderBy: { workDate: 'asc' },
@@ -56,6 +62,10 @@ export class ApprovalsService {
       startedAt: item.startedAt,
       collaborator: item.collaborator,
       crewSize: item.members.length,
+      members: item.members.map((member) => ({
+        collaborator: member.collaborator,
+        jobPosition: member.jobPosition,
+      })),
       form: { code: item.formVersion.form.code, name: item.formVersion.form.name },
       overdue: Boolean(item.workDate && item.workDate < hoy),
     }));
@@ -84,6 +94,54 @@ export class ApprovalsService {
         name: item.formVersion.form.name,
         version: item.formVersion.versionNumber,
       },
+    }));
+  }
+
+  /** Formularios custodiados: cada fila conserva su PDF final cuando ya existe. */
+  async custody(month?: string, date?: string) {
+    const where: Prisma.FormSubmissionWhereInput = { status: { not: 'DRAFT' } };
+    const day = date && /^\d{4}-\d{2}-\d{2}$/.test(date) ? new Date(`${date}T00:00:00.000Z`) : undefined;
+    if (day && !Number.isNaN(day.getTime())) {
+      const next = new Date(day);
+      next.setUTCDate(next.getUTCDate() + 1);
+      where.workDate = { gte: day, lt: next };
+    } else if (month && /^\d{4}-\d{2}$/.test(month)) {
+      const start = new Date(`${month}-01T00:00:00.000Z`);
+      const end = new Date(start);
+      end.setUTCMonth(end.getUTCMonth() + 1);
+      where.workDate = { gte: start, lt: end };
+    }
+    const submissions = await this.prisma.formSubmission.findMany({
+      where,
+      include: {
+        collaborator: { select: { firstName: true, lastName: true, documentNumber: true } },
+        members: {
+          include: {
+            collaborator: { select: { firstName: true, lastName: true, documentNumber: true } },
+            jobPosition: { select: { name: true } },
+          },
+        },
+        formVersion: { include: { form: { select: { code: true, name: true } } } },
+        finalPdfFile: { select: { id: true, originalName: true } },
+      },
+      orderBy: [{ workDate: 'desc' }, { submittedAt: 'desc' }],
+      take: 500,
+    });
+    return submissions.map((item) => ({
+      id: item.id,
+      status: item.status,
+      workDate: item.workDate,
+      submittedAt: item.submittedAt,
+      startedAt: item.startedAt,
+      closedAt: item.closedAt,
+      collaborator: item.collaborator,
+      members: item.members.map((member) => ({ collaborator: member.collaborator, jobPosition: member.jobPosition })),
+      form: {
+        code: item.formVersion.form.code,
+        name: item.formVersion.form.name,
+        version: item.formVersion.versionNumber,
+      },
+      finalPdfFile: item.finalPdfFile,
     }));
   }
   async detail(id: string) {

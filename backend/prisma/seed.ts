@@ -34,6 +34,10 @@ const roles: Record<string, { name: string; permissions: string[] }> = {
       'submissions:review',
       'files:read',
       'signatures:manage',
+      'collaborators:read',
+      'arl:read',
+      'compliance:read',
+      'compliance:manage',
     ],
   },
   LEGAL: {
@@ -104,11 +108,11 @@ async function main(): Promise<void> {
   // el cargo del formulario porque ahora se define por integrante de cuadrilla.
   // La 1 se conserva: los permisos firmados con ella deben poder leerse igual.
   const version = await prisma.formVersion.upsert({
-    where: { formId_versionNumber: { formId: form.id, versionNumber: 2 } },
+    where: { formId_versionNumber: { formId: form.id, versionNumber: 4 } },
     update: { schemaJson: workAtHeightSchema },
     create: {
       formId: form.id,
-      versionNumber: 2,
+      versionNumber: 4,
       schemaJson: workAtHeightSchema,
       changeReason:
         'Permiso de cuadrilla: fecha y horas automáticas, requisitos verificados por el sistema y cargo por integrante.',
@@ -117,7 +121,7 @@ async function main(): Promise<void> {
     },
   });
   await prisma.formVersion.updateMany({
-    where: { formId: form.id, versionNumber: { not: 2 } },
+    where: { formId: form.id, versionNumber: { not: 4 } },
     data: { active: false },
   });
   await prisma.form.update({ where: { id: form.id }, data: { status: 'PUBLISHED', currentVersionId: version.id } });
