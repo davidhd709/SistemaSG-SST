@@ -1,5 +1,6 @@
 import { Body, Controller, HttpCode, Post, Req, Res } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import type { Response } from 'express';
 import type { RequestContext } from '../common/request-context';
 import { Public } from './auth.decorators';
@@ -13,6 +14,7 @@ export class AuthController {
   constructor(private readonly auth: AuthService) {}
 
   @Public()
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @Post('admin/login')
   @HttpCode(200)
   async adminLogin(
@@ -24,6 +26,7 @@ export class AuthController {
   }
 
   @Public()
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @Post('collaborator/login')
   @HttpCode(200)
   async collaboratorLogin(
@@ -35,6 +38,7 @@ export class AuthController {
   }
 
   @Public()
+  @Throttle({ default: { limit: 15, ttl: 60_000 } })
   @Post('refresh')
   @HttpCode(200)
   async refresh(@Req() request: RequestContext, @Res({ passthrough: true }) response: Response) {

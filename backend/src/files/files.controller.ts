@@ -1,10 +1,12 @@
 import { Controller, Get, Param, Req, Res } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import type { Response } from 'express';
 import { RequirePermissions } from '../auth/auth.decorators';
 import type { AuthenticatedRequest } from '../common/request-context';
 import { AuditService } from '../audit/audit.service';
 import { FilesService } from './files.service';
+
 @ApiTags('files')
 @Controller('files')
 export class FilesController {
@@ -12,7 +14,11 @@ export class FilesController {
     private readonly files: FilesService,
     private readonly audit: AuditService,
   ) {}
-  @Get(':id/download') @RequirePermissions('files:read') async download(
+
+  @Throttle({ default: { limit: 30, ttl: 60_000 } })
+  @Get(':id/download')
+  @RequirePermissions('files:read')
+  async download(
     @Param('id') id: string,
     @Req() request: AuthenticatedRequest,
     @Res() response: Response,

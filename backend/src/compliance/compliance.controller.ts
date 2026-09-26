@@ -1,6 +1,7 @@
 import { Body, Controller, Get, Param, Patch, Post, Query, Req, UploadedFile, UseInterceptors } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiTags } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { RequirePermissions } from '../auth/auth.decorators';
 import type { AuthenticatedRequest } from '../common/request-context';
 import { ComplianceAdminService } from './compliance-admin.service';
@@ -40,6 +41,7 @@ export class ComplianceController {
     return this.admin.updatePayroll(id, dto, request);
   }
 
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @Post('payrolls/:id/file')
   @RequirePermissions('compliance:manage')
   @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 10 * 1024 * 1024 } }))
@@ -61,6 +63,7 @@ export class ComplianceController {
     return this.admin.createHeightCertificate(dto, request);
   }
 
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @Post('height-certificates/:id/file')
   @RequirePermissions('compliance:manage')
   @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 10 * 1024 * 1024 } }))

@@ -1,7 +1,7 @@
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
-import { ConfigModule } from '@nestjs/config';
-import { ThrottlerModule } from '@nestjs/throttler';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { HealthModule } from './health/health.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuditModule } from './audit/audit.module';
@@ -10,6 +10,7 @@ import { AuthModule } from './auth/auth.module';
 import { AuthGuard } from './auth/auth.guard';
 import { PermissionsGuard } from './auth/permissions.guard';
 import { CorrelationIdMiddleware } from './common/correlation-id.middleware';
+import { getNumber } from './common/env';
 import { CollaboratorsModule } from './collaborators/collaborators.module';
 import { UsersModule } from './users/users.module';
 import { ArlModule } from './arl/arl.module';
@@ -28,7 +29,16 @@ import { LegalModule } from './legal/legal.module';
       // las variables directamente. Se admiten ambos puntos de arranque.
       envFilePath: ['.env', '../.env'],
     }),
-    ThrottlerModule.forRoot([{ ttl: 60_000, limit: 100 }]),
+    ThrottlerModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => [
+        {
+          name: 'default',
+          ttl: getNumber(config, 'THROTTLE_TTL_MS', 60_000),
+          limit: getNumber(config, 'THROTTLE_LIMIT', 100),
+        },
+      ],
+    }),
     PrismaModule,
     AuditModule,
     ComplianceModule,
@@ -45,6 +55,7 @@ import { LegalModule } from './legal/legal.module';
     HealthModule,
   ],
   providers: [
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
     { provide: APP_GUARD, useClass: AuthGuard },
     { provide: APP_GUARD, useClass: PermissionsGuard },
   ],

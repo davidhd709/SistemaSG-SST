@@ -1,5 +1,6 @@
 import { Controller, Get } from '@nestjs/common';
 import { ApiOkResponse, ApiTags } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { HealthService } from './health.service';
 import { Public } from '../auth/auth.decorators';
 
@@ -8,6 +9,7 @@ import { Public } from '../auth/auth.decorators';
 export class HealthController {
   constructor(private readonly healthService: HealthService) {}
 
+  @Throttle({ default: { limit: 120, ttl: 60_000 } })
   @Get()
   @Public()
   @ApiOkResponse({ description: 'Estado del proceso y de PostgreSQL.' })

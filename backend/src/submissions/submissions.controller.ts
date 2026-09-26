@@ -1,5 +1,6 @@
 import { Body, Controller, Get, Param, Post, Req } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import type { AuthenticatedRequest } from '../common/request-context';
 import { SubmitFormDto } from './dto/submit-form.dto';
 import { CloseWorkdayDto } from './dto/close-workday.dto';
@@ -27,6 +28,7 @@ export class SubmissionsController {
     return this.submissions.latest(request);
   }
 
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @Post('forms/:code') submit(
     @Param('code') code: string,
     @Body() dto: SubmitFormDto,
@@ -36,6 +38,7 @@ export class SubmissionsController {
   }
 
   /** Cierra la jornada y deja el permiso listo para su documento final. */
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @Post(':id/close') close(
     @Param('id') id: string,
     @Body() dto: CloseWorkdayDto,

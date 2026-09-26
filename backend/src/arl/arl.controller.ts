@@ -1,6 +1,7 @@
 import { Body, Controller, Get, Param, Patch, Post, Query, Req, UploadedFile, UseInterceptors } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiTags } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { RequirePermissions } from '../auth/auth.decorators';
 import type { AuthenticatedRequest } from '../common/request-context';
 import { ArlService } from './arl.service';
@@ -33,6 +34,7 @@ export class ArlController {
   ) {
     return this.arl.update(id, dto, request);
   }
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @Post('affiliations/:id/documents')
   @RequirePermissions('arl:manage')
   @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 10 * 1024 * 1024 } }))
