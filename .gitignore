@@ -8,6 +8,8 @@ coverage/
 !.env.example
 apps/api/prisma/dev.db
 storage/
+docs/pdf_generado_por_el_sistema.pdf
+docs/pdf_original.pdf
 *.log
 credenciales.txt
 
