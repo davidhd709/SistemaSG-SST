@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { calculateArlStatus, type ArlStatus } from '../arl/arl-status';
+import { businessDate } from '../common/business-date';
 
 export type RequisitoEstado = 'VIGENTE' | 'PROXIMA_A_VENCER' | 'VENCIDA' | 'NO_APLICA';
 
@@ -125,7 +126,7 @@ export class ComplianceService {
    */
   private vigenteHoy<T>(registros: T[], rango: (registro: T) => [Date, Date], now: Date): T | undefined {
     if (!registros.length) return undefined;
-    const hoy = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+    const hoy = businessDate(now).getTime();
     const dia = (fecha: Date) => Date.UTC(fecha.getUTCFullYear(), fecha.getUTCMonth(), fecha.getUTCDate());
     return (
       registros.find((registro) => {

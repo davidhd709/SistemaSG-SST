@@ -115,7 +115,7 @@ export const workAtHeightSchema = {
       id: 'hora_inicio',
       type: 'auto',
       label: 'Hora de inicio',
-      // Queda la hora real en que se diligenció.
+      // Se registra cuando la cuadrilla inicia, después de la aprobación.
       required: true,
       order: 8,
       section: '1. Datos básicos del permiso de trabajo en altura',

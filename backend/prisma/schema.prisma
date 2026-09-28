@@ -40,6 +40,7 @@ enum SubmissionStatus {
   APPROVED
   CLOSED
   REJECTED
+  EXPIRED
 }
 
 enum ApprovalDecision {
@@ -260,6 +261,9 @@ model FormSubmission {
   answersJson           Json
   safetyTalkConfirmed   Boolean
   safetyTalkConfirmedAt DateTime?
+  safetyTalkChallengeId String?            @unique @db.Uuid
+  safetyTalkVideo       String?
+  safetyTalkVideoSha256 String?
   arlSnapshotJson       Json
   submittedAt           DateTime?
   // La jornada: el día de trabajo y sus horas reales de apertura y cierre.

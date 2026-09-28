@@ -6,7 +6,7 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-sg_sst}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
     ports:
-      - '5432:5432'
+      - '127.0.0.1:5432:5432'
     volumes:
       - postgres_data:/var/lib/postgresql
     healthcheck:
@@ -19,7 +19,7 @@ services:
   redis:
     image: redis:8-alpine
     ports:
-      - '6379:6379'
+      - '127.0.0.1:6379:6379'
     volumes:
       - redis_data:/data
     healthcheck:
@@ -46,7 +46,7 @@ services:
       AUTH_MAX_FAILED_ATTEMPTS: ${AUTH_MAX_FAILED_ATTEMPTS:-5}
       AUTH_LOCK_MINUTES: ${AUTH_LOCK_MINUTES:-15}
     ports:
-      - '3000:3000'
+      - '127.0.0.1:3000:3000'
     volumes:
       # Firmas y PDF finales son evidencia: sin este volumen viven en la capa
       # efímera del contenedor y cada redespliegue los borra. En producción se
@@ -66,7 +66,7 @@ services:
       args:
         WEB_API_BASE_URL: ${WEB_API_BASE_URL:-/api}
     ports:
-      - '8080:80'
+      - '127.0.0.1:8080:80'
     depends_on:
       - api
     restart: unless-stopped

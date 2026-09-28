@@ -8,4 +8,4 @@ Usa formato MP4 y estos nombres:
 - `charla-02.mp4`
 - `charla-03.mp4`
 
-La aplicación selecciona uno al azar en cada inicio del flujo. Para agregar más videos, añade su ruta al arreglo `CHARLAS_DE_SEGURIDAD` en `src/app/features/forms/work-at-height-form.component.ts`.
+La aplicación selecciona uno al azar en cada inicio del flujo. Para agregar o reemplazar videos, actualiza su ruta en `CHARLAS_DE_SEGURIDAD` (`src/app/features/forms/work-at-height-form.component.ts`), los identificadores permitidos (`backend/src/submissions/dto/safety-talk-challenge.dto.ts`) y la duración mínima y SHA-256 del archivo (`backend/src/submissions/submissions.service.ts`). No sustituyas una charla existente sin conservar la versión anterior si ya hay permisos que la citan.

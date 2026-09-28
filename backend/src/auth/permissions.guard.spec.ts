@@ -1,5 +1,7 @@
 import { ForbiddenException } from '@nestjs/common';
 import { PermissionsGuard } from './permissions.guard';
+import { Reflector } from '@nestjs/core';
+import { CollaboratorsController } from '../collaborators/collaborators.controller';
 
 describe('PermissionsGuard', () => {
   const reflector = { getAllAndOverride: jest.fn().mockReturnValue(['arl:manage']) };
@@ -17,4 +19,18 @@ describe('PermissionsGuard', () => {
     expect(() =>
       guard.canActivate(context({ kind: 'USER', userId: 'u', roles: [], permissions: [] }) as never),
     ).toThrow(ForbiddenException));
+});
+
+describe('CollaboratorsController update authorization', () => {
+  const guard = new PermissionsGuard(new Reflector());
+  const context = (permissions: string[]) => ({
+    getHandler: () => Reflect.get(CollaboratorsController.prototype, 'update') as () => unknown,
+    getClass: () => CollaboratorsController,
+    switchToHttp: () => ({ getRequest: () => ({ principal: { kind: 'USER', permissions } }) }),
+  });
+
+  it('rejects read-only access and permits collaborator management', () => {
+    expect(() => guard.canActivate(context(['collaborators:read']) as never)).toThrow(ForbiddenException);
+    expect(guard.canActivate(context(['collaborators:manage']) as never)).toBe(true);
+  });
 });

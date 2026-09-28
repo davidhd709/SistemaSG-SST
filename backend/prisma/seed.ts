@@ -16,6 +16,7 @@ const roles: Record<string, { name: string; permissions: string[] }> = {
       'roles:read',
       'collaborators:create',
       'collaborators:read',
+      'collaborators:manage',
       'arl:read',
       'arl:manage',
       'forms:manage',
@@ -46,7 +47,7 @@ const roles: Record<string, { name: string; permissions: string[] }> = {
   },
   ARL_MANAGER: {
     name: 'Gestor de ARL',
-    permissions: ['collaborators:create', 'collaborators:read', 'arl:read', 'arl:manage'],
+    permissions: ['collaborators:create', 'collaborators:read', 'collaborators:manage', 'arl:read', 'arl:manage'],
   },
 };
 

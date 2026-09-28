@@ -14,7 +14,15 @@
           "options": {
             "browser": "src/main.ts",
             "tsConfig": "tsconfig.app.json",
-            "assets": ["src/favicon.svg", "src/assets", "src/manifest.webmanifest"],
+            "assets": [
+              "src/favicon.svg",
+              {
+                "glob": "*.mp4",
+                "input": "src/assets/videos/charlas-seguridad",
+                "output": "assets/videos/charlas-seguridad"
+              },
+              "src/manifest.webmanifest"
+            ],
             "styles": ["src/styles.css"],
             "serviceWorker": "ngsw-config.json"
           },
@@ -43,7 +51,14 @@
           "options": {
             "polyfills": ["zone.js", "zone.js/testing"],
             "tsConfig": "tsconfig.spec.json",
-            "assets": ["src/favicon.svg", "src/assets"],
+            "assets": [
+              "src/favicon.svg",
+              {
+                "glob": "*.mp4",
+                "input": "src/assets/videos/charlas-seguridad",
+                "output": "assets/videos/charlas-seguridad"
+              }
+            ],
             "styles": ["src/styles.css"]
           }
         }

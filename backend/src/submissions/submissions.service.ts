@@ -7,6 +7,8 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
+import { ConfigService } from '@nestjs/config';
+import { JwtService } from '@nestjs/jwt';
 import type { Prisma } from '@prisma/client';
 import type { AuthenticatedRequest } from '../common/request-context';
 import { PrismaService } from '../prisma/prisma.service';
@@ -15,8 +17,23 @@ import { ComplianceService, type Cumplimiento } from '../compliance/compliance.s
 import { PdfService } from '../pdf/pdf.service';
 import { SubmitFormDto, type CrewMemberDto } from './dto/submit-form.dto';
 import { CloseWorkdayDto } from './dto/close-workday.dto';
+import { businessDate, businessDay } from '../common/business-date';
 
 type Field = { id?: unknown; type?: unknown; required?: unknown; options?: unknown; source?: unknown };
+const safetyTalkVideos: Record<string, { minimumSeconds: number; sha256: string }> = {
+  'charla-01': { minimumSeconds: 54, sha256: '8529d57c4941486221dca0a4987d24f6268640b003b04b593e53ef9d7fae2938' },
+  'charla-02': { minimumSeconds: 54, sha256: '781e2e4df27db5cf430dd18f19ded042405a78b1836274e47a1ee71f9e4c6c92' },
+  'charla-03': { minimumSeconds: 11, sha256: '22d9e4e6adcbd5d52aa2a22a3019e77b74fc372c28cf5fb18b9d30a6fb78057c' },
+};
+
+type SafetyTalkPayload = {
+  sub: string;
+  jti: string;
+  purpose: 'SAFETY_TALK';
+  videoId: string;
+  videoSha256: string;
+  iat: number;
+};
 
 /** De dónde sale el valor de un campo que el sistema resuelve por su cuenta. */
 type Origen = 'workDate' | 'startedAt' | 'closedAt' | 'heightCertificate' | 'socialSecurity';
@@ -41,10 +58,51 @@ export class SubmissionsService {
     private readonly storage: StorageService,
     private readonly compliance: ComplianceService,
     private readonly pdf: PdfService,
+    private readonly jwt: JwtService,
+    private readonly config: ConfigService,
   ) {}
+
+  async safetyTalkChallenge(videoId: string, request: AuthenticatedRequest) {
+    const collaboratorId = this.collaboratorId(request);
+    const video = safetyTalkVideos[videoId];
+    if (!video) throw new BadRequestException('Charla de seguridad no disponible.');
+    return {
+      token: await this.jwt.signAsync(
+        { sub: collaboratorId, jti: randomUUID(), purpose: 'SAFETY_TALK', videoId, videoSha256: video.sha256 },
+        { secret: this.config.getOrThrow<string>('JWT_REFRESH_SECRET'), expiresIn: 43_200 },
+      ),
+      minimumSeconds: video.minimumSeconds,
+    };
+  }
+
+  private async validateSafetyTalk(token: string, collaboratorId: string): Promise<SafetyTalkPayload> {
+    let payload: SafetyTalkPayload;
+    try {
+      payload = await this.jwt.verifyAsync<SafetyTalkPayload>(token, {
+        secret: this.config.getOrThrow<string>('JWT_REFRESH_SECRET'),
+      });
+    } catch {
+      throw new ForbiddenException('La confirmación de la charla no es válida o expiró.');
+    }
+    const video = safetyTalkVideos[payload.videoId];
+    if (
+      payload.purpose !== 'SAFETY_TALK' ||
+      payload.sub !== collaboratorId ||
+      !video ||
+      payload.videoSha256 !== video.sha256 ||
+      !/^[0-9a-f-]{36}$/i.test(payload.jti) ||
+      !Number.isInteger(payload.iat) ||
+      businessDay(new Date(payload.iat * 1000)) !== businessDay(new Date()) ||
+      Date.now() < (payload.iat + video.minimumSeconds) * 1000
+    ) {
+      throw new ForbiddenException('Completa la charla antes de confirmar el permiso.');
+    }
+    return payload;
+  }
 
   /** Estado del oficial que abre el permiso y su propio cumplimiento. */
   async workflow(request: AuthenticatedRequest) {
+    await this.expireStalePermits();
     const collaboratorId = this.collaboratorId(request);
     const collaborator = await this.prisma.collaborator.findUnique({ where: { id: collaboratorId } });
     if (!collaborator) throw new NotFoundException();
@@ -104,8 +162,10 @@ export class SubmissionsService {
    */
   async submit(formCode: string, dto: SubmitFormDto, request: AuthenticatedRequest) {
     const oficialId = this.collaboratorId(request);
+    const charla = await this.validateSafetyTalk(dto.safetyTalkToken, oficialId);
+    await this.expireStalePermits();
     if (await this.jornadaAbierta(oficialId)) {
-      throw new ConflictException('Tienes una jornada sin cerrar. Ciérrala antes de abrir un permiso nuevo.');
+      throw new ConflictException('Ya tienes un permiso pendiente o una jornada sin cerrar.');
     }
 
     const form = await this.prisma.form.findUnique({ where: { code: formCode }, include: { currentVersion: true } });
@@ -115,7 +175,12 @@ export class SubmissionsService {
     this.validateAnswers(form.currentVersion.schemaJson, dto.answers);
 
     const integrantes = this.normalizarCuadrilla(dto.members, oficialId);
-    const cumplimientos = await this.compliance.evaluar(integrantes.map((persona) => persona.collaboratorId));
+    const integrantesIds = integrantes.map((persona) => persona.collaboratorId);
+    const activos = await this.prisma.collaborator.count({ where: { id: { in: integrantesIds }, status: 'ACTIVE' } });
+    if (activos !== integrantesIds.length) {
+      throw new ForbiddenException('Todos los integrantes de la cuadrilla deben estar activos.');
+    }
+    const cumplimientos = await this.compliance.evaluar(integrantesIds);
     const incumplen = integrantes
       .map((persona) => cumplimientos.get(persona.collaboratorId))
       .filter((cumplimiento): cumplimiento is Cumplimiento => Boolean(cumplimiento) && !cumplimiento!.apto);
@@ -133,6 +198,19 @@ export class SubmissionsService {
     try {
       const ahora = new Date();
       const submission = await this.prisma.$transaction(async (tx) => {
+        // Serializa envíos que compartan integrantes, incluso si tienen oficiales distintos.
+        for (const id of [...integrantesIds].sort()) {
+          await tx.$queryRaw`SELECT 1 AS locked FROM pg_advisory_xact_lock(hashtext(${id}))`;
+        }
+        const existente = await tx.formSubmission.findFirst({
+          where: {
+            status: { in: ['PENDING_APPROVAL', 'APPROVED'] },
+            members: { some: { collaboratorId: { in: integrantesIds } } },
+          },
+          select: { id: true },
+        });
+        if (existente)
+          throw new ConflictException('Un integrante ya tiene un permiso pendiente o una jornada abierta.');
         const created = await tx.formSubmission.create({
           data: {
             collaboratorId: oficialId,
@@ -144,10 +222,12 @@ export class SubmissionsService {
             }) as Prisma.InputJsonValue,
             safetyTalkConfirmed: true,
             safetyTalkConfirmedAt: ahora,
+            safetyTalkChallengeId: charla.jti,
+            safetyTalkVideo: charla.videoId,
+            safetyTalkVideoSha256: charla.videoSha256,
             arlSnapshotJson: (cumplimientos.get(oficialId)?.arl ?? {}) as Prisma.InputJsonValue,
             submittedAt: ahora,
-            workDate: this.diaCalendario(ahora),
-            startedAt: ahora,
+            workDate: businessDate(ahora),
           },
         });
 
@@ -196,6 +276,8 @@ export class SubmissionsService {
               formVersion: form.currentVersion!.versionNumber,
               status: 'PENDING_APPROVAL',
               crewSize: guardadas.length,
+              safetyTalkVideo: charla.videoId,
+              safetyTalkVideoSha256: charla.videoSha256,
             },
             ip: request.ip,
             userAgent: request.header('user-agent'),
@@ -216,6 +298,59 @@ export class SubmissionsService {
       await Promise.all(guardadas.map((firma) => this.storage.deleteObject(firma.objectKey).catch(() => undefined)));
       throw error;
     }
+  }
+
+  /** El integrante confirma el inicio real una vez autorizado el permiso. */
+  async startWorkday(submissionId: string, request: AuthenticatedRequest) {
+    const collaboratorId = this.collaboratorId(request);
+    await this.expireStalePermits();
+    const submission = await this.prisma.formSubmission.findUnique({
+      where: { id: submissionId },
+      include: { members: { select: { collaboratorId: true } }, formVersion: { select: { schemaJson: true } } },
+    });
+    if (!submission) throw new NotFoundException('Permiso no encontrado.');
+    if (!submission.members.some((member) => member.collaboratorId === collaboratorId)) {
+      throw new ForbiddenException('Solo un integrante de la cuadrilla puede iniciar esta jornada.');
+    }
+    if (submission.status !== 'APPROVED') throw new ConflictException('El permiso debe estar autorizado.');
+    if (submission.startedAt) throw new ConflictException('La jornada ya fue iniciada.');
+
+    const ahora = new Date();
+    if (!submission.workDate || submission.workDate.getTime() !== businessDate(ahora).getTime()) {
+      throw new ConflictException('El permiso solo puede iniciarse en su fecha de trabajo.');
+    }
+    const ids = submission.members.map((member) => member.collaboratorId);
+    const activos = await this.prisma.collaborator.count({ where: { id: { in: ids }, status: 'ACTIVE' } });
+    const vigencias = await this.compliance.evaluar(ids, ahora);
+    if (activos !== ids.length || ids.some((id) => !vigencias.get(id)?.apto)) {
+      throw new ForbiddenException('La cuadrilla debe estar activa y con los requisitos vigentes al iniciar.');
+    }
+    return this.prisma.$transaction(async (tx) => {
+      const cambiadas = await tx.formSubmission.updateMany({
+        where: { id: submissionId, status: 'APPROVED', startedAt: null },
+        data: {
+          startedAt: ahora,
+          answersJson: this.completarAutomaticos(submission.formVersion.schemaJson, submission.answersJson as object, {
+            momento: ahora,
+            solo: ['startedAt'],
+          }) as Prisma.InputJsonValue,
+        },
+      });
+      if (cambiadas.count !== 1) throw new ConflictException('La jornada ya fue iniciada por otra operación.');
+      await tx.auditEvent.create({
+        data: {
+          actorCollaboratorId: collaboratorId,
+          action: 'START_WORKDAY',
+          entityType: 'FORM_SUBMISSION',
+          entityId: submissionId,
+          afterJson: { startedAt: ahora.toISOString() },
+          ip: request.ip,
+          userAgent: request.header('user-agent'),
+          correlationId: request.correlationId ?? 'unknown',
+        },
+      });
+      return { id: submissionId, status: 'APPROVED', startedAt: ahora };
+    });
   }
 
   /**
@@ -240,11 +375,12 @@ export class SubmissionsService {
     if (submission.status !== 'APPROVED') {
       throw new ConflictException('Solo se cierra una jornada autorizada por Coordinación.');
     }
+    if (!submission.startedAt) throw new ConflictException('Primero registra el inicio de la jornada.');
 
     const ahora = new Date();
     const cerrada = await this.prisma.$transaction(async (tx) => {
       const cambiadas = await tx.formSubmission.updateMany({
-        where: { id: submissionId, status: 'APPROVED' },
+        where: { id: submissionId, status: 'APPROVED', startedAt: { not: null } },
         data: {
           status: 'CLOSED',
           closedAt: ahora,
@@ -319,11 +455,40 @@ export class SubmissionsService {
     });
   }
 
+  /** Libera permisos que nunca comenzaron y conserva una traza del vencimiento. */
+  async expireStalePermits(): Promise<void> {
+    const hoy = businessDate(new Date());
+    const stale = await this.prisma.formSubmission.findMany({
+      where: { status: { in: ['PENDING_APPROVAL', 'APPROVED'] }, startedAt: null, workDate: { lt: hoy } },
+      select: { id: true, status: true },
+    });
+    if (!stale.length) return;
+    await this.prisma.$transaction(async (tx) => {
+      for (const item of stale) {
+        const changed = await tx.formSubmission.updateMany({
+          where: { id: item.id, status: item.status, startedAt: null, workDate: { lt: hoy } },
+          data: { status: 'EXPIRED' },
+        });
+        if (changed.count !== 1) continue;
+        await tx.auditEvent.create({
+          data: {
+            action: 'EXPIRE_UNUSED_PERMIT',
+            entityType: 'FORM_SUBMISSION',
+            entityId: item.id,
+            beforeJson: { status: item.status },
+            afterJson: { status: 'EXPIRED' },
+            correlationId: `expiry-${item.id}`,
+          },
+        });
+      }
+    });
+  }
+
   // ── Interno ──────────────────────────────────────────────────────────
-  /** La jornada que sigue abierta, si la hay: autorizada y sin cerrar. */
+  /** Permiso que impide abrir otro, pendiente o autorizado. */
   private async jornadaAbierta(collaboratorId: string) {
     return this.prisma.formSubmission.findFirst({
-      where: { status: 'APPROVED', members: { some: { collaboratorId } } },
+      where: { status: { in: ['PENDING_APPROVAL', 'APPROVED'] }, members: { some: { collaboratorId } } },
       orderBy: { createdAt: 'desc' },
       select: { id: true, workDate: true, startedAt: true },
     });
@@ -392,7 +557,7 @@ export class SubmissionsService {
     const valores: Record<string, unknown> = { ...(answers as Record<string, unknown>) };
     const hora = (fecha: Date) =>
       fecha.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Bogota' });
-    const dia = (fecha: Date) => fecha.toISOString().slice(0, 10);
+    const dia = businessDay;
 
     for (const campo of campos) {
       if (campo.type !== 'auto' || typeof campo.id !== 'string') continue;
@@ -405,7 +570,7 @@ export class SubmissionsService {
           valores[campo.id] = dia(contexto.momento);
           break;
         case 'startedAt':
-          valores[campo.id] = hora(contexto.momento);
+          valores[campo.id] = contexto.solo ? hora(contexto.momento) : 'Pendiente de inicio';
           break;
         case 'closedAt':
           valores[campo.id] = contexto.cierre ? hora(contexto.cierre) : 'Jornada en curso';
@@ -425,11 +590,6 @@ export class SubmissionsService {
     if (estado === 'VIGENTE') return 'Vigente y verificado';
     if (estado === 'PROXIMA_A_VENCER') return 'Vigente, próximo a vencer';
     return 'No vigente';
-  }
-
-  /** El permiso vale para el día en que se diligencia, en días calendario UTC. */
-  private diaCalendario(momento: Date): Date {
-    return new Date(Date.UTC(momento.getUTCFullYear(), momento.getUTCMonth(), momento.getUTCDate()));
   }
 
   private collaboratorId(request: AuthenticatedRequest): string {

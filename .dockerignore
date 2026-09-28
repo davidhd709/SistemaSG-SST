@@ -5,3 +5,4 @@ coverage
 .env
 .git
 storage
+frontend/src/assets/**/*.pdf

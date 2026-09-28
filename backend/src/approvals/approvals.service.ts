@@ -5,6 +5,8 @@ import { PrismaService } from '../prisma/prisma.service';
 import { DecideSubmissionDto } from './dto/decide-submission.dto';
 import { PdfService } from '../pdf/pdf.service';
 import { Prisma } from '@prisma/client';
+import { businessDate } from '../common/business-date';
+import { SubmissionsService } from '../submissions/submissions.service';
 
 @Injectable()
 export class ApprovalsService {
@@ -14,21 +16,27 @@ export class ApprovalsService {
     private readonly prisma: PrismaService,
     private readonly arl: ArlService,
     private readonly pdf: PdfService,
+    private readonly submissions: SubmissionsService,
   ) {}
   async dashboard() {
+    await this.submissions.expireStalePermits();
     const groups = await this.prisma.formSubmission.groupBy({ by: ['status'], _count: { _all: true } });
     const counts = Object.fromEntries(groups.map((item) => [item.status, item._count._all]));
     const arl = await this.arl.list('VENCIDA');
-    const sinCerrarDeAyer = await this.prisma.formSubmission.count({
-      where: { status: 'APPROVED', workDate: { lt: this.hoy() } },
-    });
+    const [sinCerrarDeAyer, enCurso] = await Promise.all([
+      this.prisma.formSubmission.count({
+        where: { status: 'APPROVED', workDate: { lt: this.hoy() } },
+      }),
+      this.prisma.formSubmission.count({ where: { status: 'APPROVED', startedAt: { not: null } } }),
+    ]);
     return {
       pending: counts.PENDING_APPROVAL ?? 0,
-      // Autorizado equivale a jornada en curso: la cuadrilla está trabajando.
-      inProgress: counts.APPROVED ?? 0,
+      // Solo los permisos con inicio registrado cuentan como trabajo en curso.
+      inProgress: enCurso,
       approved: (counts.APPROVED ?? 0) + (counts.CLOSED ?? 0),
       closed: counts.CLOSED ?? 0,
       rejected: counts.REJECTED ?? 0,
+      expired: counts.EXPIRED ?? 0,
       blockedByArl: arl.length,
       /** Jornadas de días anteriores que nadie cerró: requieren seguimiento. */
       overdue: sinCerrarDeAyer,
@@ -40,6 +48,7 @@ export class ApprovalsService {
    * Coordinación debe perseguir porque nadie registró su finalización.
    */
   async openWorkdays() {
+    await this.submissions.expireStalePermits();
     const abiertas = await this.prisma.formSubmission.findMany({
       where: { status: 'APPROVED' },
       include: {
@@ -71,12 +80,12 @@ export class ApprovalsService {
     }));
   }
 
-  /** Hoy como día calendario UTC, igual que se guarda `workDate`. */
+  /** Hoy como día calendario de Colombia, igual que se guarda `workDate`. */
   private hoy(): Date {
-    const ahora = new Date();
-    return new Date(Date.UTC(ahora.getUTCFullYear(), ahora.getUTCMonth(), ahora.getUTCDate()));
+    return businessDate(new Date());
   }
   async pending() {
+    await this.submissions.expireStalePermits();
     const submissions = await this.prisma.formSubmission.findMany({
       where: { status: 'PENDING_APPROVAL' },
       include: {
@@ -99,6 +108,7 @@ export class ApprovalsService {
 
   /** Formularios custodiados: cada fila conserva su PDF final cuando ya existe. */
   async custody(month?: string, date?: string) {
+    await this.submissions.expireStalePermits();
     const where: Prisma.FormSubmissionWhereInput = { status: { not: 'DRAFT' } };
     const day = date && /^\d{4}-\d{2}-\d{2}$/.test(date) ? new Date(`${date}T00:00:00.000Z`) : undefined;
     if (day && !Number.isNaN(day.getTime())) {
@@ -167,6 +177,7 @@ export class ApprovalsService {
     return submission;
   }
   async decide(id: string, dto: DecideSubmissionDto, request: AuthenticatedRequest) {
+    await this.submissions.expireStalePermits();
     const actorUserId = request.principal?.kind === 'USER' ? request.principal.userId : undefined;
     if (!actorUserId) throw new ForbiddenException();
     if (dto.decision === 'REJECTED' && !dto.reason?.trim())

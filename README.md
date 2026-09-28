@@ -4,7 +4,7 @@ PWA para verificar ARL, confirmar charla de seguridad, diligenciar formularios v
 
 ## Estado
 
-La **Fase 0** está creada: monorepo npm, API NestJS, PWA Angular standalone, Prisma/PostgreSQL, Redis, Docker Compose, endpoint de salud y documentación base. Las fases de autenticación, RBAC y negocio aún no se implementan.
+El sistema implementa autenticación administrativa y de colaboradores, permisos por rol, gestión de ARL y seguridad social, formularios versionados, firma de cuadrillas, aprobación, inicio y cierre de jornadas, PDF y auditoría. Un permiso pendiente o autorizado reserva a toda su cuadrilla. Si no inicia en la fecha de trabajo, vence y libera a sus integrantes. La generación de PDF es síncrona y el despliegue productivo requiere el override documentado en `docs/DEPLOYMENT_AND_BACKUPS.md`.
 
 ## Requisitos
 
@@ -30,7 +30,9 @@ Después de iniciar los contenedores por primera vez, cree los roles, permisos y
 
 En desarrollo, firmas y PDFs se almacenan en `storage/`, directorio que no se versiona. Si se definen `R2_ENDPOINT`, `R2_BUCKET`, `R2_ACCESS_KEY_ID` y `R2_SECRET_ACCESS_KEY`, la misma interfaz `StorageService` usa Cloudflare R2. El bucket debe ser privado. Las descargas pasan por la API y se auditan.
 
-Al aprobar o rechazar un envío, el entorno de desarrollo genera el PDF de forma síncrona. La interfaz queda aislada para sustituir esa llamada por un trabajo BullMQ antes de producción.
+El PDF final se genera al cerrar una jornada autorizada o al rechazar un envío. La interfaz queda aislada para sustituir esa llamada síncrona por un trabajo BullMQ antes de producción.
+
+La charla de seguridad se confirma mediante una declaración del colaborador. La API vincula la declaración con el video y exige que transcurra su duración mínima antes de aceptar el permiso. Este control no certifica la atención de la persona al video.
 
 ## Validación
 

@@ -19,7 +19,7 @@ export class CollaboratorsController {
   ) {
     return this.collaborators.create(dto, request);
   }
-  @Patch(':id') @RequirePermissions('collaborators:read') update(
+  @Patch(':id') @RequirePermissions('collaborators:manage') update(
     @Param('id') id: string,
     @Body() dto: UpdateCollaboratorDto,
     @Req() request: AuthenticatedRequest,

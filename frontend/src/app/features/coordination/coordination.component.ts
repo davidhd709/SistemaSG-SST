@@ -1372,7 +1372,7 @@ export class CoordinationComponent {
 
   claseEstadoDocumento(estado: string): string {
     if (estado === 'CLOSED') return 'vigente';
-    if (estado === 'REJECTED') return 'vencida';
+    if (estado === 'REJECTED' || estado === 'EXPIRED') return 'vencida';
     return 'por-vencer';
   }
 
@@ -1380,6 +1380,7 @@ export class CoordinationComponent {
     if (estado === 'CLOSED') return 'Cerrado';
     if (estado === 'APPROVED') return 'En curso';
     if (estado === 'PENDING_APPROVAL') return 'Pendiente';
+    if (estado === 'EXPIRED') return 'Vencido sin iniciar';
     if (estado === 'REJECTED') return 'Rechazado';
     return estado;
   }

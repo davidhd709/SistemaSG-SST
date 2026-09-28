@@ -23,6 +23,7 @@ export class CrewMemberDto {
 export class SubmitFormDto {
   @IsObject() answers!: object;
   @IsBoolean() @Equals(true) safetyTalkConfirmed!: boolean;
+  @IsString() @MaxLength(2048) safetyTalkToken!: string;
 
   /**
    * La cuadrilla completa, incluido el oficial que diligencia. Cada integrante

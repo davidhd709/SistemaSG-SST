@@ -46,7 +46,7 @@ type Flujo = {
 
 type Envio = {
   id: string;
-  status: 'PENDING_APPROVAL' | 'APPROVED' | 'CLOSED' | 'REJECTED';
+  status: 'PENDING_APPROVAL' | 'APPROVED' | 'CLOSED' | 'REJECTED' | 'EXPIRED';
   submittedAt?: string | null;
   workDate?: string | null;
   startedAt?: string | null;
@@ -193,8 +193,8 @@ const BORRADOR = 'sg-sst.borrador';
           }
 
           <div class="acciones charla-acciones">
-            <button class="boton" type="button" (click)="reproducirCharla()">
-              {{ charlaTerminada() ? 'Repetir charla' : 'Reproducir charla' }}
+            <button class="boton" type="button" [disabled]="charlaPreparando()" (click)="reproducirCharla()">
+              {{ charlaPreparando() ? 'Preparando…' : charlaTerminada() ? 'Repetir charla' : 'Reproducir charla' }}
             </button>
           </div>
 
@@ -492,32 +492,47 @@ const BORRADOR = 'sg-sst.borrador';
           @if (resultado.status === 'APPROVED') {
             <div class="resultado aprobado">
               <span class="simbolo" aria-hidden="true">✓</span>
-              <h2>Autorizado para iniciar labores</h2>
-              <p>Coordinación aprobó el permiso. Al terminar, cierra la jornada desde aquí.</p>
+              <h2>{{ resultado.startedAt ? 'Jornada en curso' : 'Autorizado para iniciar labores' }}</h2>
+              <p>
+                {{
+                  resultado.startedAt
+                    ? 'Al terminar, cierra la jornada desde aquí.'
+                    : 'Coordinación aprobó el permiso. Registra el inicio real antes de comenzar.'
+                }}
+              </p>
             </div>
 
             <div class="bloque jornada">
               <div class="titulo-seccion">
-                <h2>Cerrar la jornada</h2>
+                <h2>{{ resultado.startedAt ? 'Cerrar la jornada' : 'Iniciar la jornada' }}</h2>
               </div>
-              <p class="secundario">
-                Inició a las {{ hora(resultado.startedAt) }}. La hora de finalización se registra al cerrar y el permiso
-                queda completo con su documento final.
-              </p>
-              <label class="campo">
-                <span>Novedades de la jornada</span>
-                <textarea
-                  rows="2"
-                  [value]="novedades()"
-                  (input)="novedades.set($any($event.target).value)"
-                  placeholder="Opcional. Queda en el documento final."
-                ></textarea>
-              </label>
-              <div class="acciones">
-                <button class="boton" type="button" [disabled]="cerrando()" (click)="cerrarJornada(resultado.id)">
-                  {{ cerrando() ? 'Cerrando…' : 'Terminamos: cerrar jornada' }}
-                </button>
-              </div>
+              @if (!resultado.startedAt) {
+                <p class="secundario">Al comenzar el trabajo, registra la hora real de inicio.</p>
+                <div class="acciones">
+                  <button class="boton" type="button" [disabled]="iniciando()" (click)="iniciarJornada(resultado.id)">
+                    {{ iniciando() ? 'Registrando…' : 'Iniciar jornada' }}
+                  </button>
+                </div>
+              } @else {
+                <p class="secundario">
+                  Inició a las {{ hora(resultado.startedAt) }}. La hora de finalización se registra al cerrar y el
+                  permiso queda completo con su documento final.
+                </p>
+                <label class="campo">
+                  <span>Novedades de la jornada</span>
+                  <textarea
+                    rows="2"
+                    [value]="novedades()"
+                    (input)="novedades.set($any($event.target).value)"
+                    placeholder="Opcional. Queda en el documento final."
+                  ></textarea>
+                </label>
+                <div class="acciones">
+                  <button class="boton" type="button" [disabled]="cerrando()" (click)="cerrarJornada(resultado.id)">
+                    {{ cerrando() ? 'Cerrando…' : 'Terminamos: cerrar jornada' }}
+                  </button>
+                </div>
+              }
             </div>
           } @else if (resultado.status === 'CLOSED') {
             <div class="resultado aprobado">
@@ -533,6 +548,12 @@ const BORRADOR = 'sg-sst.borrador';
               <span class="simbolo" aria-hidden="true">✕</span>
               <h2>Permiso rechazado</h2>
               <p>{{ resultado.approval?.reason || 'Comunícate con tu coordinadora.' }}</p>
+            </div>
+          } @else if (resultado.status === 'EXPIRED') {
+            <div class="resultado rechazado">
+              <span class="simbolo" aria-hidden="true">✕</span>
+              <h2>Permiso vencido</h2>
+              <p>La jornada no comenzó en la fecha del permiso. Diligencia uno nuevo para trabajar hoy.</p>
             </div>
           } @else {
             <div class="resultado pendiente">
@@ -693,6 +714,8 @@ export class WorkAtHeightFormComponent implements OnDestroy {
   readonly charlaActual = signal(CHARLAS_DE_SEGURIDAD[Math.floor(Math.random() * CHARLAS_DE_SEGURIDAD.length)]);
   readonly charlaTerminada = signal(false);
   readonly charlaConfirmada = signal(false);
+  readonly charlaToken = signal<string | null>(null);
+  readonly charlaPreparando = signal(false);
   private ultimoSegundoPermitido = 0;
   readonly indiceBloque = signal(0);
   readonly faltantes = signal<string[]>([]);
@@ -713,6 +736,7 @@ export class WorkAtHeightFormComponent implements OnDestroy {
   // ── Cierre de jornada ──
   readonly novedades = signal('');
   readonly cerrando = signal(false);
+  readonly iniciando = signal(false);
 
   /** A quién le toca firmar ahora. */
   readonly firmante = computed<Integrante | null>(() => this.integrantes()[this.indiceFirma()] ?? null);
@@ -798,7 +822,7 @@ export class WorkAtHeightFormComponent implements OnDestroy {
   puedeAvanzar(): boolean {
     const etapa = this.etapa();
     if (etapa === 'arl') return this.flujo()?.canContinue === true;
-    if (etapa === 'charla') return this.charlaTerminada() && this.charlaConfirmada();
+    if (etapa === 'charla') return this.charlaTerminada() && this.charlaConfirmada() && !!this.charlaToken();
     // Al menos el oficial; el resto de la cuadrilla es opcional.
     if (etapa === 'cuadrilla') return this.integrantes().length > 0;
     return true;
@@ -862,14 +886,31 @@ export class WorkAtHeightFormComponent implements OnDestroy {
 
   reproducirCharla(): void {
     const video = this.videoCharla?.nativeElement;
-    if (!video) return;
+    if (!video || this.charlaPreparando()) return;
     if (this.charlaTerminada()) {
       video.currentTime = 0;
       this.charlaTerminada.set(false);
       this.charlaConfirmada.set(false);
     }
-    void video.play().catch(() => {
-      this.error.set('No fue posible reproducir la charla. Inténtalo de nuevo.');
+    this.charlaToken.set(null);
+    this.charlaPreparando.set(true);
+    const videoId = this.charlaActual()
+      .split('/')
+      .at(-1)
+      ?.replace(/\.mp4$/, '');
+    this.http.post<{ token: string }>('/api/submissions/safety-talk/challenge', { videoId }).subscribe({
+      next: ({ token }) => {
+        this.charlaToken.set(token);
+        this.charlaPreparando.set(false);
+        void video.play().catch(() => {
+          this.charlaToken.set(null);
+          this.error.set('No fue posible reproducir la charla. Inténtalo de nuevo.');
+        });
+      },
+      error: () => {
+        this.charlaPreparando.set(false);
+        this.error.set('No fue posible preparar la charla. Revisa tu conexión.');
+      },
     });
   }
 
@@ -921,9 +962,14 @@ export class WorkAtHeightFormComponent implements OnDestroy {
     const cumplimiento = this.flujo()?.cumplimiento;
     switch (campo.source) {
       case 'workDate':
-        return ahora.toLocaleDateString('es-CO', { day: '2-digit', month: 'long', year: 'numeric' });
+        return ahora.toLocaleDateString('es-CO', {
+          day: '2-digit',
+          month: 'long',
+          year: 'numeric',
+          timeZone: 'America/Bogota',
+        });
       case 'startedAt':
-        return ahora.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
+        return 'Se registra al iniciar la jornada';
       case 'closedAt':
         return 'Se registra al cerrar la jornada';
       case 'heightCertificate':
@@ -940,7 +986,7 @@ export class WorkAtHeightFormComponent implements OnDestroy {
       case 'workDate':
         return 'El permiso rige solo hoy.';
       case 'startedAt':
-        return 'Es la hora en que estás diligenciando.';
+        return 'Se registra después de la aprobación, cuando comiencen las labores.';
       case 'closedAt':
         return 'Cuando terminen, cierra la jornada desde la app.';
       case 'heightCertificate':
@@ -988,6 +1034,22 @@ export class WorkAtHeightFormComponent implements OnDestroy {
   }
 
   // ── Cierre de jornada ────────────────────────────────────
+  iniciarJornada(submissionId: string): void {
+    if (this.iniciando()) return;
+    this.iniciando.set(true);
+    this.error.set('');
+    this.http.post<{ startedAt: string }>(`/api/submissions/${submissionId}/start`, {}).subscribe({
+      next: ({ startedAt }) => {
+        this.envio.update((actual) => (actual ? { ...actual, startedAt } : actual));
+        this.iniciando.set(false);
+      },
+      error: (respuesta: HttpErrorResponse) => {
+        this.error.set(respuesta.error?.message || 'No fue posible iniciar la jornada.');
+        this.iniciando.set(false);
+      },
+    });
+  }
+
   cerrarJornada(submissionId: string): void {
     if (this.cerrando()) return;
     this.cerrando.set(true);
@@ -1009,7 +1071,11 @@ export class WorkAtHeightFormComponent implements OnDestroy {
 
   hora(valor: string | null | undefined): string {
     if (!valor) return '—';
-    return new Date(valor).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
+    return new Date(valor).toLocaleTimeString('es-CO', {
+      hour: '2-digit',
+      minute: '2-digit',
+      timeZone: 'America/Bogota',
+    });
   }
 
   /** El oficial diligencia el permiso y el resto de la cuadrilla inicia como ayudante. */
@@ -1158,13 +1224,14 @@ export class WorkAtHeightFormComponent implements OnDestroy {
   // ── Envío ────────────────────────────────────────────────
   enviar(): void {
     const cuadrilla = this.integrantes();
-    if (this.enviando() || !cuadrilla.every((persona) => persona.firmaDataUrl)) return;
+    if (this.enviando() || !this.charlaToken() || !cuadrilla.every((persona) => persona.firmaDataUrl)) return;
     this.enviando.set(true);
     this.error.set('');
     this.http
       .post<Envio>('/api/submissions/forms/HSE-FO-016', {
         answers: this.respuestasNormalizadas(),
         safetyTalkConfirmed: true,
+        safetyTalkToken: this.charlaToken(),
         members: cuadrilla.map((persona) => ({
           collaboratorId: persona.candidato.id,
           jobPositionId: persona.jobPositionId || undefined,
