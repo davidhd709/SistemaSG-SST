@@ -26,16 +26,15 @@ export class CheckboxRenderer {
     const { x, y, size, mark = 'X' } = field;
     const pageHeight = page.getHeight();
 
-    // Convertir de coordenadas top-left (mapping) a bottom-left (pdf-lib).
+    // Convertir de coordenadas top-left a bottom-left si aplica, o usar bottom-left directamente.
     // El área de la casilla es un cuadrado de `size × size`.
-    const baseY = pageHeight - y - size;
+    const isTopLeft = (field as { origin?: string }).origin === 'top-left';
+    const baseY = isTopLeft ? pageHeight - y - size : y;
 
     // Centrar el símbolo dentro del área de la casilla.
-    // Usamos Helvetica Bold estándar para el símbolo (está embebida en pdf-lib
-    // sin necesidad de cargar fuente externa).
-    const fontSize = size * 0.8;
+    const fontSize = size * 0.85;
     const symbolX = x + size * 0.1;
-    const symbolY = baseY + size * 0.1;
+    const symbolY = baseY + size * 0.15;
 
     try {
       page.drawText(mark, {

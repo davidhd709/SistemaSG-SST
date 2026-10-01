@@ -45,10 +45,11 @@ export class TextRenderer {
     } = field;
 
     // pdf-lib usa coordenadas desde la esquina inferior-izquierda (origen Y=0 en fondo).
-    // El mapping usa coordenadas desde la esquina superior-izquierda (origen Y=0 arriba).
-    // La conversión se hace aquí: y_pdf = pageHeight - y_mapping - height.
+    // Si el campo tiene origin: 'top-left', se convierte: y_pdf = pageHeight - y_mapping - height.
+    // De lo contrario, se asume el sistema nativo de pdf-lib (bottom-left): baseY = y.
     const pageHeight = page.getHeight();
-    const baseY = pageHeight - y - height;
+    const isTopLeft = (field as { origin?: string }).origin === 'top-left';
+    const baseY = isTopLeft ? pageHeight - y - height : y;
 
     let currentFontSize = initialFontSize;
     let lines: string[] = [];
@@ -57,7 +58,7 @@ export class TextRenderer {
     while (currentFontSize >= minFontSize) {
       lines = this.wrapText(value, font, currentFontSize, width);
       if (maxLines !== undefined) lines = lines.slice(0, maxLines);
-      const totalTextHeight = lines.length * currentFontSize * 1.2; // leading ×1.2
+      const totalTextHeight = lines.length === 1 ? currentFontSize : lines.length * currentFontSize * 1.2;
       if (totalTextHeight <= height) {
         fits = true;
         break;
@@ -91,23 +92,32 @@ export class TextRenderer {
     }
 
     const leading = currentFontSize * 1.2;
-    // Dibujamos desde la parte superior de la celda hacia abajo.
-    const topY = baseY + height - currentFontSize;
-
-    for (let i = 0; i < lines.length; i++) {
-      const lineY = topY - i * leading;
-      // No dibujar líneas que caigan por debajo del límite inferior de la celda.
-      if (lineY < baseY - leading) break;
-
-      const lineX = this.computeX(lines[i], font, currentFontSize, x, width, align);
-
-      page.drawText(lines[i], {
+    if (lines.length === 1) {
+      // Línea única: centrado vertical en la celda con padding mínimo
+      const lineY = baseY + Math.max(0.5, (height - currentFontSize) / 2);
+      const lineX = this.computeX(lines[0], font, currentFontSize, x, width, align);
+      page.drawText(lines[0], {
         x: lineX,
         y: lineY,
         size: currentFontSize,
         font,
         color: rgb(0, 0, 0),
       });
+    } else {
+      // Multilínea: desde la parte superior de la celda hacia abajo
+      const topY = baseY + height - currentFontSize;
+      for (let i = 0; i < lines.length; i++) {
+        const lineY = topY - i * leading;
+        if (lineY < baseY - leading) break;
+        const lineX = this.computeX(lines[i], font, currentFontSize, x, width, align);
+        page.drawText(lines[i], {
+          x: lineX,
+          y: lineY,
+          size: currentFontSize,
+          font,
+          color: rgb(0, 0, 0),
+        });
+      }
     }
   }
 
@@ -158,7 +168,7 @@ export class TextRenderer {
     maxWidth: number,
     maxHeight: number,
   ): string[] {
-    const maxLinesCount = Math.floor(maxHeight / (fontSize * 1.2));
+    const maxLinesCount = Math.max(1, Math.floor(maxHeight / (fontSize * 1.2)));
     const lines = this.wrapText(text, font, fontSize, maxWidth).slice(0, maxLinesCount);
 
     if (lines.length === 0) return [];

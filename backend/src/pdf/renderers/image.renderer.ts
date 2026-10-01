@@ -77,9 +77,12 @@ export class ImageRenderer {
       drawX = x + (width - drawWidth) / 2;
     }
 
-    // Convertir Y: de top-left (mapping) a bottom-left (pdf-lib).
+    // Convertir Y: si es top-left a bottom-left, o usar bottom-left directamente.
     // Centramos verticalmente dentro del área.
-    const drawY = pageHeight - y - height + (height - drawHeight) / 2;
+    const isTopLeft = (field as { origin?: string }).origin === 'top-left';
+    const drawY = isTopLeft
+      ? pageHeight - y - height + (height - drawHeight) / 2
+      : y + (height - drawHeight) / 2;
 
     try {
       page.drawImage(embeddedImage, {

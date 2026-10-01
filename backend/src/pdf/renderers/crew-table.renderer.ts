@@ -118,16 +118,6 @@ export class CrewTableRenderer {
 
       // Firma
       if (member.signatureBytes && member.signatureBytes.length > 0) {
-        // En pdf-lib el ImageRenderer espera Y de top-left o bottom-left?
-        // Revisemos ImageRenderer:
-        // const drawY = pageHeight - y - height + (height - drawHeight) / 2;
-        // ImageRenderer toma y como TOP-LEFT en sistema de mapping!
-        // En sistema pdf-lib bottom-left:
-        // pageHeight - topY - height = rowY
-        // Por tanto topY = pageHeight - rowY - config.rowHeight.
-        const pageHeight = page.getHeight();
-        const topY = pageHeight - rowY - config.rowHeight;
-
         await this.imageRenderer.render({
           page,
           pdfDoc,
@@ -135,7 +125,7 @@ export class CrewTableRenderer {
             type: 'SIGNATURE',
             page: 0,
             x: cols.firma.x,
-            y: topY,
+            y: rowY,
             width: cols.firma.width,
             height: cols.firma.height,
             fit: 'contain',

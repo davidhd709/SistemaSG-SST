@@ -78,6 +78,7 @@ export interface TemplateMeta {
   pageCount: number;
   pageSize: { width: number; height: number };
   orientation: 'portrait' | 'landscape';
+  coordinateOrigin?: 'top-left' | 'bottom-left';
 }
 
 export interface TemplateMapping {
