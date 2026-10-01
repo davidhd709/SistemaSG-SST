@@ -42,10 +42,19 @@ export class PdfService {
     if (!submission.members.length) throw new Error('El permiso no tiene integrantes registrados.');
 
     const formCode = submission.formVersion.form.code;
-    const templateVersion = `v${String(submission.formVersion.versionNumber).padStart(2, '0')}`;
+    const defaultVer = this.templateRegistry.defaultVersion(formCode) ?? 'v00';
+    const templateVersion =
+      (submission as { templateVersion?: string | null }).templateVersion ||
+      defaultVer;
 
     // 1. Resolver y cargar la plantilla base inmutable
-    const { templatePath, mappingPath } = await this.templateRegistry.resolve(formCode, templateVersion);
+    let templateLocations: { templatePath: string; mappingPath: string };
+    try {
+      templateLocations = await this.templateRegistry.resolve(formCode, templateVersion);
+    } catch {
+      templateLocations = await this.templateRegistry.resolve(formCode, defaultVer);
+    }
+    const { templatePath, mappingPath } = templateLocations;
     const { pdfDoc, mapping } = await this.templateLoader.load(templatePath, mappingPath);
 
     // 2. Preparar respuestas base
