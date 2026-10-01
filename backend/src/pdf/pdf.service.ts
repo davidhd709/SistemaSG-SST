@@ -70,10 +70,14 @@ export class PdfService {
         : '';
     }
     if (!answers.hora_inicio && submission.startedAt) {
-      answers.hora_inicio = new Intl.DateTimeFormat('es-CO', { hour: '2-digit', minute: '2-digit', hour12: true }).format(submission.startedAt);
+      answers.hora_inicio = new Intl.DateTimeFormat('es-CO', { hour: '2-digit', minute: '2-digit', hour12: true })
+        .format(submission.startedAt)
+        .replace(/\s*([ap])\.\s*m\./i, ' $1.m.');
     }
     if (!answers.hora_fin && submission.closedAt) {
-      answers.hora_fin = new Intl.DateTimeFormat('es-CO', { hour: '2-digit', minute: '2-digit', hour12: true }).format(submission.closedAt);
+      answers.hora_fin = new Intl.DateTimeFormat('es-CO', { hour: '2-digit', minute: '2-digit', hour12: true })
+        .format(submission.closedAt)
+        .replace(/\s*([ap])\.\s*m\./i, ' $1.m.');
     }
 
     // 3. Procesar cuadrilla y firmas

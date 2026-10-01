@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PDFPage, PDFDocument } from 'pdf-lib';
+import { PNG } from 'pngjs';
 import type { SignatureField, ImageField } from '../template-loader';
 
 export interface RenderImageOptions {
@@ -36,7 +37,9 @@ export class ImageRenderer {
     let embeddedImage;
     try {
       if (this.isPng(imageBytes)) {
-        embeddedImage = await pdfDoc.embedPng(imageBytes);
+        const isSignature = field.type === 'SIGNATURE';
+        const bytesToEmbed = isSignature ? this.removeWhiteBackground(imageBytes) : imageBytes;
+        embeddedImage = await pdfDoc.embedPng(bytesToEmbed);
       } else if (this.isJpeg(imageBytes)) {
         embeddedImage = await pdfDoc.embedJpg(imageBytes);
       } else {
@@ -98,6 +101,42 @@ export class ImageRenderer {
   }
 
   // ── Detección de formato ──────────────────────────────────────────────────
+
+  /**
+   * Elimina el fondo blanco o casi blanco de una firma PNG para que sea
+   * transparente y se integre de forma natural sobre la cuadrícula del PDF.
+   */
+  private removeWhiteBackground(imageBytes: Buffer): Buffer {
+    try {
+      const png = PNG.sync.read(imageBytes);
+      const data = png.data;
+      const len = data.length;
+
+      for (let i = 0; i < len; i += 4) {
+        const r = data[i];
+        const g = data[i + 1];
+        const b = data[i + 2];
+        const a = data[i + 3];
+
+        if (a === 0) continue;
+
+        // Si el píxel es blanco puro o casi blanco (> 220 en los 3 canales)
+        if (r > 220 && g > 220 && b > 220) {
+          data[i + 3] = 0; // Totalmente transparente
+        } else if (r > 160 && g > 160 && b > 160) {
+          // Antialiasing suave para evitar halos blancos alrededor de los trazos oscuros
+          const brightness = (r + g + b) / 3;
+          const factor = (220 - brightness) / 60; // 0 a 1
+          data[i + 3] = Math.round(a * Math.max(0, Math.min(1, factor)));
+        }
+      }
+
+      return PNG.sync.write(png);
+    } catch (err) {
+      this.logger.warn(`No fue posible aplicar transparencia a la firma: ${String(err)}`);
+      return imageBytes;
+    }
+  }
 
   private isPng(bytes: Buffer): boolean {
     return bytes.length >= 8 && bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47;
