@@ -103,37 +103,99 @@ export class ImageRenderer {
   // ── Detección de formato ──────────────────────────────────────────────────
 
   /**
-   * Elimina el fondo blanco o casi blanco de una firma PNG para que sea
-   * transparente y se integre de forma natural sobre la cuadrícula del PDF.
+   * Procesa la firma digital para que sea nítida, contrastada y perfectamente legible:
+   * 1. Elimina el fondo blanco (transparencia total).
+   * 2. Recorta automáticamente los márgenes vacíos (auto-crop al trazo de tinta).
+   * 3. Aplica engrosamiento morfológico (dilatación) y refuerzo a negro/azul tinta profundo,
+   *    asegurando que las líneas no se desvanezcan al escalar o al imprimir.
    */
   private removeWhiteBackground(imageBytes: Buffer): Buffer {
     try {
-      const png = PNG.sync.read(imageBytes);
-      const data = png.data;
-      const len = data.length;
+      const src = PNG.sync.read(imageBytes);
+      const { width, height, data } = src;
 
-      for (let i = 0; i < len; i += 4) {
-        const r = data[i];
-        const g = data[i + 1];
-        const b = data[i + 2];
-        const a = data[i + 3];
+      let minX = width;
+      let maxX = 0;
+      let minY = height;
+      let maxY = 0;
+      const isInk = new Uint8Array(width * height);
+      let inkCount = 0;
 
-        if (a === 0) continue;
+      // Detectar píxeles que pertenecen al trazo (no blancos ni transparentes)
+      for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+          const idx = (width * y + x) << 2;
+          const r = data[idx];
+          const g = data[idx + 1];
+          const b = data[idx + 2];
+          const a = data[idx + 3];
 
-        // Si el píxel es blanco puro o casi blanco (> 220 en los 3 canales)
-        if (r > 220 && g > 220 && b > 220) {
-          data[i + 3] = 0; // Totalmente transparente
-        } else if (r > 160 && g > 160 && b > 160) {
-          // Antialiasing suave para evitar halos blancos alrededor de los trazos oscuros
-          const brightness = (r + g + b) / 3;
-          const factor = (220 - brightness) / 60; // 0 a 1
-          data[i + 3] = Math.round(a * Math.max(0, Math.min(1, factor)));
+          // Si el píxel tiene opacidad y no es blanco de fondo
+          if (a > 30 && (r < 225 || g < 225 || b < 225)) {
+            isInk[y * width + x] = 1;
+            inkCount++;
+            if (x < minX) minX = x;
+            if (x > maxX) maxX = x;
+            if (y < minY) minY = y;
+            if (y > maxY) maxY = y;
+          }
         }
       }
 
-      return PNG.sync.write(png);
+      // Si no hay trazo apreciable, retornar imagen original
+      if (inkCount === 0 || minX > maxX || minY > maxY) {
+        return imageBytes;
+      }
+
+      // Añadir margen mínimo alrededor del trazo (padding de 6px)
+      const pad = 6;
+      minX = Math.max(0, minX - pad);
+      maxX = Math.min(width - 1, maxX + pad);
+      minY = Math.max(0, minY - pad);
+      maxY = Math.min(height - 1, maxY + pad);
+
+      const cropW = maxX - minX + 1;
+      const cropH = maxY - minY + 1;
+      const dst = new PNG({ width: cropW, height: cropH });
+
+      // Radio de dilatación: 2 píxeles para asegurar trazo visible en escala pequeña e impresión
+      const r = 2;
+
+      for (let cy = 0; cy < cropH; cy++) {
+        const sy = minY + cy;
+        for (let cx = 0; cx < cropW; cx++) {
+          const sx = minX + cx;
+          let inkFound = false;
+
+          for (let dy = -r; dy <= r && !inkFound; dy++) {
+            const ny = sy + dy;
+            if (ny < 0 || ny >= height) continue;
+            for (let dx = -r; dx <= r; dx++) {
+              const nx = sx + dx;
+              if (nx < 0 || nx >= width) continue;
+              if (isInk[ny * width + nx]) {
+                inkFound = true;
+                break;
+              }
+            }
+          }
+
+          const dstIdx = (cropW * cy + cx) << 2;
+          if (inkFound) {
+            // Tinta oscura sólida (negro azulado profundo de bolígrafo)
+            dst.data[dstIdx] = 10;
+            dst.data[dstIdx + 1] = 20;
+            dst.data[dstIdx + 2] = 50;
+            dst.data[dstIdx + 3] = 255;
+          } else {
+            dst.data[dstIdx + 3] = 0; // Totalmente transparente
+          }
+        }
+      }
+
+      return PNG.sync.write(dst);
     } catch (err) {
-      this.logger.warn(`No fue posible aplicar transparencia a la firma: ${String(err)}`);
+      this.logger.warn(`No fue posible procesar la firma: ${String(err)}`);
       return imageBytes;
     }
   }
