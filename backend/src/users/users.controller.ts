@@ -22,7 +22,7 @@ export class UsersController {
   @Post() @RequirePermissions('users:create') create(@Body() dto: CreateUserDto, @Req() request: AuthenticatedRequest) {
     return this.users.create(dto, request);
   }
-  @Patch(':id') @RequirePermissions('users:read') update(
+  @Patch(':id') @RequirePermissions('users:manage') update(
     @Param('id') id: string,
     @Body() dto: UpdateUserDto,
     @Req() request: AuthenticatedRequest,

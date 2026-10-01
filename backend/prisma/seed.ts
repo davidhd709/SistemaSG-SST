@@ -13,6 +13,7 @@ const roles: Record<string, { name: string; permissions: string[] }> = {
     permissions: [
       'users:create',
       'users:read',
+      'users:manage',
       'roles:read',
       'collaborators:create',
       'collaborators:read',

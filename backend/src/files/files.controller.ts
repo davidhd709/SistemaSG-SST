@@ -2,7 +2,6 @@ import { Controller, Get, Param, Req, Res } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import type { Response } from 'express';
-import { RequirePermissions } from '../auth/auth.decorators';
 import type { AuthenticatedRequest } from '../common/request-context';
 import { AuditService } from '../audit/audit.service';
 import { FilesService } from './files.service';
@@ -17,13 +16,12 @@ export class FilesController {
 
   @Throttle({ default: { limit: 30, ttl: 60_000 } })
   @Get(':id/download')
-  @RequirePermissions('files:read')
   async download(
     @Param('id') id: string,
     @Req() request: AuthenticatedRequest,
     @Res() response: Response,
   ): Promise<void> {
-    const { file, content } = await this.files.download(id);
+    const { file, content } = await this.files.download(id, request.principal);
     await this.audit.record({
       actorUserId: request.principal?.kind === 'USER' ? request.principal.userId : undefined,
       actorCollaboratorId: request.principal?.kind === 'COLLABORATOR' ? request.principal.collaboratorId : undefined,

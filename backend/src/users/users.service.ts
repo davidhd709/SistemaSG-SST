@@ -132,6 +132,12 @@ export class UsersService {
         await tx.userRole.deleteMany({ where: { userId: id } });
         await tx.userRole.createMany({ data: roles.map((role) => ({ userId: id, roleId: role.id })) });
       }
+      if (dto.password || dto.status === 'INACTIVE' || roles) {
+        await tx.refreshSession.updateMany({
+          where: { userId: id, revokedAt: null },
+          data: { revokedAt: new Date() },
+        });
+      }
       await tx.auditEvent.create({
         data: {
           actorUserId,
