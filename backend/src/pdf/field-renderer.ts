@@ -11,7 +11,9 @@ import { CrewTableRenderer, CrewMemberRow, CrewTableConfig } from './renderers/c
  */
 export interface ResolvedSignature {
   /** Índice del integrante de cuadrilla (0-based, igual que memberIndex en mapping). */
-  memberIndex: number;
+  memberIndex?: number;
+  /** Clave del campo en el mapping (ej. 'autorizador_firma', 'responsable_emergencia_firma', 'coordinador_alturas_firma'). */
+  fieldKey?: string;
   imageBytes: Buffer;
 }
 
@@ -105,10 +107,25 @@ export class FieldRenderer {
 
       case 'SIGNATURE': {
         const sigField = field as SignatureField;
-        const memberIndex = sigField.memberIndex ?? 0;
-        const resolved = data.signatures.find((s) => s.memberIndex === memberIndex);
-        if (resolved?.imageBytes) {
-          await this.imageRenderer.render({ page, pdfDoc, field: sigField, imageBytes: resolved.imageBytes });
+        const resolved = data.signatures.find(
+          (s) =>
+            (s.fieldKey && (s.fieldKey === key || s.fieldKey === sigField.fieldKey)) ||
+            (sigField.memberIndex !== undefined && s.memberIndex === sigField.memberIndex),
+        );
+        let imageBytes = resolved?.imageBytes;
+        if (!imageBytes && typeof data.answers[key] === 'string') {
+          const raw = (data.answers[key] as string).trim();
+          if (raw.startsWith('data:image/') || /^[A-Za-z0-9+/=]{50,}$/.test(raw)) {
+            try {
+              const base64Data = raw.includes(',') ? raw.split(',')[1] : raw;
+              imageBytes = Buffer.from(base64Data, 'base64');
+            } catch {
+              // No es base64 válido
+            }
+          }
+        }
+        if (imageBytes) {
+          await this.imageRenderer.render({ page, pdfDoc, field: sigField, imageBytes });
         }
         break;
       }

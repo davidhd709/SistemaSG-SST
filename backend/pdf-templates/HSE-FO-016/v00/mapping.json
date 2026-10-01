@@ -2428,6 +2428,72 @@
       "align": "left",
       "overflow": "truncate",
       "maxLines": 1
+    },
+    "autorizador_firma": {
+      "type": "SIGNATURE",
+      "page": 0,
+      "x": 382.0,
+      "y": 77.4,
+      "width": 146.0,
+      "height": 5.8,
+      "fit": "contain",
+      "align": "center",
+      "fieldKey": "autorizador_firma"
+    },
+    "firma_autorizador": {
+      "type": "SIGNATURE",
+      "page": 0,
+      "x": 382.0,
+      "y": 77.4,
+      "width": 146.0,
+      "height": 5.8,
+      "fit": "contain",
+      "align": "center",
+      "fieldKey": "autorizador_firma"
+    },
+    "responsable_emergencia_firma": {
+      "type": "SIGNATURE",
+      "page": 0,
+      "x": 382.0,
+      "y": 64.1,
+      "width": 146.0,
+      "height": 5.8,
+      "fit": "contain",
+      "align": "center",
+      "fieldKey": "responsable_emergencia_firma"
+    },
+    "firma_responsable_emergencia": {
+      "type": "SIGNATURE",
+      "page": 0,
+      "x": 382.0,
+      "y": 64.1,
+      "width": 146.0,
+      "height": 5.8,
+      "fit": "contain",
+      "align": "center",
+      "fieldKey": "responsable_emergencia_firma"
+    },
+    "coordinador_alturas_firma": {
+      "type": "SIGNATURE",
+      "page": 0,
+      "x": 382.0,
+      "y": 50.8,
+      "width": 146.0,
+      "height": 5.8,
+      "fit": "contain",
+      "align": "center",
+      "fieldKey": "coordinador_alturas_firma"
+    },
+    "firma_coordinador_alturas": {
+      "type": "SIGNATURE",
+      "page": 0,
+      "x": 382.0,
+      "y": 50.8,
+      "width": 146.0,
+      "height": 5.8,
+      "fit": "contain",
+      "align": "center",
+      "fieldKey": "coordinador_alturas_firma"
     }
   }
 }

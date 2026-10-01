@@ -39,6 +39,7 @@ export interface SignatureField {
   fit?: 'contain' | 'fill';
   align?: 'left' | 'center' | 'right';
   memberIndex?: number;
+  fieldKey?: string;
 }
 
 export interface ImageField {
