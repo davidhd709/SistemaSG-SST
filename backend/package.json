@@ -31,7 +31,7 @@
     "cookie-parser": "^1.4.7",
     "express": "^5.2.1",
     "helmet": "^8.1.0",
-    "puppeteer": "^24.16.0",
+    "pdf-lib": "^1.17.1",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1"
   },

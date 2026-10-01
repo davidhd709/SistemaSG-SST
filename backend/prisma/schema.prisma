@@ -283,6 +283,8 @@ model FormSubmission {
   signatures            Signature[]
   finalPdfFileId        String?            @unique @db.Uuid
   finalPdfFile          FileObject?        @relation("SubmissionPdf", fields: [finalPdfFileId], references: [id], onDelete: Restrict)
+  // Version de la plantilla PDF usada al generar el documento final.
+  templateVersion       String?
   approval              Approval?
 
   @@index([collaboratorId, createdAt])
