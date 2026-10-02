@@ -1,5 +1,6 @@
 FROM node:22-alpine AS build
 WORKDIR /workspace
+ENV PUPPETEER_SKIP_DOWNLOAD=true
 COPY package.json ./
 COPY pnpm-workspace.yaml ./
 COPY pnpm-lock.yaml ./
@@ -8,10 +9,11 @@ COPY frontend/package.json frontend/package.json
 RUN corepack enable && pnpm install --frozen-lockfile
 COPY backend backend
 RUN pnpm --filter @sg-sst/api run prisma:generate && pnpm --filter @sg-sst/api run build
-
 FROM node:22-alpine
 WORKDIR /app/backend
 ENV NODE_ENV=production
+ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
+RUN apk add --no-cache chromium nss freetype harfbuzz ttf-freefont
 # pnpm resuelve cada paquete mediante enlaces relativos desde backend/node_modules
 # hacia el almacén .pnpm de la raíz, así que ambos árboles deben conservar su
 # posición original dentro de la imagen.

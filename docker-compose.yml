@@ -34,7 +34,7 @@ services:
       context: .
       dockerfile: backend/Dockerfile
     environment:
-      NODE_ENV: ${NODE_ENV:-development}
+      NODE_ENV: development
       API_PORT: 3000
       DATABASE_URL: postgresql://${POSTGRES_USER:-sg_sst}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-sg_sst}?schema=public
       REDIS_URL: redis://redis:6379
@@ -54,6 +54,8 @@ services:
       - api_storage:/app/backend/storage
     depends_on:
       postgres:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     restart: unless-stopped
 
