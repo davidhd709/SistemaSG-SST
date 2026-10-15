@@ -1,0 +1,12 @@
+# Normalización de finales de línea entre entornos Windows y Linux/CI
+* text=auto eol=lf
+
+# Archivos binarios
+*.pdf binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.ico binary
+*.mp4 binary
+*.xlsx binary
+*.docx binary

@@ -1,0 +1,63 @@
+name: CI SG-SST
+
+on:
+  push:
+    branches:
+      - main
+      - 'chore/**'
+      - 'fix/**'
+      - 'feat/**'
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  validate:
+    name: Integración y Validación SG-SST
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout del repositorio
+        uses: actions/checkout@v4
+
+      - name: Instalar pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.23.0
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'pnpm'
+
+      - name: Instalar dependencias reproducibles
+        run: pnpm install --frozen-lockfile
+
+      - name: Validar y generar cliente de Prisma
+        env:
+          DATABASE_URL: 'postgresql://ci_user:ci_password@localhost:5432/sg_sst_ci?schema=public'
+        run: |
+          pnpm --filter @sg-sst/api exec prisma validate
+          pnpm --filter @sg-sst/api run prisma:generate
+
+      - name: Validación de formato raíz (Prettier)
+        run: pnpm run format:check
+
+      - name: Lint de Backend
+        run: pnpm --filter @sg-sst/api run lint
+
+      - name: Lint de Frontend
+        run: pnpm --filter @sg-sst/web run lint
+
+      - name: Compilación de Backend
+        run: pnpm --filter @sg-sst/api run build
+
+      - name: Compilación de Frontend
+        run: pnpm --filter @sg-sst/web run build
+
+      - name: Pruebas unitarias de Backend
+        run: pnpm --filter @sg-sst/api run test
+
+      - name: Pruebas unitarias de Frontend
+        run: pnpm --filter @sg-sst/web exec ng test --watch=false --browsers=ChromeHeadless
