@@ -43,9 +43,7 @@ export class PdfService {
 
     const formCode = submission.formVersion.form.code;
     const defaultVer = this.templateRegistry.defaultVersion(formCode) ?? 'v00';
-    const templateVersion =
-      (submission as { templateVersion?: string | null }).templateVersion ||
-      defaultVer;
+    const templateVersion = (submission as { templateVersion?: string | null }).templateVersion || defaultVer;
 
     // 1. Resolver y cargar la plantilla base inmutable
     let templateLocations: { templatePath: string; mappingPath: string };
@@ -57,10 +55,22 @@ export class PdfService {
     const { templatePath, mappingPath } = templateLocations;
     const { pdfDoc, mapping } = await this.templateLoader.load(templatePath, mappingPath);
 
-    // 2. Preparar respuestas base
-    const answers: Record<string, unknown> = {
-      ...((submission.answersJson as Record<string, unknown>) || {}),
-    };
+    // 2. Preparar respuestas base ignorando claves protegidas o no autorizadas
+    const rawAnswers = (submission.answersJson as Record<string, unknown>) || {};
+    const schemaFields = (
+      submission.formVersion?.schemaJson as { fields?: Array<{ id?: string; type?: string }> } | null
+    )?.fields;
+    const allowedSchemaFieldIds =
+      Array.isArray(schemaFields) && schemaFields.length > 0
+        ? new Set(schemaFields.filter((f) => typeof f.id === 'string').map((f) => f.id as string))
+        : null;
+
+    const answers: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(rawAnswers)) {
+      if (this.isProtectedAnswerKey(key)) continue;
+      if (allowedSchemaFieldIds && !allowedSchemaFieldIds.has(key)) continue;
+      answers[key] = value;
+    }
 
     // Fechas y horas si no vienen directamente en answers
     if (!answers.fecha_trabajo && (submission.workDate || submission.submittedAt)) {
@@ -80,7 +90,7 @@ export class PdfService {
         .replace(/\s*([ap])\.\s*m\./i, ' $1.m.');
     }
 
-    // 3. Procesar cuadrilla y firmas
+    // 3. Procesar cuadrilla y firmas exclusivamente desde registros de base de datos
     const signatures: ResolvedSignature[] = [];
     const crewMembers: CrewMemberRow[] = [];
 
@@ -90,24 +100,22 @@ export class PdfService {
       const nombre = `${member.collaborator.firstName} ${member.collaborator.lastName}`.trim();
       const cedula = member.collaborator.documentNumber;
       const cargo = member.jobPosition?.name ?? member.collaborator.jobTitle ?? '—';
-      const certificado =
-        (answers[`cuadrilla_${idx}_certificado`] as string) ||
-        (member.isLead ? (answers['certificado_alturas'] as string) || 'Vigente' : 'Vigente');
-      const segSocial =
-        (answers[`cuadrilla_${idx}_seg_social`] as string) ||
-        (member.isLead ? (answers['seguridad_social_verificada'] as string) || 'Verificada' : 'Verificada');
+      const certificado = member.isLead ? (answers['certificado_alturas'] as string) || 'Vigente' : 'Vigente';
+      const segSocial = member.isLead
+        ? (answers['seguridad_social_verificada'] as string) || 'Verificada'
+        : 'Verificada';
 
       // Mapeo declarativo fila por fila (cuadrilla_01..05 y alias ejecutor_01..05)
-      answers[`cuadrilla_${idx}_cedula`] = answers[`cuadrilla_${idx}_cedula`] || cedula;
-      answers[`cuadrilla_${idx}_nombre`] = answers[`cuadrilla_${idx}_nombre`] || nombre;
+      answers[`cuadrilla_${idx}_cedula`] = cedula;
+      answers[`cuadrilla_${idx}_nombre`] = nombre;
       answers[`cuadrilla_${idx}_certificado`] = certificado;
-      answers[`cuadrilla_${idx}_cargo`] = answers[`cuadrilla_${idx}_cargo`] || cargo;
+      answers[`cuadrilla_${idx}_cargo`] = cargo;
       answers[`cuadrilla_${idx}_seg_social`] = segSocial;
 
-      answers[`ejecutor_${idx}_cedula`] = answers[`ejecutor_${idx}_cedula`] || cedula;
-      answers[`ejecutor_${idx}_nombre`] = answers[`ejecutor_${idx}_nombre`] || nombre;
+      answers[`ejecutor_${idx}_cedula`] = cedula;
+      answers[`ejecutor_${idx}_nombre`] = nombre;
       answers[`ejecutor_${idx}_certificado`] = certificado;
-      answers[`ejecutor_${idx}_cargo`] = answers[`ejecutor_${idx}_cargo`] || cargo;
+      answers[`ejecutor_${idx}_cargo`] = cargo;
       answers[`ejecutor_${idx}_seg_social`] = segSocial;
 
       // Recuperar firma de storage si existe
@@ -182,5 +190,13 @@ export class PdfService {
       await this.storage.deleteObject(stored.objectKey);
       throw error;
     }
+  }
+
+  private isProtectedAnswerKey(key: string): boolean {
+    return (
+      /^(cuadrilla|ejecutor)_\d+_/i.test(key) ||
+      /firma/i.test(key) ||
+      /^(cedula|documento|nombre|cargo|hora_fin)$/i.test(key)
+    );
   }
 }

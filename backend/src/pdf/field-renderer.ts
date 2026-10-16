@@ -112,20 +112,8 @@ export class FieldRenderer {
             (s.fieldKey && (s.fieldKey === key || s.fieldKey === sigField.fieldKey)) ||
             (sigField.memberIndex !== undefined && s.memberIndex === sigField.memberIndex),
         );
-        let imageBytes = resolved?.imageBytes;
-        if (!imageBytes && typeof data.answers[key] === 'string') {
-          const raw = (data.answers[key] as string).trim();
-          if (raw.startsWith('data:image/') || /^[A-Za-z0-9+/=]{50,}$/.test(raw)) {
-            try {
-              const base64Data = raw.includes(',') ? raw.split(',')[1] : raw;
-              imageBytes = Buffer.from(base64Data, 'base64');
-            } catch {
-              // No es base64 válido
-            }
-          }
-        }
-        if (imageBytes) {
-          await this.imageRenderer.render({ page, pdfDoc, field: sigField, imageBytes });
+        if (resolved?.imageBytes) {
+          await this.imageRenderer.render({ page, pdfDoc, field: sigField, imageBytes: resolved.imageBytes });
         }
         break;
       }
@@ -140,13 +128,7 @@ export class FieldRenderer {
         // Solo renderizar mediante CREW_TABLE si no se proveyeron filas individuales en answers
         const hasIndividualRows = Boolean(data.answers['cuadrilla_01_cedula'] || data.answers['ejecutor_01_cedula']);
         if (!hasIndividualRows && data.members && data.members.length > 0) {
-          await this.crewTableRenderer.render(
-            page,
-            pdfDoc,
-            font,
-            field as unknown as CrewTableConfig,
-            data.members,
-          );
+          await this.crewTableRenderer.render(page, pdfDoc, font, field as unknown as CrewTableConfig, data.members);
         }
         break;
       }
@@ -160,7 +142,12 @@ export class FieldRenderer {
   private resolveTextValue(key: string, answers: Record<string, unknown>): string {
     const raw = answers[key];
     if (raw === null || raw === undefined || raw === '') return '';
-    if (Array.isArray(raw)) return raw.map((v) => String(v ?? '')).filter(Boolean).join(', ');
-    return String(raw);
+    if (Array.isArray(raw))
+      return raw
+        .map((v) => (typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean' ? String(v) : ''))
+        .filter(Boolean)
+        .join(', ');
+    if (typeof raw === 'string' || typeof raw === 'number' || typeof raw === 'boolean') return String(raw);
+    return '';
   }
 }

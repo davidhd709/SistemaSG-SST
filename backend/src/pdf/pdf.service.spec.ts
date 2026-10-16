@@ -2,7 +2,9 @@ import { NotFoundException } from '@nestjs/common';
 import * as path from 'node:path';
 
 // ── Mocks de node:fs/promises ─────────────────────────────────────────────
-let mockAccessImpl: (p: string) => Promise<void> = async () => { /* ok */ };
+let mockAccessImpl: (p: string) => Promise<void> = async () => {
+  /* ok */
+};
 let mockReadFileImpl: (p: string, enc?: string) => Promise<Buffer | string> = async () => Buffer.alloc(0);
 
 jest.mock('node:fs/promises', () => ({
@@ -20,11 +22,16 @@ import { PDFDocument, StandardFonts } from 'pdf-lib';
 import { TextRenderer } from './renderers/text.renderer';
 import { CheckboxRenderer } from './renderers/checkbox.renderer';
 import { ImageRenderer } from './renderers/image.renderer';
+import { CrewTableRenderer } from './renderers/crew-table.renderer';
+import { FieldRenderer } from './field-renderer';
+import { PdfService } from './pdf.service';
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
 function accessAlwaysExists(): void {
-  mockAccessImpl = async () => { /* ok */ };
+  mockAccessImpl = async () => {
+    /* ok */
+  };
 }
 
 function accessFailsOnCall(n: number): void {
@@ -42,11 +49,21 @@ async function minimalPdf(pageCount = 1): Promise<Uint8Array> {
 }
 
 const validMapping = JSON.stringify({
-  meta: { formCode: 'HSE-FO-016', templateVersion: 'v00', pageCount: 1, pageSize: { width: 792, height: 612 }, orientation: 'landscape' },
+  meta: {
+    formCode: 'HSE-FO-016',
+    templateVersion: 'v00',
+    pageCount: 1,
+    pageSize: { width: 792, height: 612 },
+    orientation: 'landscape',
+  },
   fields: {
     empresa: { type: 'TEXT', page: 0, x: 100, y: 50, width: 150, height: 12, fontSize: 7 },
     sistemas_acceso_andamio: {
-      type: 'CHECKBOX', page: 0, x: 200, y: 100, size: 6,
+      type: 'CHECKBOX',
+      page: 0,
+      x: 200,
+      y: 100,
+      size: 6,
       checkedWhen: { field: 'sistemas_acceso', includes: 'Andamio' },
     },
   },
@@ -61,15 +78,10 @@ function setupReadFile(pdfBytes: Uint8Array, mappingJson: string): void {
 
 /** PNG 1×1 pixel con canal alpha (mínimo válido según especificación PNG). */
 const MINIMAL_PNG = Buffer.from([
-  0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
-  0x00, 0x00, 0x00, 0x0d, 0x49, 0x48, 0x44, 0x52,
-  0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
-  0x08, 0x06, 0x00, 0x00, 0x00, 0x1f, 0x15, 0xc4,
-  0x89, 0x00, 0x00, 0x00, 0x0a, 0x49, 0x44, 0x41,
-  0x54, 0x78, 0x9c, 0x62, 0x00, 0x01, 0x00, 0x00,
-  0x05, 0x00, 0x01, 0x0d, 0x0a, 0x2d, 0xb4, 0x00,
-  0x00, 0x00, 0x00, 0x49, 0x45, 0x4e, 0x44, 0xae,
-  0x42, 0x60, 0x82,
+  0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d, 0x49, 0x48, 0x44, 0x52, 0x00, 0x00, 0x00,
+  0x01, 0x00, 0x00, 0x00, 0x01, 0x08, 0x06, 0x00, 0x00, 0x00, 0x1f, 0x15, 0xc4, 0x89, 0x00, 0x00, 0x00, 0x0a, 0x49,
+  0x44, 0x41, 0x54, 0x78, 0x9c, 0x62, 0x00, 0x01, 0x00, 0x00, 0x05, 0x00, 0x01, 0x0d, 0x0a, 0x2d, 0xb4, 0x00, 0x00,
+  0x00, 0x00, 0x49, 0x45, 0x4e, 0x44, 0xae, 0x42, 0x60, 0x82,
 ]);
 
 // ══════════════════════════════════════════════════════════════════════════
@@ -77,7 +89,9 @@ const MINIMAL_PNG = Buffer.from([
 // ══════════════════════════════════════════════════════════════════════════
 
 describe('TemplateRegistry', () => {
-  beforeEach(() => { accessAlwaysExists(); });
+  beforeEach(() => {
+    accessAlwaysExists();
+  });
 
   it('resuelve la versión predeterminada de HSE-FO-016', async () => {
     const result = await new TemplateRegistry().resolve('HSE-FO-016');
@@ -175,7 +189,10 @@ describe('TemplateLoader', () => {
   });
 
   it('lanza si un campo tiene tipo inválido', async () => {
-    const bad = JSON.stringify({ meta: { formCode: 'X', templateVersion: 'v00', pageCount: 1 }, fields: { c: { type: 'INVALID', page: 0, x: 0, y: 0, width: 0, height: 0 } } });
+    const bad = JSON.stringify({
+      meta: { formCode: 'X', templateVersion: 'v00', pageCount: 1 },
+      fields: { c: { type: 'INVALID', page: 0, x: 0, y: 0, width: 0, height: 0 } },
+    });
     setupReadFile(await minimalPdf(), bad);
     await expect(new TemplateLoader().load('/f/t.pdf', '/f/m.json')).rejects.toThrow('tipo inválido');
   });
@@ -197,7 +214,14 @@ describe('TemplateLoader', () => {
   });
 
   it('el pageCount del resultado coincide con el PDF real', async () => {
-    const twoPageMapping = JSON.stringify({ ...JSON.parse(validMapping), meta: { ...JSON.parse(validMapping).meta, pageCount: 2 } });
+    const parsedMapping = JSON.parse(validMapping) as {
+      meta: Record<string, unknown>;
+      fields: Record<string, unknown>;
+    };
+    const twoPageMapping = JSON.stringify({
+      ...parsedMapping,
+      meta: { ...parsedMapping.meta, pageCount: 2 },
+    });
     setupReadFile(await minimalPdf(2), twoPageMapping);
     const result = await new TemplateLoader().load('/f/t.pdf', '/f/m.json');
     expect(result.pageCount).toBe(2);
@@ -250,12 +274,21 @@ describe('TextRenderer', () => {
 
   it('aplica política shrink reduciendo fontSize hasta minFontSize', () => {
     const field = { ...baseField, height: 5, fontSize: 8, minFontSize: 5, overflow: 'shrink' as const };
-    expect(() => renderer.render({ page, font, field, value: 'Texto muy largo que no cabe en la celda pequeña definitivamente' })).not.toThrow();
+    expect(() =>
+      renderer.render({ page, font, field, value: 'Texto muy largo que no cabe en la celda pequeña definitivamente' }),
+    ).not.toThrow();
   });
 
   it('aplica política truncate añadiendo "…" al final', () => {
     const field = { ...baseField, height: 8, fontSize: 6, minFontSize: 6, overflow: 'truncate' as const };
-    expect(() => renderer.render({ page, font, field, value: 'Texto muy largo que definitivamente no cabe en este espacio pequeño nunca' })).not.toThrow();
+    expect(() =>
+      renderer.render({
+        page,
+        font,
+        field,
+        value: 'Texto muy largo que definitivamente no cabe en este espacio pequeño nunca',
+      }),
+    ).not.toThrow();
   });
 
   it('aplica política warn sin lanzar excepción', () => {
@@ -279,7 +312,14 @@ describe('CheckboxRenderer', () => {
     page = doc.getPage(0);
   });
 
-  const baseField = { type: 'CHECKBOX' as const, page: 0, x: 100, y: 100, size: 8, checkedWhen: { field: 'resp', equals: 'SI' } };
+  const baseField = {
+    type: 'CHECKBOX' as const,
+    page: 0,
+    x: 100,
+    y: 100,
+    size: 8,
+    checkedWhen: { field: 'resp', equals: 'SI' },
+  };
 
   it('no dibuja nada si checked = false', () => {
     const spy = jest.spyOn(page, 'drawText');
@@ -306,7 +346,9 @@ describe('CheckboxRenderer', () => {
   });
 
   it('shouldCheck includes: true si array contiene valor', () => {
-    expect(renderer.shouldCheck({ field: 'sistemas', includes: 'Andamio' }, { sistemas: ['Andamio', 'Escalera'] })).toBe(true);
+    expect(
+      renderer.shouldCheck({ field: 'sistemas', includes: 'Andamio' }, { sistemas: ['Andamio', 'Escalera'] }),
+    ).toBe(true);
   });
 
   it('shouldCheck includes: false si array no contiene valor', () => {
@@ -342,18 +384,33 @@ describe('ImageRenderer', () => {
     page = doc.getPage(0);
   });
 
-  const baseField = { type: 'SIGNATURE' as const, page: 0, x: 50, y: 50, width: 80, height: 20, fit: 'contain' as const, align: 'center' as const };
+  const baseField = {
+    type: 'SIGNATURE' as const,
+    page: 0,
+    x: 50,
+    y: 50,
+    width: 80,
+    height: 20,
+    fit: 'contain' as const,
+    align: 'center' as const,
+  };
 
   it('no lanza si imageBytes está vacío', async () => {
-    await expect(renderer.render({ page, pdfDoc: doc, field: baseField, imageBytes: Buffer.alloc(0) })).resolves.not.toThrow();
+    await expect(
+      renderer.render({ page, pdfDoc: doc, field: baseField, imageBytes: Buffer.alloc(0) }),
+    ).resolves.not.toThrow();
   });
 
   it('incrusta correctamente un PNG válido', async () => {
-    await expect(renderer.render({ page, pdfDoc: doc, field: baseField, imageBytes: MINIMAL_PNG })).resolves.not.toThrow();
+    await expect(
+      renderer.render({ page, pdfDoc: doc, field: baseField, imageBytes: MINIMAL_PNG }),
+    ).resolves.not.toThrow();
   });
 
   it('no lanza con bytes de imagen inválidos (solo emite warn)', async () => {
-    await expect(renderer.render({ page, pdfDoc: doc, field: baseField, imageBytes: Buffer.from('not-an-image') })).resolves.not.toThrow();
+    await expect(
+      renderer.render({ page, pdfDoc: doc, field: baseField, imageBytes: Buffer.from('not-an-image') }),
+    ).resolves.not.toThrow();
   });
 
   it('el PDF generado conserva 1 página después de insertar firma', async () => {
@@ -361,5 +418,329 @@ describe('ImageRenderer', () => {
     const output = await doc.save();
     const reloaded = await PDFDocument.load(output);
     expect(reloaded.getPageCount()).toBe(1);
+  });
+});
+
+// ══════════════════════════════════════════════════════════════════════════
+// S6 — FieldRenderer (AUD-001 protección de firmas)
+// ══════════════════════════════════════════════════════════════════════════
+
+describe('FieldRenderer — AUD-001 protección de firmas', () => {
+  let textRenderer: TextRenderer;
+  let checkboxRenderer: CheckboxRenderer;
+  let imageRenderer: ImageRenderer;
+  let crewTableRenderer: CrewTableRenderer;
+  let fieldRenderer: FieldRenderer;
+  let doc: PDFDocument;
+
+  beforeEach(async () => {
+    textRenderer = new TextRenderer();
+    checkboxRenderer = new CheckboxRenderer();
+    imageRenderer = new ImageRenderer();
+    crewTableRenderer = new CrewTableRenderer(imageRenderer);
+    fieldRenderer = new FieldRenderer(textRenderer, checkboxRenderer, imageRenderer, crewTableRenderer);
+    doc = await PDFDocument.create();
+    doc.addPage([612, 792]);
+  });
+
+  const signatureMapping = {
+    meta: {
+      formCode: 'HSE-FO-016',
+      templateVersion: 'v00',
+      pageCount: 1,
+      pageSize: { width: 612, height: 792 },
+      orientation: 'portrait' as const,
+    },
+    fields: {
+      cuadrilla_01_firma: {
+        type: 'SIGNATURE' as const,
+        page: 0,
+        x: 444.5,
+        y: 666.3,
+        width: 84,
+        height: 10,
+        fit: 'contain' as const,
+        align: 'center' as const,
+        memberIndex: 0,
+      },
+      autorizador_firma: {
+        type: 'SIGNATURE' as const,
+        page: 0,
+        x: 382,
+        y: 75.3,
+        width: 146,
+        height: 10,
+        fit: 'contain' as const,
+        align: 'center' as const,
+        fieldKey: 'autorizador_firma',
+      },
+      coordinador_alturas_firma: {
+        type: 'SIGNATURE' as const,
+        page: 0,
+        x: 382,
+        y: 48.7,
+        width: 146,
+        height: 10,
+        fit: 'contain' as const,
+        align: 'center' as const,
+        fieldKey: 'coordinador_alturas_firma',
+      },
+    },
+  };
+
+  it('impide insertar firmas mediante base64 o data:image/ desde answers cuando no hay firma autorizada', async () => {
+    const spy = jest.spyOn(imageRenderer, 'render');
+    const fakeDataUrl = `data:image/png;base64,${MINIMAL_PNG.toString('base64')}`;
+    const fakeRawBase64 = MINIMAL_PNG.toString('base64').repeat(2);
+
+    await fieldRenderer.render(doc, signatureMapping, {
+      answers: {
+        cuadrilla_01_firma: fakeDataUrl,
+        autorizador_firma: fakeDataUrl,
+        coordinador_alturas_firma: fakeRawBase64,
+      },
+      signatures: [],
+    });
+
+    expect(spy).not.toHaveBeenCalled();
+  });
+
+  it('conserva e incrusta las firmas legítimas resueltas desde almacenamiento autorizado', async () => {
+    const spy = jest.spyOn(imageRenderer, 'render');
+    const fakeDataUrl = `data:image/png;base64,${MINIMAL_PNG.toString('base64')}`;
+
+    await fieldRenderer.render(doc, signatureMapping, {
+      answers: {
+        autorizador_firma: fakeDataUrl,
+      },
+      signatures: [
+        {
+          memberIndex: 0,
+          imageBytes: MINIMAL_PNG,
+        },
+      ],
+    });
+
+    expect(spy).toHaveBeenCalledTimes(1);
+    expect(spy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        imageBytes: MINIMAL_PNG,
+      }),
+    );
+  });
+});
+
+// ══════════════════════════════════════════════════════════════════════════
+// S7 — PdfService (AUD-001 integridad de cuadrilla y registros históricos)
+// ══════════════════════════════════════════════════════════════════════════
+
+describe('PdfService — AUD-001 integridad de datos y firmas', () => {
+  beforeEach(() => {
+    accessAlwaysExists();
+  });
+
+  function createPdfServiceContext(submissionOverride?: Record<string, unknown>) {
+    const baseSubmission = {
+      id: 'sub-aud001',
+      workDate: new Date('2026-04-16T00:00:00.000Z'),
+      submittedAt: new Date('2026-04-16T13:00:00.000Z'),
+      startedAt: new Date('2026-04-16T13:30:00.000Z'),
+      closedAt: new Date('2026-04-16T22:00:00.000Z'),
+      finalPdfFile: null,
+      approval: {
+        id: 'app-1',
+        decision: 'APPROVED',
+        decidedById: 'user-coord-1',
+        decidedBy: { id: 'user-coord-1', email: 'coord@sgsst.local' },
+      },
+      collaborator: {
+        id: 'collab-1',
+        firstName: 'Carlos',
+        lastName: 'Pérez',
+        documentNumber: '1020304050',
+        jobTitle: 'Oficial Eléctrico',
+      },
+      formVersion: {
+        id: 'fv-1',
+        versionNumber: 1,
+        form: { code: 'HSE-FO-016', name: 'Permiso de trabajo en altura' },
+        schemaJson: {
+          fields: [
+            { id: 'empresa', type: 'select' },
+            { id: 'lugar_trabajo', type: 'text' },
+            { id: 'fecha_trabajo', type: 'auto', source: 'workDate' },
+            { id: 'hora_inicio', type: 'auto', source: 'startedAt' },
+            { id: 'hora_finalizacion', type: 'auto', source: 'closedAt' },
+            { id: 'certificado_alturas', type: 'auto', source: 'heightCertificate' },
+            { id: 'seguridad_social_verificada', type: 'auto', source: 'socialSecurity' },
+          ],
+        },
+      },
+      members: [
+        {
+          id: 'mem-1',
+          isLead: true,
+          collaborator: {
+            id: 'collab-1',
+            firstName: 'Carlos',
+            lastName: 'Pérez',
+            documentNumber: '1020304050',
+            jobTitle: 'Oficial Eléctrico',
+          },
+          jobPosition: { id: 'jp-1', name: 'Liniero Líder' },
+          signature: {
+            id: 'sig-1',
+            file: { id: 'file-sig-1', objectKey: 'signatures/member-1.png' },
+          },
+        },
+      ],
+      answersJson: {
+        empresa: 'OPAINN ESP SAS',
+        lugar_trabajo: 'Subestación Norte',
+        fecha_trabajo: '2026-04-16',
+        hora_inicio: '08:30 a. m.',
+        hora_finalizacion: '05:00 p. m.',
+        certificado_alturas: 'Vigente y verificado',
+        seguridad_social_verificada: 'Vigente y verificado',
+      },
+      ...submissionOverride,
+    };
+
+    const tx = {
+      fileObject: { create: jest.fn().mockResolvedValue({ id: 'pdf-file-id-1' }) },
+      formSubmission: { update: jest.fn().mockResolvedValue({}) },
+      auditEvent: { create: jest.fn().mockResolvedValue({}) },
+    };
+
+    const prisma = {
+      formSubmission: { findUnique: jest.fn().mockResolvedValue(baseSubmission) },
+      $transaction: jest.fn((cb: (client: typeof tx) => Promise<unknown>) => cb(tx)),
+    };
+
+    const storage = {
+      getObject: jest.fn().mockResolvedValue(MINIMAL_PNG),
+      putObject: jest.fn().mockResolvedValue({
+        storageProvider: 'LOCAL',
+        bucket: 'local',
+        objectKey: 'pdf/sub-aud001.pdf',
+        sizeBytes: 1024,
+        sha256: 'pdf-sha-256',
+      }),
+      deleteObject: jest.fn().mockResolvedValue(undefined),
+    };
+
+    const templateRegistry = new TemplateRegistry();
+    const templateLoader = new TemplateLoader();
+    const textRenderer = new TextRenderer();
+    const checkboxRenderer = new CheckboxRenderer();
+    const imageRenderer = new ImageRenderer();
+    const crewTableRenderer = new CrewTableRenderer(imageRenderer);
+    const fieldRenderer = new FieldRenderer(textRenderer, checkboxRenderer, imageRenderer, crewTableRenderer);
+
+    const pdfService = new PdfService(
+      prisma as never,
+      storage as never,
+      templateRegistry,
+      templateLoader,
+      fieldRenderer,
+    );
+
+    return { pdfService, prisma, tx, storage, fieldRenderer, imageRenderer };
+  }
+
+  it('protege identidades, cargos y firmas al generar PDF desde registros históricos manipulados', async () => {
+    const pdfBytes = await minimalPdf(1);
+    setupReadFile(pdfBytes, validMapping);
+
+    const fakeSig = `data:image/png;base64,${MINIMAL_PNG.toString('base64')}`;
+    const { pdfService, fieldRenderer } = createPdfServiceContext({
+      answersJson: {
+        empresa: 'OPAINN ESP SAS',
+        lugar_trabajo: 'Subestación Norte',
+        certificado_alturas: 'Vigente y verificado',
+        seguridad_social_verificada: 'Vigente y verificado',
+        // Datos manipulados en registro histórico:
+        cuadrilla_01_cedula: '999999999',
+        cuadrilla_01_nombre: 'Impostor Uno',
+        cuadrilla_01_cargo: 'Gerente Falso',
+        cuadrilla_01_certificado: 'Falsificado',
+        cuadrilla_01_seg_social: 'Falsificada',
+        ejecutor_01_cedula: '999999999',
+        ejecutor_01_nombre: 'Impostor Uno',
+        ejecutor_01_cargo: 'Gerente Falso',
+        cuadrilla_02_cedula: '888888888',
+        cuadrilla_02_nombre: 'Intruso Inexistente',
+        cuadrilla_02_cargo: 'Cargo Inexistente',
+        autorizador_firma: fakeSig,
+        firma_autorizador: fakeSig,
+        coordinador_alturas_firma: fakeSig,
+        hora_fin: '11:59 p.m.',
+        campo_inyectado: 'malicioso',
+      },
+    });
+
+    const renderSpy = jest.spyOn(fieldRenderer, 'render');
+
+    const fileId = await pdfService.generateFinalPdf('sub-aud001', 'user-coord-1');
+    expect(fileId).toBe('pdf-file-id-1');
+    expect(renderSpy).toHaveBeenCalledTimes(1);
+
+    const renderData = renderSpy.mock.calls[0][2];
+    expect(renderData.answers.cuadrilla_01_cedula).toBe('1020304050');
+    expect(renderData.answers.cuadrilla_01_nombre).toBe('Carlos Pérez');
+    expect(renderData.answers.cuadrilla_01_cargo).toBe('Liniero Líder');
+    expect(renderData.answers.cuadrilla_01_certificado).toBe('Vigente y verificado');
+    expect(renderData.answers.cuadrilla_01_seg_social).toBe('Vigente y verificado');
+    expect(renderData.answers.ejecutor_01_cedula).toBe('1020304050');
+    expect(renderData.answers.ejecutor_01_nombre).toBe('Carlos Pérez');
+    expect(renderData.answers.ejecutor_01_cargo).toBe('Liniero Líder');
+
+    // No deben filtrarse filas falsas ni firmas inyectadas ni campos no autorizados
+    expect(renderData.answers.cuadrilla_02_cedula).toBeUndefined();
+    expect(renderData.answers.cuadrilla_02_nombre).toBeUndefined();
+    expect(renderData.answers.autorizador_firma).toBeUndefined();
+    expect(renderData.answers.firma_autorizador).toBeUndefined();
+    expect(renderData.answers.coordinador_alturas_firma).toBeUndefined();
+    expect(renderData.answers.campo_inyectado).toBeUndefined();
+    expect(renderData.answers.hora_fin).not.toBe('11:59 p.m.');
+  });
+
+  it('genera un permiso PDF válido cuando los datos son correctos y conserva las firmas legítimas', async () => {
+    const pdfBytes = await minimalPdf(1);
+    setupReadFile(pdfBytes, validMapping);
+
+    const { pdfService, storage, tx, fieldRenderer } = createPdfServiceContext();
+    const renderSpy = jest.spyOn(fieldRenderer, 'render');
+
+    const fileId = await pdfService.generateFinalPdf('sub-aud001', 'user-coord-1');
+
+    expect(fileId).toBe('pdf-file-id-1');
+    expect(storage.getObject).toHaveBeenCalledWith('signatures/member-1.png');
+    expect(renderSpy).toHaveBeenCalledTimes(1);
+    const renderData = renderSpy.mock.calls[0][2];
+    expect(renderData.answers).toMatchObject({
+      empresa: 'OPAINN ESP SAS',
+      lugar_trabajo: 'Subestación Norte',
+      cuadrilla_01_cedula: '1020304050',
+      cuadrilla_01_nombre: 'Carlos Pérez',
+      cuadrilla_01_cargo: 'Liniero Líder',
+    });
+    expect(renderData.signatures).toEqual([{ memberIndex: 0, imageBytes: MINIMAL_PNG }]);
+    expect(storage.putObject).toHaveBeenCalledWith(
+      expect.objectContaining({
+        mimeType: 'application/pdf',
+      }),
+    );
+    expect(tx.formSubmission.update).toHaveBeenCalledWith({
+      where: { id: 'sub-aud001' },
+      data: { finalPdfFileId: 'pdf-file-id-1' },
+    });
+    const auditCall = tx.auditEvent.create.mock.calls[0][0] as {
+      data: { action: string; entityId: string };
+    };
+    expect(auditCall.data).toMatchObject({
+      action: 'GENERATE_FINAL_PDF',
+      entityId: 'sub-aud001',
+    });
   });
 });

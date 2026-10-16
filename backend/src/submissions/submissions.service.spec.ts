@@ -1,4 +1,4 @@
-import { ConflictException, ForbiddenException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException } from '@nestjs/common';
 import { SubmissionsService } from './submissions.service';
 import { businessDate } from '../common/business-date';
 
@@ -17,6 +17,16 @@ function setup() {
     formSubmission: {
       findFirst: jest.fn().mockResolvedValue(null),
       updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+      create: jest.fn().mockResolvedValue({ id: 'submission-1', status: 'PENDING_APPROVAL', submittedAt: new Date() }),
+    },
+    submissionMember: {
+      create: jest.fn().mockResolvedValue({ id: 'member-1' }),
+    },
+    fileObject: {
+      create: jest.fn().mockResolvedValue({ id: 'file-1' }),
+    },
+    signature: {
+      create: jest.fn().mockResolvedValue({ id: 'sig-1' }),
     },
     auditEvent: { create: jest.fn().mockResolvedValue({}) },
   };
@@ -34,10 +44,24 @@ function setup() {
       }),
     },
     collaborator: { count: jest.fn().mockResolvedValue(1) },
+    jobPosition: { count: jest.fn().mockResolvedValue(1) },
     $transaction: jest.fn((callback: (client: typeof tx) => Promise<unknown>) => callback(tx)),
   };
   const storage = { putObject: jest.fn(), deleteObject: jest.fn().mockResolvedValue(undefined) };
-  const compliance = { evaluar: jest.fn().mockResolvedValue(new Map([[collaboratorId, { apto: true }]])) };
+  const compliance = {
+    evaluar: jest.fn().mockResolvedValue(
+      new Map([
+        [
+          collaboratorId,
+          {
+            apto: true,
+            alturas: { estado: 'VIGENTE' },
+            seguridadSocial: { estado: 'VIGENTE' },
+          },
+        ],
+      ]),
+    ),
+  };
   const jwt = {
     verifyAsync: jest.fn().mockResolvedValue({
       sub: collaboratorId,
@@ -139,5 +163,168 @@ describe('SubmissionsService permit safeguards', () => {
     expect(update.where.startedAt).toBeNull();
     expect(update.data.status).toBe('EXPIRED');
     expect(audit.data.action).toBe('EXPIRE_UNUSED_PERMIT');
+  });
+
+  describe('AUD-001: protection of answers and reserved fields', () => {
+    const testSchema = {
+      fields: [
+        { id: 'empresa', type: 'select', required: true, options: ['OPAINN ESP SAS', 'ESO INGENIERIA'] },
+        { id: 'lugar_trabajo', type: 'text', required: true },
+        { id: 'otras_tar_involucradas', type: 'yes_no', required: true },
+        { id: 'otras_tar', type: 'multi_select', required: true, options: ['Trabajo en caliente', 'Otras'] },
+        { id: 'otras_tar_detalle', type: 'text', required: false },
+        { id: 'fecha_trabajo', type: 'auto', required: true, source: 'workDate' },
+        { id: 'hora_inicio', type: 'auto', required: true, source: 'startedAt' },
+        { id: 'hora_finalizacion', type: 'auto', required: true, source: 'closedAt' },
+        { id: 'certificado_alturas', type: 'auto', required: true, source: 'heightCertificate' },
+        { id: 'seguridad_social_verificada', type: 'auto', required: true, source: 'socialSecurity' },
+      ],
+    };
+
+    const validAnswers = {
+      empresa: 'OPAINN ESP SAS',
+      lugar_trabajo: 'Poste 14',
+      otras_tar_involucradas: 'NO',
+      otras_tar: [],
+      otras_tar_detalle: '',
+    };
+
+    it('rejects answers with manipulated crew cedula without storing data', async () => {
+      const { service, prisma, storage, tx } = setup();
+      prisma.form.findUnique.mockResolvedValue({
+        code: 'HSE-FO-016',
+        status: 'PUBLISHED',
+        currentVersion: { id: 'version', active: true, versionNumber: 1, schemaJson: testSchema },
+      });
+
+      await expect(
+        service.submit(
+          'HSE-FO-016',
+          {
+            ...dto,
+            answers: { ...validAnswers, cuadrilla_01_cedula: '999999999' },
+          },
+          request as never,
+        ),
+      ).rejects.toThrow(BadRequestException);
+
+      await expect(
+        service.submit(
+          'HSE-FO-016',
+          {
+            ...dto,
+            answers: { ...validAnswers, ejecutor_01_cedula: '999999999' },
+          },
+          request as never,
+        ),
+      ).rejects.toThrow(BadRequestException);
+
+      expect(storage.putObject).not.toHaveBeenCalled();
+      expect(tx.formSubmission.create).not.toHaveBeenCalled();
+    });
+
+    it('rejects answers with protected crew name or job role', async () => {
+      const { service, prisma, storage, tx } = setup();
+      prisma.form.findUnique.mockResolvedValue({
+        code: 'HSE-FO-016',
+        status: 'PUBLISHED',
+        currentVersion: { id: 'version', active: true, versionNumber: 1, schemaJson: testSchema },
+      });
+
+      await expect(
+        service.submit(
+          'HSE-FO-016',
+          {
+            ...dto,
+            answers: { ...validAnswers, cuadrilla_01_nombre: 'Nombre Suplantado' },
+          },
+          request as never,
+        ),
+      ).rejects.toThrow(BadRequestException);
+
+      await expect(
+        service.submit(
+          'HSE-FO-016',
+          {
+            ...dto,
+            answers: { ...validAnswers, cuadrilla_01_cargo: 'Coordinador Falso' },
+          },
+          request as never,
+        ),
+      ).rejects.toThrow(BadRequestException);
+
+      expect(storage.putObject).not.toHaveBeenCalled();
+      expect(tx.formSubmission.create).not.toHaveBeenCalled();
+    });
+
+    it('rejects additional undefined fields, automatic server fields, and signature fields', async () => {
+      const { service, prisma, storage, tx } = setup();
+      prisma.form.findUnique.mockResolvedValue({
+        code: 'HSE-FO-016',
+        status: 'PUBLISHED',
+        currentVersion: { id: 'version', active: true, versionNumber: 1, schemaJson: testSchema },
+      });
+
+      const forbiddenPayloads = [
+        { ...validAnswers, campo_extra_no_definido: 'valor' },
+        { ...validAnswers, fecha_trabajo: '2099-12-31' },
+        { ...validAnswers, hora_inicio: '00:00' },
+        { ...validAnswers, certificado_alturas: 'Falsificado' },
+        { ...validAnswers, autorizador_firma: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUg==' },
+        { ...validAnswers, coordinador_alturas_firma: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUg==' },
+      ];
+
+      for (const badAnswers of forbiddenPayloads) {
+        await expect(service.submit('HSE-FO-016', { ...dto, answers: badAnswers }, request as never)).rejects.toThrow(
+          BadRequestException,
+        );
+      }
+
+      expect(storage.putObject).not.toHaveBeenCalled();
+      expect(tx.formSubmission.create).not.toHaveBeenCalled();
+    });
+
+    it('preserves current behavior for legitimate submissions and populates automatic fields on the server', async () => {
+      const { service, prisma, storage, tx } = setup();
+      prisma.form.findUnique.mockResolvedValue({
+        code: 'HSE-FO-016',
+        status: 'PUBLISHED',
+        currentVersion: { id: 'version', active: true, versionNumber: 1, schemaJson: testSchema },
+      });
+      storage.putObject.mockResolvedValue({
+        objectKey: 'signatures/legit.png',
+        storageProvider: 'LOCAL',
+        bucket: 'local',
+        sizeBytes: 100,
+        sha256: 'legit-sha',
+      });
+
+      const response = await service.submit(
+        'HSE-FO-016',
+        {
+          ...dto,
+          answers: validAnswers,
+        },
+        request as never,
+      );
+
+      expect(response.id).toBe('submission-1');
+      expect(tx.formSubmission.create).toHaveBeenCalledTimes(1);
+      const createdArgs = tx.formSubmission.create.mock.calls[0][0] as {
+        data: { answersJson: Record<string, unknown> };
+      };
+      expect(createdArgs.data.answersJson).toMatchObject({
+        empresa: 'OPAINN ESP SAS',
+        lugar_trabajo: 'Poste 14',
+        otras_tar_involucradas: 'NO',
+        otras_tar: [],
+        otras_tar_detalle: '',
+        hora_inicio: 'Pendiente de inicio',
+        hora_finalizacion: 'Jornada en curso',
+        certificado_alturas: 'Vigente y verificado',
+        seguridad_social_verificada: 'Vigente y verificado',
+      });
+      expect(createdArgs.data.answersJson.fecha_trabajo).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    });
   });
 });
