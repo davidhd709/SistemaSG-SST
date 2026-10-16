@@ -1,123 +1,137 @@
-# SG-SST — Línea Base de Calidad y Entorno (Fase 0)
+# SG-SST — Línea Base de Calidad y Entorno (Fase 0 / F0.1)
 
-## 1. Información General de Ejecución
+## 1. Información General de Ejecución y Estado del Repositorio
 
-- **Fecha de ejecución:** 15 de octubre de 2026.
-- **Rama de análisis y trabajo:** `chore/sgsst-phase0-baseline-ci` (originada desde `main`).
-- **Commit analizado (HEAD):** `27f604a751d30843da2f94b564c0ed70321e5d45`
-- **Mensaje del commit de referencia:** `"(feat): modificaciones en Dockerfile y Docker-compose"`
-- **Comparación con referencia de auditoría:** El commit actual de `main` coincide de forma exacta con el commit de referencia auditado (`27f604a751d30843da2f94b564c0ed70321e5d45`). No existen commits posteriores en la rama remota `origin/main`.
-- **Estado del árbol de trabajo al inicio:** Limpio (`working tree clean`), sin cambios sin confirmar.
+- **Fecha de ejecución original (Fase 0):** 15 de octubre de 2026.
+- **Fecha de actualización y alineación (Fase F0.1):** 16 de octubre de 2026.
+- **Rama de trabajo actual:** `docs/sgsst-f0-1-audit-alignment`.
+- **Estado de la rama `main`:**
+  - **Commit HEAD actual de `main`:** `b8fdbb0f13aa5e4ecfb29faf503427c2212c1ef5` (`Merge pull request #1 from davidhd709/chore/sgsst-phase0-baseline-ci`, que integró el commit documental `78bbf3a`).
+  - **Último commit de código funcional auditado:** `27f604a751d30843da2f94b564c0ed70321e5d45` (`"(feat): modificaciones en Dockerfile y Docker-compose"`). No se han producido cambios en el código funcional de `backend/`, `frontend/` ni `infra/` entre `27f604a` y `b8fdbb0`.
+- **Estado del Pull Request #1:** Fusionado en `main`.
+- **Protección de la rama `main`:** **No activada.** Se constató que el repositorio en GitHub carece de reglas de protección de rama (`branch protection rules`) activas sobre `main`, lo que permitió fusionar el PR #1 a pesar de que el workflow de GitHub Actions se encontraba en estado fallido.
 
 ---
 
 ## 2. Herramientas y Versiones Verificadas
 
-| Herramienta / Tecnología | Versión detectada | Estado / Requisito | Observaciones |
-|---|---|---|---|
-| **Node.js** | `v22.23.2` | Compatible (Engines: `>=22.0.0`) | Entorno Windows host |
-| **pnpm** | `11.23.0` | Compatible (Package manager lockfile) | Ejecución mediante `pnpm.cmd` por política de scripts de PowerShell |
-| **npm** | `10.9.8` | Compatible (Engines: `>=10.0.0`) | Gestor auxiliar disponible |
-| **Docker Engine** | `29.7.2 (build a7dcaa6)` | Operativo | Daemon local disponible |
-| **Docker Compose** | `v5.4.0` | Operativo | Sintaxis validada con `docker compose config` |
-| **NestJS (Backend)** | `11.0.1` | Operativo | Compilación y tests unitarios verificados |
-| **Angular (Frontend)** | `20.2.0` | Operativo | Compilación PWA y tests unitarios verificados |
-| **Prisma ORM** | `6.16.2` (Runtime) / `6.19.3` (CLI) | Operativo | Schema válido; 17 migraciones inspeccionadas |
-| **PostgreSQL (Imagen)** | `postgres:18-alpine` | Especificado en Compose | Base de datos relacional principal |
-| **Redis (Imagen)** | `redis:8-alpine` | Especificado en Compose | Rate limiting y cache |
-| **Nginx (Imagen)** | `nginx:1.29-alpine` | Especificado en Dockerfile frontend | Proxy inverso y servidor estático SPA/PWA |
+| Herramienta / Tecnología | Versión detectada                              | Estado / Requisito                                    | Método de verificación                      |
+| ------------------------ | ---------------------------------------------- | ----------------------------------------------------- | ------------------------------------------- |
+| **Node.js**              | `v22.23.2`                                     | Compatible (`engines: >=22.0.0`)                      | Ejecución (`node -v`)                       |
+| **pnpm**                 | `11.23.0`                                      | Compatible (`packageManager: pnpm@11.23.0`)           | Ejecución (`pnpm.cmd -v`)                   |
+| **npm**                  | `10.9.8`                                       | Compatible (`engines: >=10.0.0`)                      | Ejecución (`npm.cmd -v`)                    |
+| **Docker Engine**        | `29.7.2 (build a7dcaa6)`                       | Operativo                                             | Ejecución (`docker --version`)              |
+| **Docker Compose**       | `v5.4.0`                                       | Operativo                                             | Ejecución (`docker compose version`)        |
+| **NestJS (Backend)**     | `11.0.1`                                       | Operativo                                             | Compilación y pruebas ejecutadas            |
+| **Angular (Frontend)**   | `20.2.0`                                       | Operativo                                             | Compilación y pruebas ejecutadas            |
+| **Prisma ORM**           | `6.16.2` ( paquete ) / `6.19.3` (CLI resuelto) | Operativo                                             | Ejecución (`prisma validate` / `generate`)  |
+| **PostgreSQL (Imagen)**  | `postgres:18-alpine`                           | Declarado en `docker-compose.yml`                     | Revisión estática de configuración          |
+| **Redis (Imagen)**       | `redis:8-alpine`                               | Declarado en `docker-compose.yml` (sin uso en código) | Revisión estática de configuración y código |
+| **Nginx (Imagen)**       | `nginx:1.29-alpine`                            | Declarado en `frontend/Dockerfile`                    | Revisión estática de configuración          |
 
 ---
 
-## 3. Revisión de Arquitectura y Configuración
+## 3. Revisión de Arquitectura y Configuración (Revisión Estática)
 
 ### 3.1 Estructura del Monorepo
-El proyecto está configurado como un monorepo gestionado por `pnpm workspaces`:
-- `backend`: Paquete `@sg-sst/api` (NestJS 11 + Prisma 6 + Express 5).
-- `frontend`: Paquete `@sg-sst/web` (Angular 20 Standalone Components + Angular Material + PWA Service Worker).
-- `infra/nginx`: Configuración de proxy inverso Nginx (`web.conf`) con compresión gzip, cabeceras de seguridad y proxy pass hacia `/api/`.
-- `storage`: Directorio para almacenamiento de archivos en modo local (`private-permits`).
-- `backend/storage`: Directorio auxiliar de evidencias en backend (`signatures`, `pdf`, `arl`, etc.).
-- `backend/pdf-templates`: Plantillas inmutables oficiales para formularios (versión `HSE-FO-016/v00` con `template.pdf` y `mapping.json`).
 
-### 3.2 Backend
-- **Entrypoint:** `backend/src/main.ts` con prefijo global `/api`, `helmet`, `cookie-parser`, `ValidationPipe` estricto y filtro global de excepciones (`HttpExceptionFilter`).
-- **Módulos:** Separación por dominios de negocio: `approvals`, `arl`, `audit`, `auth`, `collaborators`, `common`, `compliance`, `files`, `forms`, `health`, `legal`, `pdf`, `prisma`, `submissions`, `users`.
-- **Autenticación:** Híbrida:
-  - Usuarios administrativos (`User`): email/contraseña hasheada con Argon2id, tokens JWT de acceso (15 min) y refresh tokens rotativos en cookie HttpOnly (7 días).
-  - Colaboradores de campo (`Collaborator`): cédula y PIN de seguridad (oficial eléctrico) o verificación ARL/cédula, sesión de 12 horas.
-- **Rate Limiting:** Implementado globalmente con `@nestjs/throttler` (ThrottlerGuard) y límites específicos en `/auth/admin/login`, `/auth/collaborator/login`, `/auth/refresh`.
+El proyecto está estructurado como un monorepo gestionado por `pnpm workspaces`:
 
-### 3.3 Frontend
-- **Arquitectura:** Angular 20 basado en componentes independientes (Standalone) con `provideRouter`, PWA activada (`@angular/service-worker`), estilos globales centralizados en `styles.css`.
-- **Módulos funcionales (`features`):** `admin`, `arl`, `auth`, `compliance`, `coordination`, `forms` (formulario de alturas HSE-FO-016), `home`, `legal`.
-- **PWA:** Manifest `manifest.webmanifest`, configuración de cache `ngsw-config.json`.
+- `backend/`: Paquete `@sg-sst/api` (NestJS 11, Prisma ORM, Express 5, `pdf-lib`).
+- `frontend/`: Paquete `@sg-sst/web` (Angular 20 Standalone Components, Angular Material, PWA Service Worker).
+- `infra/nginx/`: Configuración de Nginx (`web.conf`) como servidor estático SPA/PWA y proxy inverso hacia `/api/`.
+- `storage/` y `backend/storage/`: Directorios locales generados por `LocalStorageAdapter` dependiendo del directorio de trabajo (`process.cwd()`) desde el cual se inicie el backend.
+- `backend/pdf-templates/`: Plantilla oficial inmutable `HSE-FO-016/v00` (`template.pdf` y `mapping.json`).
 
-### 3.4 Persistencia y Base de Datos (Prisma)
-- **Motor:** PostgreSQL (`schema.prisma` con proveedor `postgresql`).
-- **Modelos clave:** `User`, `Role`, `Permission`, `Collaborator`, `ArlAffiliation`, `SocialSecurityPayroll`, `HeightCertificate`, `FormDefinition`, `FormSubmission`, `SubmissionCrewMember`, `Approval`, `FileObject`, `AuditEvent`, `SystemSetting`.
-- **Migraciones:** 17 carpetas de migración consecutivas en `backend/prisma/migrations`, con `migration_lock.toml` fijado a PostgreSQL.
+### 3.2 Backend y Estado Real de Servicios
 
-### 3.5 Infraestructura y Docker
-- `docker-compose.yml`: Define 4 servicios (`postgres`, `redis`, `api`, `web`), redes y volúmenes (`postgres_data`, `redis_data`, `api_storage`).
-- `docker-compose.prod.yml`: Extensión de entorno productivo (`NODE_ENV=production`, `AUDIT_ENABLED=true`).
-- `backend/Dockerfile`: Multi-stage build (`node:22-alpine`).
-- `frontend/Dockerfile`: Multi-stage build (`node:22-alpine` -> `nginx:1.29-alpine`).
+- **Entrypoint:** `backend/src/main.ts` configura prefijo global `/api`, `helmet`, `cookie-parser`, `ValidationPipe` (`whitelist`, `forbidNonWhitelisted`, `transform`), `HttpExceptionFilter` y Swagger (`/api/docs`).
+- **Módulos:** `approvals`, `arl`, `audit`, `auth`, `collaborators`, `common`, `compliance`, `files`, `forms`, `health`, `legal`, `pdf`, `prisma`, `submissions`, `users`.
+- **Estado real de Redis:** Aunque `docker-compose.yml` despliega el servicio `redis:8-alpine`, exige que esté saludable (`service_healthy`) para iniciar `api` e inyecta la variable `REDIS_URL=redis://redis:6379`, **el backend no utiliza Redis en ningún módulo**. No existe cliente Redis (`ioredis` / `redis`) en `backend/package.json` y `@nestjs/throttler` opera exclusivamente en la memoria local del proceso Node.js (hallazgo **AUD-021**).
 
----
+### 3.3 Modelos de Base de Datos en Prisma (`backend/prisma/schema.prisma`)
 
-## 4. Comandos Oficiales Ejecutados y Resultados
+El esquema cuenta con **22 modelos exactos** y 5 enumeraciones (`UserStatus`, `CollaboratorStatus`, `FormStatus`, `SubmissionStatus`, `ApprovalDecision`):
 
-| Componente | Comando oficial ejecutado | Resultado | Estado | Detalle |
-|---|---|---|---|---|
-| **Prisma** | `pnpm --filter @sg-sst/api exec prisma validate` | Éxito (con env mock) | APROBADO | El esquema es 100% válido sintáctica y relacionalmente. Requiere `DATABASE_URL` para ejecutar la validación. |
-| **Prisma** | `pnpm --filter @sg-sst/api run prisma:generate` | Éxito | APROBADO | Cliente Prisma generado en 409 ms. |
-| **Backend** | `pnpm --filter @sg-sst/api run build` | Éxito (`nest build`) | APROBADO | Compilación TypeScript limpia sin errores de tipos. |
-| **Backend** | `pnpm --filter @sg-sst/api run test` | Éxito (`jest --runInBand`) | APROBADO | 9 suites pasadas, 80 pruebas unitarias aprobadas (33.5 s). |
-| **Backend** | `pnpm --filter @sg-sst/api run lint` | Fallo (245 errores) | FALLIDO | Errores de ESLint/Prettier por retornos de carro CRLF (`\r\n`) y saltos de línea pendientes de normalización. |
-| **Frontend** | `pnpm --filter @sg-sst/web run build` | Éxito (`ng build`) | APROBADO | Generación de bundles JS/CSS completa (490 kB initial total). |
-| **Frontend** | `pnpm --filter @sg-sst/web run lint` | Éxito (`eslint "src/**/*.ts"`) | APROBADO | 0 errores, 0 advertencias en código TypeScript frontend. |
-| **Frontend** | `pnpm --filter @sg-sst/web run test` | Éxito (`ng test --watch=false`) | APROBADO | 1 suite, 1 prueba aprobada en Chrome local (`AppComponent`). |
-| **Global** | `pnpm run format:check` | Fallo (24 archivos) | FALLIDO | 24 archivos presentan diferencias con el estándar de Prettier. |
-| **Docker** | `docker compose config` | Éxito | APROBADO | Especificación Compose válida para producción y desarrollo. |
+1. `SystemSetting` (`@@map("system_settings")`)
+2. `User` (`@@map("users")`)
+3. `Role` (`@@map("roles")`)
+4. `Permission` (`@@map("permissions")`)
+5. `UserRole` (`@@map("user_roles")`)
+6. `RolePermission` (`@@map("role_permissions")`)
+7. `RefreshSession` (`@@map("refresh_sessions")`)
+8. `Collaborator` (`@@map("collaborators")`)
+9. `ArlAffiliation` (`@@map("arl_affiliations")`)
+10. `FileObject` (`@@map("file_objects")`)
+11. `ArlDocument` (`@@map("arl_documents")`)
+12. `Form` (`@@map("forms")`)
+13. `FormVersion` (`@@map("form_versions")`)
+14. `FormSubmission` (`@@map("form_submissions")`)
+15. `SubmissionMember` (`@@map("submission_members")`)
+16. `Approval` (`@@map("approvals")`)
+17. `Signature` (`@@map("signatures")`)
+18. `JobPosition` (`@@map("job_positions")`)
+19. `SocialSecurityPayroll` (`@@map("social_security_payrolls")`)
+20. `PayrollMembership` (`@@map("payroll_memberships")`)
+21. `HeightCertificate` (`@@map("height_certificates")`)
+22. `AuditEvent` (`@@map("audit_events")`)
+
+### 3.4 Frontend
+
+- **Arquitectura:** Angular 20 con componentes standalone (`admin`, `arl`, `auth`, `compliance`, `coordination`, `forms`, `home`, `legal`).
+- **PWA:** Configurada mediante `manifest.webmanifest` y `ngsw-config.json`.
 
 ---
 
-## 5. Resumen de Pruebas
+## 4. Diferenciación entre Pruebas Ejecutadas y Revisiones Estáticas
 
-- **Pruebas ejecutadas y aprobadas:**
-  - 80 pruebas unitarias de backend:
-    - `src/pdf/pdf.service.spec.ts` (pruebas de renderizado de campos, firmas, tablas y validación de plantillas).
-    - `src/auth/permissions.guard.spec.ts` (evaluación de permisos basados en roles).
-    - `src/auth/throttler.spec.ts` (rate limiting y throttling en endpoints).
-    - `src/submissions/submissions.service.spec.ts` (creación, validación, charla de seguridad y flujo de permisos).
-    - `src/legal/legal.service.spec.ts` (trazabilidad legal y membresía histórica de cuadrillas).
-    - `src/files/files.service.spec.ts` (control de acceso y descarga segura de archivos).
-    - `src/health/health.service.spec.ts` (chequeo de estado de servicios).
-    - `src/common/business-date.spec.ts` (cálculo de fechas y jornadas laborales en zona horaria de negocio).
-    - `src/arl/arl-status.spec.ts` (cálculo de vigencias de cobertura ARL).
-  - 1 prueba unitaria de frontend (`src/app/app.component.spec.ts`).
+### 4.1 Validaciones y Pruebas Ejecutadas Realmente
 
-- **Pruebas no ejecutadas / Impedimentos:**
-  - **Pruebas de integración contra base de datos viva:** No se ejecutaron migraciones dev (`prisma migrate dev`) ni resets de base de datos para no violar las reglas 4 y 6 (integridad de datos existentes en ambientes locales).
-  - **Pruebas E2E:** No existen herramientas de pruebas end-to-end (Cypress, Playwright o Selenium) instaladas ni configuradas en el repositorio.
-  - **Pruebas de frontend en CI Linux sin Chrome:** El script actual de Angular (`ng test`) intenta abrir Chrome con interfaz gráfica por defecto. Se parametriza en el flujo de CI como headless (`--browsers=ChromeHeadless`).
+| Componente   | Comando ejecutado                                | Tipo de verificación                        | Resultado                                                      | Detalle                                                                                              |
+| ------------ | ------------------------------------------------ | ------------------------------------------- | -------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| **Prisma**   | `pnpm --filter @sg-sst/api exec prisma validate` | Ejecución CLI                               | **APROBADO** (con `DATABASE_URL` mock) / **FALLIDO** (sin env) | Sin variable `DATABASE_URL` falla con `P1012`. Con URL sintáctica valida los 22 modelos sin errores. |
+| **Prisma**   | `pnpm --filter @sg-sst/api run prisma:generate`  | Ejecución CLI                               | **APROBADO**                                                   | Genera `@prisma/client` correctamente.                                                               |
+| **Backend**  | `pnpm --filter @sg-sst/api run build`            | Compilación (`nest build`)                  | **APROBADO**                                                   | Compilación TypeScript limpia (código 0).                                                            |
+| **Backend**  | `pnpm --filter @sg-sst/api run test`             | Pruebas unitarias (`jest --runInBand`)      | **APROBADO**                                                   | 9 suites aprobadas, 80 pruebas unitarias aprobadas.                                                  |
+| **Backend**  | `pnpm --filter @sg-sst/api run lint`             | Linter (`eslint`)                           | **FALLIDO**                                                    | 245 errores de `prettier/prettier` (finales de línea CRLF y formato en código histórico).            |
+| **Frontend** | `pnpm --filter @sg-sst/web run build`            | Compilación (`ng build`)                    | **APROBADO**                                                   | Bundle generado en `frontend/dist/web` (490.35 kB total inicial).                                    |
+| **Frontend** | `pnpm --filter @sg-sst/web run lint`             | Linter (`eslint`)                           | **APROBADO**                                                   | 0 errores y 0 advertencias.                                                                          |
+| **Frontend** | `pnpm --filter @sg-sst/web run test`             | Pruebas unitarias (`ng test --watch=false`) | **APROBADO**                                                   | 1 suite aprobada, 1 prueba unitaria aprobada (`AppComponent`).                                       |
+| **Global**   | `pnpm run format:check`                          | Formato (`prettier --check`)                | **FALLIDO**                                                    | 24 archivos históricos del repositorio presentan diferencias de formato con Prettier.                |
+| **Docker**   | `docker compose config`                          | Validación sintáctica Compose               | **APROBADO**                                                   | Resuelve la configuración de servicios, redes y volúmenes.                                           |
+
+### 4.2 Aspectos Evaluados Únicamente por Revisión Estática (No Ejecutados)
+
+- **Construcción y arranque de contenedores Docker (`docker compose up` / `build`):** Evaluado por inspección estática de `backend/Dockerfile`, `frontend/Dockerfile`, `docker-compose.yml` y `infra/nginx/web.conf`.
+- **Migraciones de Prisma (`backend/prisma/migrations`):** Evaluadas por inspección estática de las 17 carpetas de migración y `migration_lock.toml` (respetando la prohibición de ejecutar migraciones o resets sobre bases de datos).
+- **Flujos de integración con PostgreSQL, Cloudflare R2 y proxy Nginx:** Evaluados por inspección estática de código y configuración.
+- **Pruebas E2E:** No ejecutadas por inexistencia de framework E2E en el repositorio.
 
 ---
 
-## 6. Errores y Hallazgos Críticos Identificados
+## 5. Estado de Integración Continua (GitHub Actions)
 
-1. **TEC-001 — Omisión de plantillas PDF en contenedor Docker (`backend/Dockerfile`):**
-   El archivo `backend/Dockerfile` en su etapa final de ejecución (`FROM node:22-alpine`) copia `dist`, `prisma` y `package.json`, pero **no copia `backend/pdf-templates`**. Dado que `TemplateRegistry` busca las plantillas en `resolve(process.cwd(), 'pdf-templates')`, cualquier intento de generar un PDF en contenedor Docker fallará con `NotFoundException`.
-2. **TEC-002 — Inconsistencia de finales de línea (CRLF) y fallos de ESLint en Backend:**
-   El comando `pnpm --filter @sg-sst/api run lint` falla con 245 violaciones de la regla `prettier/prettier` debido a que varios archivos fueron guardados con terminaciones CRLF (`\r\n`) en Windows, mientras que la regla exige LF. No se realizaron cambios masivos de formateo para respetar la regla obligatoria de no alterar archivos fuera del alcance.
-3. **TEC-003 — Desalineación de formato global (`format:check`):**
-   El chequeo global de Prettier reporta 24 archivos desalineados. Requiere una normalización controlada en la fase correspondiente mediante `.gitattributes` y `prettier --write`.
-4. **TEC-004 — Dependencia de `DATABASE_URL` en validación de Prisma:**
-   `prisma validate` falla con el error `P1012: Environment variable not found: DATABASE_URL` si la variable no está expuesta en el entorno, impidiendo validaciones en pipelines aislados sin archivo `.env`. El CI debe proveer una cadena dummy para su validación sintáctica.
-5. **TEC-005 — Ambigüedad en la ruta raíz de almacenamiento local (`LocalStorageAdapter`):**
-   `LocalStorageAdapter` utiliza `resolve(process.cwd(), 'storage')`. Si el backend es arrancado desde la raíz del monorepo (`.`), los archivos se guardan en `./storage`; si es arrancado desde `./backend`, se guardan en `./backend/storage`. De hecho, ambas carpetas existen en el proyecto conteniendo archivos.
-6. **TEC-006 — Dependencias residuales de Puppeteer/Chromium en imagen Docker:**
-   A pesar de que el motor de PDF fue migrado a `pdf-lib` (puro JavaScript) y Puppeteer ya no figura en las dependencias de producción del backend, `backend/Dockerfile` aún instala paquetes pesados del sistema operativo (`chromium`, `nss`, `freetype`, `harfbuzz`) y variables como `PUPPETEER_EXECUTABLE_PATH`, engrosando la imagen innecesariamente en ~300 MB.
-7. **TEC-007 — Ausencia de pruebas de integración y E2E:**
-   No existe directorio `backend/test` ni cobertura de integración real con base de datos, ni pruebas de interacción visual en frontend.
+### 5.1 Ejecución Fallida en `main` (Commit `b8fdbb0`)
+
+En la versión inicial de `.github/workflows/ci.yml` (integrada en `main` mediante el PR #1), todas las verificaciones se encontraban secuencialmente dentro de un único job (`validate`). Al ejecutarse en GitHub Actions:
+
+- El paso `Validación de formato raíz (Prettier)` (`pnpm run format:check`) **falló con código de salida 1** debido a los 24 archivos históricos sin formatear y a detalles de formato en los documentos agregados en Fase 0.
+- Como consecuencia del diseño en un solo job secuencial, **GitHub Actions abortó la ejecución en ese punto y dejó sin ejecutar** los pasos posteriores (`Lint de Backend`, `Lint de Frontend`, `Compilación de Backend`, `Compilación de Frontend`, `Pruebas unitarias de Backend` y `Pruebas unitarias de Frontend`).
+
+### 5.2 Ajuste Aplicado en Fase F0.1
+
+En la rama `docs/sgsst-f0-1-audit-alignment`:
+
+1. Se formatearon con Prettier los archivos documentales y de workflow creados en Fase 0/F0.1 (`docs/auditorias/*.md` y `.github/workflows/ci.yml`), verificando con `prettier --check` que cumplen al 100% sin tocar archivos históricos.
+2. Se reestructuró `.github/workflows/ci.yml` en **5 jobs independientes y paralelos** sin usar `continue-on-error`:
+   - `format-check`: Ejecuta `pnpm run format:check` (refleja fielmente el fallo pendiente por los 24 archivos históricos — AUD-014 / TEC-003).
+   - `backend-lint`: Ejecuta `pnpm --filter @sg-sst/api run lint` (refleja fielmente el fallo pendiente en backend — AUD-014 / TEC-002).
+   - `frontend-lint`: Ejecuta `pnpm --filter @sg-sst/web run lint` (pasa en verde).
+   - `backend-build-and-test`: Ejecuta `prisma validate`, `prisma:generate`, `build` y `test` de `@sg-sst/api` (pasa en verde).
+   - `frontend-build-and-test`: Ejecuta `build` y `ng test --watch=false --browsers=ChromeHeadless` de `@sg-sst/web` (pasa en verde).
+
+---
+
+## 6. Referencia de Hallazgos
+
+El inventario completo y clasificado de los **23 hallazgos de auditoría (AUD-001 a AUD-023)** y los **9 hallazgos técnicos (TEC-001 a TEC-009)** se encuentra documentado en [`02_REGISTRO_HALLAZGOS.md`](./02_REGISTRO_HALLAZGOS.md), y su secuencia de resolución en [`03_PLAN_CORRECCIONES.md`](./03_PLAN_CORRECCIONES.md).
