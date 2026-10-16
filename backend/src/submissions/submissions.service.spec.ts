@@ -326,5 +326,116 @@ describe('SubmissionsService permit safeguards', () => {
       });
       expect(createdArgs.data.answersJson.fecha_trabajo).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     });
+
+    it('rejects incomplete or invalid schemas when validating answers', async () => {
+      const { service, prisma, storage, tx } = setup();
+      const invalidSchemas = [
+        null,
+        { fields: 'no-es-arreglo' },
+        { fields: [{ id: '', type: 'text' }] },
+        { fields: [{ id: 'campo_raro', type: 'tipo_inexistente' }] },
+        { fields: [{ id: 'cuadrilla_01_cedula', type: 'text' }] },
+        { fields: [{ id: 'autorizador_firma', type: 'text' }] },
+      ];
+
+      for (const badSchema of invalidSchemas) {
+        prisma.form.findUnique.mockResolvedValue({
+          code: 'HSE-FO-016',
+          status: 'PUBLISHED',
+          currentVersion: { id: 'version', active: true, versionNumber: 1, schemaJson: badSchema },
+        });
+        await expect(service.submit('HSE-FO-016', { ...dto, answers: {} }, request as never)).rejects.toThrow(
+          BadRequestException,
+        );
+      }
+
+      expect(storage.putObject).not.toHaveBeenCalled();
+      expect(tx.formSubmission.create).not.toHaveBeenCalled();
+    });
+
+    it('validates editable text and textarea fields for type, length, and allows legitimate names like confirmacion', async () => {
+      const { service, prisma, storage, tx } = setup();
+      const schemaWithTextAndConfirmation = {
+        fields: [
+          ...testSchema.fields,
+          { id: 'observaciones', type: 'textarea', required: false },
+          { id: 'confirmacion_lectura', type: 'yes_no', required: true },
+        ],
+      };
+      prisma.form.findUnique.mockResolvedValue({
+        code: 'HSE-FO-016',
+        status: 'PUBLISHED',
+        currentVersion: {
+          id: 'version',
+          active: true,
+          versionNumber: 1,
+          schemaJson: schemaWithTextAndConfirmation,
+        },
+      });
+
+      const baseValid = {
+        ...validAnswers,
+        confirmacion_lectura: 'SI',
+      };
+
+      // Rechaza tipo no string en campo text
+      await expect(
+        service.submit('HSE-FO-016', { ...dto, answers: { ...baseValid, lugar_trabajo: 12345 } }, request as never),
+      ).rejects.toThrow(BadRequestException);
+
+      // Rechaza campo obligatorio con solo espacios en blanco
+      await expect(
+        service.submit('HSE-FO-016', { ...dto, answers: { ...baseValid, lugar_trabajo: '   ' } }, request as never),
+      ).rejects.toThrow(BadRequestException);
+
+      // Rechaza exceso de longitud en text (> 500) y textarea (> 2000)
+      await expect(
+        service.submit(
+          'HSE-FO-016',
+          { ...dto, answers: { ...baseValid, lugar_trabajo: 'A'.repeat(501) } },
+          request as never,
+        ),
+      ).rejects.toThrow(BadRequestException);
+
+      await expect(
+        service.submit(
+          'HSE-FO-016',
+          { ...dto, answers: { ...baseValid, observaciones: 'B'.repeat(2001) } },
+          request as never,
+        ),
+      ).rejects.toThrow(BadRequestException);
+
+      // Rechaza data:image/ infiltrado en un campo de texto editable
+      await expect(
+        service.submit(
+          'HSE-FO-016',
+          { ...dto, answers: { ...baseValid, lugar_trabajo: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUg==' } },
+          request as never,
+        ),
+      ).rejects.toThrow(BadRequestException);
+
+      // Permite envío legítimo con textarea válido y campo "confirmacion_lectura" (que contiene la subcadena "firma")
+      storage.putObject.mockResolvedValue({
+        objectKey: 'signatures/legit-2.png',
+        storageProvider: 'LOCAL',
+        bucket: 'local',
+        sizeBytes: 100,
+        sha256: 'legit-sha-2',
+      });
+
+      const ok = await service.submit(
+        'HSE-FO-016',
+        {
+          ...dto,
+          answers: {
+            ...baseValid,
+            observaciones: 'Observación legítima dentro del límite permitido.',
+          },
+        },
+        request as never,
+      );
+      expect(ok.id).toBe('submission-1');
+      expect(tx.formSubmission.create).toHaveBeenCalledTimes(1);
+    });
   });
 });

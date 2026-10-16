@@ -19,7 +19,43 @@ import { SubmitFormDto, type CrewMemberDto } from './dto/submit-form.dto';
 import { CloseWorkdayDto } from './dto/close-workday.dto';
 import { businessDate, businessDay } from '../common/business-date';
 
-type Field = { id?: unknown; type?: unknown; required?: unknown; options?: unknown; source?: unknown };
+type Field = {
+  id?: unknown;
+  type?: unknown;
+  required?: unknown;
+  options?: unknown;
+  source?: unknown;
+  maxLength?: unknown;
+};
+
+const EDITABLE_FIELD_TYPES = new Set(['text', 'textarea', 'yes_no', 'select', 'multi_select', 'number', 'date']);
+
+const RESERVED_AUTOMATIC_FIELD_IDS = new Set([
+  'vigencia_permiso',
+  'fecha_trabajo',
+  'hora_inicio',
+  'hora_finalizacion',
+  'hora_fin',
+  'certificado_alturas',
+  'seguridad_social_verificada',
+]);
+
+const RESERVED_SIGNATURE_FIELD_IDS = new Set([
+  'autorizador_firma',
+  'firma_autorizador',
+  'responsable_emergencia_firma',
+  'firma_responsable_emergencia',
+  'coordinador_alturas_firma',
+  'firma_coordinador_alturas',
+]);
+
+const RESERVED_IDENTITY_FIELD_IDS = new Set(['cedula', 'documento', 'nombre', 'cargo']);
+
+const RESERVED_CREW_ROW_PATTERN = /^(cuadrilla|ejecutor)_\d+_/i;
+
+const DEFAULT_MAX_TEXT_LENGTH = 500;
+const DEFAULT_MAX_TEXTAREA_LENGTH = 2000;
+
 const safetyTalkVideos: Record<string, { minimumSeconds: number; sha256: string }> = {
   'charla-01': { minimumSeconds: 54, sha256: '8529d57c4941486221dca0a4987d24f6268640b003b04b593e53ef9d7fae2938' },
   'charla-02': { minimumSeconds: 54, sha256: '781e2e4df27db5cf430dd18f19ded042405a78b1836274e47a1ee71f9e4c6c92' },
@@ -553,12 +589,21 @@ export class SubmissionsService {
     answers: object,
     contexto: { momento: Date; cumplimiento?: Cumplimiento; cierre?: Date; solo?: Origen[] },
   ): Record<string, unknown> {
-    const campos = (schema as { fields?: Field[] }).fields ?? [];
+    const campos = Array.isArray((schema as { fields?: Field[] } | null)?.fields)
+      ? ((schema as { fields: Field[] }).fields ?? [])
+      : [];
     const entrada = (answers ?? {}) as Record<string, unknown>;
     const valores: Record<string, unknown> = {};
     for (const campo of campos) {
-      if (typeof campo.id !== 'string') continue;
-      if (!contexto.solo && campo.type === 'auto') continue;
+      if (!campo || typeof campo !== 'object' || typeof campo.id !== 'string' || typeof campo.type !== 'string')
+        continue;
+      if (campo.type === 'auto') {
+        if (contexto.solo && Object.prototype.hasOwnProperty.call(entrada, campo.id)) {
+          valores[campo.id] = entrada[campo.id];
+        }
+        continue;
+      }
+      if (!EDITABLE_FIELD_TYPES.has(campo.type) || this.isReservedSystemFieldId(campo.id)) continue;
       if (Object.prototype.hasOwnProperty.call(entrada, campo.id)) {
         valores[campo.id] = entrada[campo.id];
       }
@@ -568,7 +613,7 @@ export class SubmissionsService {
     const dia = businessDay;
 
     for (const campo of campos) {
-      if (campo.type !== 'auto' || typeof campo.id !== 'string') continue;
+      if (!campo || typeof campo !== 'object' || campo.type !== 'auto' || typeof campo.id !== 'string') continue;
       const origen = campo.source as Origen;
       // Al cerrar solo se toca la hora final: lo verificado al abrir el permiso
       // es evidencia de ese momento y no debe recalcularse después.
@@ -615,7 +660,18 @@ export class SubmissionsService {
     return content;
   }
 
+  private isReservedSystemFieldId(fieldId: string): boolean {
+    return (
+      RESERVED_AUTOMATIC_FIELD_IDS.has(fieldId) ||
+      RESERVED_SIGNATURE_FIELD_IDS.has(fieldId) ||
+      RESERVED_IDENTITY_FIELD_IDS.has(fieldId) ||
+      RESERVED_CREW_ROW_PATTERN.test(fieldId)
+    );
+  }
+
   private validateAnswers(schema: Prisma.JsonValue, answers: object): void {
+    if (!schema || typeof schema !== 'object' || Array.isArray(schema))
+      throw new BadRequestException('El formulario publicado tiene un esquema inválido.');
     const fields = (schema as { fields?: Field[] }).fields;
     if (!Array.isArray(fields)) throw new BadRequestException('El formulario publicado tiene un esquema inválido.');
     if (!answers || typeof answers !== 'object' || Array.isArray(answers))
@@ -624,51 +680,90 @@ export class SubmissionsService {
     const editableFieldIds = new Set<string>();
     const autoFieldIds = new Set<string>();
     for (const field of fields) {
-      if (typeof field.id !== 'string') continue;
+      if (
+        !field ||
+        typeof field !== 'object' ||
+        typeof field.id !== 'string' ||
+        !field.id.trim() ||
+        typeof field.type !== 'string'
+      ) {
+        throw new BadRequestException('El formulario publicado tiene un esquema inválido.');
+      }
       if (field.type === 'auto') {
         autoFieldIds.add(field.id);
-      } else {
+      } else if (EDITABLE_FIELD_TYPES.has(field.type)) {
+        if (this.isReservedSystemFieldId(field.id)) {
+          throw new BadRequestException('El formulario publicado tiene un esquema inválido.');
+        }
         editableFieldIds.add(field.id);
+      } else {
+        throw new BadRequestException('El formulario publicado tiene un esquema inválido.');
       }
     }
     for (const key of Object.keys(source)) {
       if (!editableFieldIds.has(key)) {
         throw new BadRequestException(
-          autoFieldIds.has(key)
+          autoFieldIds.has(key) || RESERVED_AUTOMATIC_FIELD_IDS.has(key)
             ? `El campo ${key} es calculado automáticamente por el servidor y no puede ser enviado por el cliente.`
             : `El campo ${key} no está permitido o es reservado del sistema.`,
         );
       }
     }
     for (const field of fields) {
-      if (typeof field.id !== 'string') continue;
-      // Los campos automáticos los completa el servidor tras validar; exigirlos
-      // aquí rechazaría todo envío legítimo.
-      if (field.type === 'auto') continue;
-      // Esta selección solo existe cuando el trabajador respondió que sí hay
+      if (typeof field.id !== 'string' || field.type === 'auto') continue;
+      // Esta selección solo es obligatoria cuando el trabajador respondió que sí hay
       // tareas adicionales de alto riesgo. El cliente oculta y limpia el campo
       // al responder "No", por lo que no puede exigirse en ese caso.
-      if (field.id === 'otras_tar' && source.otras_tar_involucradas !== 'SI') continue;
+      const isConditionallyOptionalOtrasTar = field.id === 'otras_tar' && source.otras_tar_involucradas !== 'SI';
       const value = source[field.id];
-      if (
-        field.required &&
-        (value === null || value === undefined || value === '' || (Array.isArray(value) && !value.length))
-      )
+      const isEmpty =
+        value === null ||
+        value === undefined ||
+        value === '' ||
+        (typeof value === 'string' && value.trim().length === 0) ||
+        (Array.isArray(value) && !value.length);
+      if (field.required && !isConditionallyOptionalOtrasTar && isEmpty)
         throw new BadRequestException(`El campo ${field.id} es obligatorio.`);
-      if (value === undefined || value === null || value === '') continue;
-      if (field.type === 'select' && (!Array.isArray(field.options) || !field.options.includes(value as never)))
-        throw new BadRequestException(`Opción no válida en ${field.id}.`);
       if (
-        field.type === 'multi_select' &&
-        (!Array.isArray(value) ||
-          !Array.isArray(field.options) ||
-          value.some((item) => !(field.options as unknown[]).includes(item)))
+        value === undefined ||
+        value === null ||
+        value === '' ||
+        (Array.isArray(value) && !value.length && isConditionallyOptionalOtrasTar)
       )
-        throw new BadRequestException(`Opciones no válidas en ${field.id}.`);
-      if (field.type === 'yes_no' && value !== 'SI' && value !== 'NO')
-        throw new BadRequestException(`Respuesta no válida en ${field.id}.`);
-      if (field.type === 'number' && (typeof value !== 'number' || !Number.isFinite(value)))
-        throw new BadRequestException(`Número no válido en ${field.id}.`);
+        continue;
+
+      if (field.type === 'text' || field.type === 'textarea') {
+        if (typeof value !== 'string') throw new BadRequestException(`Texto no válido en ${field.id}.`);
+        const defaultLimit = field.type === 'textarea' ? DEFAULT_MAX_TEXTAREA_LENGTH : DEFAULT_MAX_TEXT_LENGTH;
+        const maxLength =
+          typeof field.maxLength === 'number' && Number.isFinite(field.maxLength) && field.maxLength > 0
+            ? field.maxLength
+            : defaultLimit;
+        if (value.length > maxLength)
+          throw new BadRequestException(
+            `El campo ${field.id} excede la longitud máxima permitida (${maxLength} caracteres).`,
+          );
+        if (/^data:image\//i.test(value.trim()))
+          throw new BadRequestException(`Contenido no permitido en ${field.id}.`);
+      } else if (field.type === 'select') {
+        if (typeof value !== 'string' || !Array.isArray(field.options) || !field.options.includes(value as never))
+          throw new BadRequestException(`Opción no válida en ${field.id}.`);
+      } else if (field.type === 'multi_select') {
+        if (
+          !Array.isArray(value) ||
+          !Array.isArray(field.options) ||
+          value.some((item) => typeof item !== 'string' || !(field.options as unknown[]).includes(item))
+        )
+          throw new BadRequestException(`Opciones no válidas en ${field.id}.`);
+      } else if (field.type === 'yes_no') {
+        if (value !== 'SI' && value !== 'NO') throw new BadRequestException(`Respuesta no válida en ${field.id}.`);
+      } else if (field.type === 'number') {
+        if (typeof value !== 'number' || !Number.isFinite(value))
+          throw new BadRequestException(`Número no válido en ${field.id}.`);
+      } else if (field.type === 'date') {
+        if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value) || Number.isNaN(Date.parse(value)))
+          throw new BadRequestException(`Fecha no válida en ${field.id}.`);
+      }
     }
   }
 }

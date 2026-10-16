@@ -689,8 +689,8 @@ describe('PdfService — AUD-001 integridad de datos y firmas', () => {
     expect(renderData.answers.cuadrilla_01_cedula).toBe('1020304050');
     expect(renderData.answers.cuadrilla_01_nombre).toBe('Carlos Pérez');
     expect(renderData.answers.cuadrilla_01_cargo).toBe('Liniero Líder');
-    expect(renderData.answers.cuadrilla_01_certificado).toBe('Vigente y verificado');
-    expect(renderData.answers.cuadrilla_01_seg_social).toBe('Vigente y verificado');
+    expect(renderData.answers.cuadrilla_01_certificado).toBe('');
+    expect(renderData.answers.cuadrilla_01_seg_social).toBe('');
     expect(renderData.answers.ejecutor_01_cedula).toBe('1020304050');
     expect(renderData.answers.ejecutor_01_nombre).toBe('Carlos Pérez');
     expect(renderData.answers.ejecutor_01_cargo).toBe('Liniero Líder');
@@ -742,5 +742,152 @@ describe('PdfService — AUD-001 integridad de datos y firmas', () => {
       action: 'GENERATE_FINAL_PDF',
       entityId: 'sub-aud001',
     });
+  });
+
+  it('ignora fecha_trabajo y vigencia_permiso manipuladas en registros históricos y usa la fecha autorizada del servidor', async () => {
+    const pdfBytes = await minimalPdf(1);
+    setupReadFile(pdfBytes, validMapping);
+
+    const authoritativeDate = new Date('2026-04-16T12:00:00.000Z');
+    const expectedFormattedDate = new Intl.DateTimeFormat('es-CO', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    }).format(authoritativeDate);
+
+    const { pdfService, fieldRenderer } = createPdfServiceContext({
+      workDate: authoritativeDate,
+      answersJson: {
+        empresa: 'OPAINN ESP SAS',
+        lugar_trabajo: 'Subestación Norte',
+        fecha_trabajo: '31/12/2099',
+        vigencia_permiso: '31/12/2099',
+      },
+    });
+    const renderSpy = jest.spyOn(fieldRenderer, 'render');
+
+    await pdfService.generateFinalPdf('sub-aud001', 'user-coord-1');
+
+    const renderData = renderSpy.mock.calls[0][2];
+    expect(renderData.answers.fecha_trabajo).toBe(expectedFormattedDate);
+    expect(renderData.answers.vigencia_permiso).toBe(expectedFormattedDate);
+    expect(renderData.answers.fecha_trabajo).not.toBe('31/12/2099');
+  });
+
+  it('ignora hora_inicio manipulada en registros históricos y usa startedAt autorizado o vacío si no ha iniciado', async () => {
+    const pdfBytes = await minimalPdf(1);
+    setupReadFile(pdfBytes, validMapping);
+
+    const authoritativeStart = new Date('2026-04-16T13:30:00.000Z');
+    const expectedStart = new Intl.DateTimeFormat('es-CO', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true,
+    })
+      .format(authoritativeStart)
+      .replace(/\s*([ap])\.\s*m\./i, ' $1.m.');
+
+    const { pdfService, fieldRenderer } = createPdfServiceContext({
+      startedAt: authoritativeStart,
+      answersJson: {
+        empresa: 'OPAINN ESP SAS',
+        hora_inicio: '01:00 a.m.',
+      },
+    });
+    const renderSpy = jest.spyOn(fieldRenderer, 'render');
+
+    await pdfService.generateFinalPdf('sub-aud001', 'user-coord-1');
+    expect(renderSpy.mock.calls[0][2].answers.hora_inicio).toBe(expectedStart);
+    expect(renderSpy.mock.calls[0][2].answers.hora_inicio).not.toBe('01:00 a.m.');
+
+    // Caso sin startedAt (ej. permiso rechazado antes de abrir jornada)
+    const { pdfService: pdfServiceNoStart, fieldRenderer: rendererNoStart } = createPdfServiceContext({
+      startedAt: null,
+      closedAt: null,
+      answersJson: {
+        empresa: 'OPAINN ESP SAS',
+        hora_inicio: '06:00 a.m.',
+        hora_finalizacion: '05:00 p.m.',
+        hora_fin: '05:00 p.m.',
+      },
+    });
+    const spyNoStart = jest.spyOn(rendererNoStart, 'render');
+    await pdfServiceNoStart.generateFinalPdf('sub-aud001', 'user-coord-1');
+    expect(spyNoStart.mock.calls[0][2].answers.hora_inicio).toBeUndefined();
+    expect(spyNoStart.mock.calls[0][2].answers.hora_finalizacion).toBeUndefined();
+    expect(spyNoStart.mock.calls[0][2].answers.hora_fin).toBeUndefined();
+  });
+
+  it('nunca confía en campos automáticos por estar en answersJson ni sustituye cumplimiento con Vigente o Verificada', async () => {
+    const pdfBytes = await minimalPdf(1);
+    setupReadFile(pdfBytes, validMapping);
+
+    const { pdfService, fieldRenderer } = createPdfServiceContext({
+      workDate: null,
+      submittedAt: null,
+      startedAt: null,
+      closedAt: null,
+      answersJson: {
+        empresa: 'OPAINN ESP SAS',
+        fecha_trabajo: '2099-01-01',
+        vigencia_permiso: '2099-01-01',
+        hora_inicio: '08:00',
+        hora_finalizacion: '17:00',
+        hora_fin: '17:00',
+        certificado_alturas: 'Vigente y verificado',
+        seguridad_social_verificada: 'Vigente y verificado',
+      },
+    });
+    const renderSpy = jest.spyOn(fieldRenderer, 'render');
+
+    await pdfService.generateFinalPdf('sub-aud001', 'user-coord-1');
+
+    const { answers } = renderSpy.mock.calls[0][2];
+    expect(answers.fecha_trabajo).toBeUndefined();
+    expect(answers.vigencia_permiso).toBeUndefined();
+    expect(answers.hora_inicio).toBeUndefined();
+    expect(answers.hora_finalizacion).toBeUndefined();
+    expect(answers.hora_fin).toBeUndefined();
+    expect(answers.certificado_alturas).toBeUndefined();
+    expect(answers.seguridad_social_verificada).toBeUndefined();
+    expect(answers.cuadrilla_01_certificado).toBe('');
+    expect(answers.cuadrilla_01_seg_social).toBe('');
+    expect(answers.ejecutor_01_certificado).toBe('');
+    expect(answers.ejecutor_01_seg_social).toBe('');
+  });
+
+  it('aplica lista blanca segura cuando schemaJson es inválido o incompleto, conservando campos legítimos y bloqueando no verificados', async () => {
+    const pdfBytes = await minimalPdf(1);
+    setupReadFile(pdfBytes, validMapping);
+
+    const { pdfService, fieldRenderer } = createPdfServiceContext({
+      formVersion: {
+        id: 'fv-empty',
+        versionNumber: 1,
+        form: { code: 'HSE-FO-016', name: 'Permiso de trabajo en altura' },
+        schemaJson: { fields: [] },
+      },
+      answersJson: {
+        empresa: 'OPAINN ESP SAS',
+        lugar_trabajo: 'Subestación Sur',
+        sistemas_acceso: ['Andamio'],
+        campo_no_verificado: 'inyeccion',
+        objeto_invalido: { nested: true },
+        cuadrilla_01_cedula: '000000',
+        autorizador_firma: `data:image/png;base64,${MINIMAL_PNG.toString('base64')}`,
+      },
+    });
+    const renderSpy = jest.spyOn(fieldRenderer, 'render');
+
+    await pdfService.generateFinalPdf('sub-aud001', 'user-coord-1');
+
+    const { answers } = renderSpy.mock.calls[0][2];
+    expect(answers.empresa).toBe('OPAINN ESP SAS');
+    expect(answers.lugar_trabajo).toBe('Subestación Sur');
+    expect(answers.sistemas_acceso).toEqual(['Andamio']);
+    expect(answers.campo_no_verificado).toBeUndefined();
+    expect(answers.objeto_invalido).toBeUndefined();
+    expect(answers.autorizador_firma).toBeUndefined();
+    expect(answers.cuadrilla_01_cedula).toBe('1020304050');
   });
 });
