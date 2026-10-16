@@ -111,24 +111,28 @@ El esquema cuenta con **22 modelos exactos** y 5 enumeraciones (`UserStatus`, `C
 
 ## 5. Estado de Integración Continua (GitHub Actions)
 
-### 5.1 Ejecución Fallida en `main` (Commit `b8fdbb0`)
+### 5.1 Ejecución Fallida en `main` (Commit `b8fdbb0` — Run `#38803693761`)
 
-En la versión inicial de `.github/workflows/ci.yml` (integrada en `main` mediante el PR #1), todas las verificaciones se encontraban secuencialmente dentro de un único job (`validate`). Al ejecutarse en GitHub Actions:
+En la versión inicial de `.github/workflows/ci.yml` (integrada en `main` mediante el PR #1), todas las verificaciones se encontraban secuencialmente dentro de un único job (`validate`). Al ejecutarse en GitHub Actions ([Run `38803693761`](https://github.com/davidhd709/SistemaSG-SST/actions/runs/38803693761)):
 
 - El paso `Validación de formato raíz (Prettier)` (`pnpm run format:check`) **falló con código de salida 1** debido a los 24 archivos históricos sin formatear y a detalles de formato en los documentos agregados en Fase 0.
-- Como consecuencia del diseño en un solo job secuencial, **GitHub Actions abortó la ejecución en ese punto y dejó sin ejecutar** los pasos posteriores (`Lint de Backend`, `Lint de Frontend`, `Compilación de Backend`, `Compilación de Frontend`, `Pruebas unitarias de Backend` y `Pruebas unitarias de Frontend`).
+- Como consecuencia del diseño en un solo job secuencial, **GitHub Actions abortó la ejecución en ese punto (`conclusion: failure`) y dejó sin ejecutar** los pasos posteriores (`Lint de Backend`, `Lint de Frontend`, `Compilación de Backend`, `Compilación de Frontend`, `Pruebas unitarias de Backend` y `Pruebas unitarias de Frontend`).
 
-### 5.2 Ajuste Aplicado en Fase F0.1
+### 5.2 Ajuste Aplicado y Resultados Reales en Fase F0.1 (Run `#38912510338`)
 
 En la rama `docs/sgsst-f0-1-audit-alignment`:
 
 1. Se formatearon con Prettier los archivos documentales y de workflow creados en Fase 0/F0.1 (`docs/auditorias/*.md` y `.github/workflows/ci.yml`), verificando con `prettier --check` que cumplen al 100% sin tocar archivos históricos.
-2. Se reestructuró `.github/workflows/ci.yml` en **5 jobs independientes y paralelos** sin usar `continue-on-error`:
-   - `format-check`: Ejecuta `pnpm run format:check` (refleja fielmente el fallo pendiente por los 24 archivos históricos — AUD-014 / TEC-003).
-   - `backend-lint`: Ejecuta `pnpm --filter @sg-sst/api run lint` (refleja fielmente el fallo pendiente en backend — AUD-014 / TEC-002).
-   - `frontend-lint`: Ejecuta `pnpm --filter @sg-sst/web run lint` (pasa en verde).
-   - `backend-build-and-test`: Ejecuta `prisma validate`, `prisma:generate`, `build` y `test` de `@sg-sst/api` (pasa en verde).
-   - `frontend-build-and-test`: Ejecuta `build` y `ng test --watch=false --browsers=ChromeHeadless` de `@sg-sst/web` (pasa en verde).
+2. Se reestructuró `.github/workflows/ci.yml` en **5 jobs independientes y paralelos** sin usar `continue-on-error`.
+3. Resultados reales verificados en GitHub Actions ([Run `38912510338`](https://github.com/davidhd709/SistemaSG-SST/actions/runs/38912510338)):
+
+| Job en GitHub Actions                                        | Estado      | Conclusión    | Detalle de ejecución en runner `ubuntu-latest`                                                                                   |
+| ------------------------------------------------------------ | ----------- | ------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| **Prisma, Build y Tests Backend** (`backend-build-and-test`) | `completed` | **`success`** | `prisma validate`, `prisma:generate`, `nest build` y 80/80 pruebas unitarias aprobadas.                                          |
+| **Build y Tests Frontend** (`frontend-build-and-test`)       | `completed` | **`success`** | `ng build` y 1/1 prueba unitaria en `ChromeHeadless` aprobadas.                                                                  |
+| **Lint Frontend** (`frontend-lint`)                          | `completed` | **`success`** | `eslint "src/**/*.ts" --max-warnings=0` aprobado con 0 errores.                                                                  |
+| **Formato Global (Prettier)** (`format-check`)               | `completed` | **`failure`** | Control estricto activo: detecta los 24 archivos históricos pendientes de formato (AUD-014 / TEC-003).                           |
+| **Lint Backend** (`backend-lint`)                            | `completed` | **`failure`** | Control estricto activo: detecta las 245 violaciones `prettier/prettier` en archivos históricos del backend (AUD-014 / TEC-002). |
 
 ---
 
