@@ -554,7 +554,15 @@ export class SubmissionsService {
     contexto: { momento: Date; cumplimiento?: Cumplimiento; cierre?: Date; solo?: Origen[] },
   ): Record<string, unknown> {
     const campos = (schema as { fields?: Field[] }).fields ?? [];
-    const valores: Record<string, unknown> = { ...(answers as Record<string, unknown>) };
+    const entrada = (answers ?? {}) as Record<string, unknown>;
+    const valores: Record<string, unknown> = {};
+    for (const campo of campos) {
+      if (typeof campo.id !== 'string') continue;
+      if (!contexto.solo && campo.type === 'auto') continue;
+      if (Object.prototype.hasOwnProperty.call(entrada, campo.id)) {
+        valores[campo.id] = entrada[campo.id];
+      }
+    }
     const hora = (fecha: Date) =>
       fecha.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Bogota' });
     const dia = businessDay;
@@ -610,7 +618,28 @@ export class SubmissionsService {
   private validateAnswers(schema: Prisma.JsonValue, answers: object): void {
     const fields = (schema as { fields?: Field[] }).fields;
     if (!Array.isArray(fields)) throw new BadRequestException('El formulario publicado tiene un esquema inválido.');
+    if (!answers || typeof answers !== 'object' || Array.isArray(answers))
+      throw new BadRequestException('Las respuestas del formulario son inválidas.');
     const source = answers as Record<string, unknown>;
+    const editableFieldIds = new Set<string>();
+    const autoFieldIds = new Set<string>();
+    for (const field of fields) {
+      if (typeof field.id !== 'string') continue;
+      if (field.type === 'auto') {
+        autoFieldIds.add(field.id);
+      } else {
+        editableFieldIds.add(field.id);
+      }
+    }
+    for (const key of Object.keys(source)) {
+      if (!editableFieldIds.has(key)) {
+        throw new BadRequestException(
+          autoFieldIds.has(key)
+            ? `El campo ${key} es calculado automáticamente por el servidor y no puede ser enviado por el cliente.`
+            : `El campo ${key} no está permitido o es reservado del sistema.`,
+        );
+      }
+    }
     for (const field of fields) {
       if (typeof field.id !== 'string') continue;
       // Los campos automáticos los completa el servidor tras validar; exigirlos
