@@ -19,6 +19,7 @@ jest.mock('node:fs/promises', () => ({
 import { TemplateRegistry } from './template-registry';
 import { TemplateLoader } from './template-loader';
 import { PDFDocument, StandardFonts } from 'pdf-lib';
+import { PNG } from 'pngjs';
 import { TextRenderer } from './renderers/text.renderer';
 import { CheckboxRenderer } from './renderers/checkbox.renderer';
 import { ImageRenderer } from './renderers/image.renderer';
@@ -27,6 +28,25 @@ import { FieldRenderer } from './field-renderer';
 import { PdfService } from './pdf.service';
 
 // ── Helpers ────────────────────────────────────────────────────────────────
+
+/**
+ * Genera en tiempo de ejecución un PNG RGBA válido (48x20) con fondo blanco
+ * y un trazo oscuro de firma, verificable por pngjs y pdf-lib.
+ */
+function createValidSignaturePng(): Buffer {
+  const png = new PNG({ width: 48, height: 20 });
+  for (let y = 0; y < png.height; y++) {
+    for (let x = 0; x < png.width; x++) {
+      const idx = (png.width * y + x) << 2;
+      const isInkStroke = y >= 6 && y <= 13 && x >= 8 && x <= 39;
+      png.data[idx] = isInkStroke ? 15 : 255;
+      png.data[idx + 1] = isInkStroke ? 25 : 255;
+      png.data[idx + 2] = isInkStroke ? 55 : 255;
+      png.data[idx + 3] = 255;
+    }
+  }
+  return PNG.sync.write(png);
+}
 
 function accessAlwaysExists(): void {
   mockAccessImpl = async () => {
@@ -76,13 +96,8 @@ function setupReadFile(pdfBytes: Uint8Array, mappingJson: string): void {
   };
 }
 
-/** PNG 1×1 pixel con canal alpha (mínimo válido según especificación PNG). */
-const MINIMAL_PNG = Buffer.from([
-  0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d, 0x49, 0x48, 0x44, 0x52, 0x00, 0x00, 0x00,
-  0x01, 0x00, 0x00, 0x00, 0x01, 0x08, 0x06, 0x00, 0x00, 0x00, 0x1f, 0x15, 0xc4, 0x89, 0x00, 0x00, 0x00, 0x0a, 0x49,
-  0x44, 0x41, 0x54, 0x78, 0x9c, 0x62, 0x00, 0x01, 0x00, 0x00, 0x05, 0x00, 0x01, 0x0d, 0x0a, 0x2d, 0xb4, 0x00, 0x00,
-  0x00, 0x00, 0x49, 0x45, 0x4e, 0x44, 0xae, 0x42, 0x60, 0x82,
-]);
+/** PNG RGBA válido generado con pngjs (contiene trazo de firma sobre fondo blanco). */
+const MINIMAL_PNG = createValidSignaturePng();
 
 // ══════════════════════════════════════════════════════════════════════════
 // S2 — TemplateRegistry
@@ -528,6 +543,42 @@ describe('FieldRenderer — AUD-001 protección de firmas', () => {
       }),
     );
   });
+
+  it('incrusta realmente en la página del PDF una firma PNG válida autorizada, invoca page.drawImage e ignora firmas falsas en answers', async () => {
+    const validSignaturePng = createValidSignaturePng();
+    const parsedPng = PNG.sync.read(validSignaturePng);
+    expect(parsedPng.width).toBe(48);
+    expect(parsedPng.height).toBe(20);
+
+    const page = doc.getPage(0);
+    const embedPngSpy = jest.spyOn(doc, 'embedPng');
+    const drawImageSpy = jest.spyOn(page, 'drawImage');
+    const fakeInjectedSignature = `data:image/png;base64,${validSignaturePng.toString('base64')}`;
+
+    await fieldRenderer.render(doc, signatureMapping, {
+      answers: {
+        autorizador_firma: fakeInjectedSignature,
+        coordinador_alturas_firma: fakeInjectedSignature,
+      },
+      signatures: [
+        {
+          memberIndex: 0,
+          imageBytes: validSignaturePng,
+        },
+      ],
+    });
+
+    // Se embebe y dibuja únicamente la firma autorizada (1 vez), ignorando las 2 falsas en answers
+    expect(embedPngSpy).toHaveBeenCalledTimes(1);
+    expect(drawImageSpy).toHaveBeenCalledTimes(1);
+
+    const savedBytes = await doc.save();
+    const rawPdfContent = Buffer.from(savedBytes).toString('latin1');
+    expect(rawPdfContent).toContain('/Subtype /Image');
+
+    const reloadedDoc = await PDFDocument.load(savedBytes);
+    expect(reloadedDoc.getPageCount()).toBe(1);
+  });
 });
 
 // ══════════════════════════════════════════════════════════════════════════
@@ -889,5 +940,74 @@ describe('PdfService — AUD-001 integridad de datos y firmas', () => {
     expect(answers.objeto_invalido).toBeUndefined();
     expect(answers.autorizador_firma).toBeUndefined();
     expect(answers.cuadrilla_01_cedula).toBe('1020304050');
+  });
+
+  it('incrusta de extremo a extremo la firma PNG válida del integrante en el PDF final, ignora firmas falsas de answersJson y permite reabrir el documento', async () => {
+    const pdfBytes = await minimalPdf(1);
+    const mappingWithSignatures = JSON.stringify({
+      meta: {
+        formCode: 'HSE-FO-016',
+        templateVersion: 'v00',
+        pageCount: 1,
+        pageSize: { width: 792, height: 612 },
+        orientation: 'landscape',
+      },
+      fields: {
+        empresa: { type: 'TEXT', page: 0, x: 100, y: 50, width: 150, height: 12, fontSize: 7 },
+        cuadrilla_01_cedula: { type: 'TEXT', page: 0, x: 60, y: 669, width: 66, height: 6, fontSize: 5 },
+        cuadrilla_01_firma: {
+          type: 'SIGNATURE',
+          page: 0,
+          x: 444.5,
+          y: 500,
+          width: 84,
+          height: 15,
+          fit: 'contain',
+          align: 'center',
+          memberIndex: 0,
+        },
+        autorizador_firma: {
+          type: 'SIGNATURE',
+          page: 0,
+          x: 382,
+          y: 75.3,
+          width: 146,
+          height: 12,
+          fit: 'contain',
+          align: 'center',
+          fieldKey: 'autorizador_firma',
+        },
+      },
+    });
+    setupReadFile(pdfBytes, mappingWithSignatures);
+
+    const validSignaturePng = createValidSignaturePng();
+    const fakeAuthorizerSig = `data:image/png;base64,${validSignaturePng.toString('base64')}`;
+
+    const { pdfService, storage } = createPdfServiceContext({
+      answersJson: {
+        empresa: 'OPAINN ESP SAS',
+        autorizador_firma: fakeAuthorizerSig,
+        coordinador_alturas_firma: fakeAuthorizerSig,
+      },
+    });
+    storage.getObject.mockResolvedValue(validSignaturePng);
+
+    const embedPngSpy = jest.spyOn(PDFDocument.prototype, 'embedPng');
+
+    const fileId = await pdfService.generateFinalPdf('sub-aud001', 'user-coord-1');
+    expect(fileId).toBe('pdf-file-id-1');
+
+    // Solo debe embeber la firma legítima del integrante (memberIndex: 0) y no las firmas falsas de answersJson
+    expect(embedPngSpy).toHaveBeenCalledTimes(1);
+
+    const putCallArg = storage.putObject.mock.calls[0][0] as { body: Buffer; mimeType: string };
+    expect(putCallArg.mimeType).toBe('application/pdf');
+    expect(putCallArg.body.toString('latin1')).toContain('/Subtype /Image');
+
+    const reloadedPdf = await PDFDocument.load(putCallArg.body);
+    expect(reloadedPdf.getPageCount()).toBe(1);
+
+    embedPngSpy.mockRestore();
   });
 });
