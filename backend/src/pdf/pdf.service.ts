@@ -3,9 +3,60 @@ import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { StorageService } from '../files/storage.service';
 import { TemplateRegistry } from './template-registry';
-import { TemplateLoader } from './template-loader';
+import { TemplateLoader, type CheckboxField, type TemplateMapping } from './template-loader';
 import { FieldRenderer, ResolvedSignature } from './field-renderer';
 import { CrewMemberRow } from './renderers/crew-table.renderer';
+
+const EDITABLE_SCHEMA_FIELD_TYPES = new Set(['text', 'textarea', 'yes_no', 'select', 'multi_select', 'number', 'date']);
+
+const RESERVED_AUTOMATIC_FIELD_IDS = new Set([
+  'vigencia_permiso',
+  'fecha_trabajo',
+  'hora_inicio',
+  'hora_finalizacion',
+  'hora_fin',
+  'certificado_alturas',
+  'seguridad_social_verificada',
+]);
+
+const RESERVED_SIGNATURE_FIELD_IDS = new Set([
+  'autorizador_firma',
+  'firma_autorizador',
+  'responsable_emergencia_firma',
+  'firma_responsable_emergencia',
+  'coordinador_alturas_firma',
+  'firma_coordinador_alturas',
+]);
+
+const RESERVED_IDENTITY_FIELD_IDS = new Set(['cedula', 'documento', 'nombre', 'cargo']);
+
+const RESERVED_CREW_ROW_PATTERN = /^(cuadrilla|ejecutor)_\d+_/i;
+
+const HISTORICAL_HSE_FO_016_EDITABLE_IDS = new Set([
+  'empresa',
+  'ciudad',
+  'lugar_trabajo',
+  'area_proceso',
+  'ubicacion_trabajo',
+  'tipos_trabajo_altura',
+  'herramientas',
+  'altura_metros',
+  'peligros',
+  'controles',
+  'sistemas_acceso',
+  'otras_tar_involucradas',
+  'otras_tar',
+  'otras_tar_detalle',
+  'procedimiento',
+  'epp_otros',
+  'epp_otros_detalle',
+  'observaciones',
+  'autorizador_nombre_documento',
+  'responsable_emergencia',
+  'coordinador_alturas',
+  ...Array.from({ length: 11 }, (_, i) => `epp_${String(i + 1).padStart(2, '0')}`),
+  ...Array.from({ length: 28 }, (_, i) => `verificacion_${String(i + 1).padStart(2, '0')}`),
+]);
 
 @Injectable()
 export class PdfService {
@@ -55,39 +106,51 @@ export class PdfService {
     const { templatePath, mappingPath } = templateLocations;
     const { pdfDoc, mapping } = await this.templateLoader.load(templatePath, mappingPath);
 
-    // 2. Preparar respuestas base ignorando claves protegidas o no autorizadas
-    const rawAnswers = (submission.answersJson as Record<string, unknown>) || {};
-    const schemaFields = (
-      submission.formVersion?.schemaJson as { fields?: Array<{ id?: string; type?: string }> } | null
-    )?.fields;
-    const allowedSchemaFieldIds =
-      Array.isArray(schemaFields) && schemaFields.length > 0
-        ? new Set(schemaFields.filter((f) => typeof f.id === 'string').map((f) => f.id as string))
-        : null;
+    // 2. Preparar respuestas base permitiendo únicamente campos editables verificados
+    const rawAnswers =
+      submission.answersJson && typeof submission.answersJson === 'object' && !Array.isArray(submission.answersJson)
+        ? (submission.answersJson as Record<string, unknown>)
+        : {};
+    const allowedEditableFieldIds = this.resolveAllowedEditableFieldIds(
+      submission.formVersion?.schemaJson,
+      mapping,
+      formCode,
+    );
 
     const answers: Record<string, unknown> = {};
     for (const [key, value] of Object.entries(rawAnswers)) {
-      if (this.isProtectedAnswerKey(key)) continue;
-      if (allowedSchemaFieldIds && !allowedSchemaFieldIds.has(key)) continue;
+      if (this.isProtectedAnswerKey(key, mapping)) continue;
+      if (!allowedEditableFieldIds.has(key)) continue;
+      if (!this.isSafeEditableAnswerValue(value)) continue;
       answers[key] = value;
     }
 
-    // Fechas y horas si no vienen directamente en answers
-    if (!answers.fecha_trabajo && (submission.workDate || submission.submittedAt)) {
-      const d = submission.workDate ?? submission.submittedAt;
-      answers.fecha_trabajo = d
-        ? new Intl.DateTimeFormat('es-CO', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(d)
-        : '';
+    // Fechas y horas calculadas exclusivamente desde fuentes autorizadas de FormSubmission
+    const workOrSubmittedDate = submission.workDate ?? submission.submittedAt;
+    if (workOrSubmittedDate) {
+      const formattedDate = new Intl.DateTimeFormat('es-CO', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+      }).format(workOrSubmittedDate);
+      answers.fecha_trabajo = formattedDate;
+      answers.vigencia_permiso = formattedDate;
     }
-    if (!answers.hora_inicio && submission.startedAt) {
+    if (submission.startedAt) {
       answers.hora_inicio = new Intl.DateTimeFormat('es-CO', { hour: '2-digit', minute: '2-digit', hour12: true })
         .format(submission.startedAt)
         .replace(/\s*([ap])\.\s*m\./i, ' $1.m.');
     }
-    if (!answers.hora_fin && submission.closedAt) {
-      answers.hora_fin = new Intl.DateTimeFormat('es-CO', { hour: '2-digit', minute: '2-digit', hour12: true })
+    if (submission.closedAt) {
+      const formattedCloseTime = new Intl.DateTimeFormat('es-CO', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true,
+      })
         .format(submission.closedAt)
         .replace(/\s*([ap])\.\s*m\./i, ' $1.m.');
+      answers.hora_fin = formattedCloseTime;
+      answers.hora_finalizacion = formattedCloseTime;
     }
 
     // 3. Procesar cuadrilla y firmas exclusivamente desde registros de base de datos
@@ -100,10 +163,11 @@ export class PdfService {
       const nombre = `${member.collaborator.firstName} ${member.collaborator.lastName}`.trim();
       const cedula = member.collaborator.documentNumber;
       const cargo = member.jobPosition?.name ?? member.collaborator.jobTitle ?? '—';
-      const certificado = member.isLead ? (answers['certificado_alturas'] as string) || 'Vigente' : 'Vigente';
-      const segSocial = member.isLead
-        ? (answers['seguridad_social_verificada'] as string) || 'Verificada'
-        : 'Verificada';
+      // AUD-002: Los estados de cumplimiento (certificado_alturas y seguridad_social_verificada)
+      // requieren resolverse desde la evidencia histórica por integrante (member.complianceJson).
+      // No se confía en answersJson ni se sustituyen valores no verificados con "Vigente" o "Verificada".
+      const certificado = '';
+      const segSocial = '';
 
       // Mapeo declarativo fila por fila (cuadrilla_01..05 y alias ejecutor_01..05)
       answers[`cuadrilla_${idx}_cedula`] = cedula;
@@ -192,11 +256,125 @@ export class PdfService {
     }
   }
 
-  private isProtectedAnswerKey(key: string): boolean {
-    return (
-      /^(cuadrilla|ejecutor)_\d+_/i.test(key) ||
-      /firma/i.test(key) ||
-      /^(cedula|documento|nombre|cargo|hora_fin)$/i.test(key)
-    );
+  private resolveAllowedEditableFieldIds(schemaJson: unknown, mapping: TemplateMapping, formCode: string): Set<string> {
+    const templateEditableIds = this.extractTemplateEditableFieldIds(mapping, formCode);
+    const schemaFields = (schemaJson as { fields?: unknown } | null)?.fields;
+    if (!Array.isArray(schemaFields) || schemaFields.length === 0) {
+      this.logger.warn(
+        `Esquema inválido o vacío para el formulario ${formCode}; aplicando lista blanca estricta de campos editables de la plantilla.`,
+      );
+      return templateEditableIds;
+    }
+
+    const validSchemaEditableIds = new Set<string>();
+    const nonEditableOrInvalidIds = new Set<string>();
+    let hasInvalidFieldEntries = false;
+
+    for (const rawField of schemaFields) {
+      if (!rawField || typeof rawField !== 'object') {
+        hasInvalidFieldEntries = true;
+        continue;
+      }
+      const field = rawField as { id?: unknown; type?: unknown };
+      if (typeof field.id !== 'string' || !field.id.trim()) {
+        hasInvalidFieldEntries = true;
+        continue;
+      }
+      if (typeof field.type !== 'string') {
+        hasInvalidFieldEntries = true;
+        nonEditableOrInvalidIds.add(field.id);
+        continue;
+      }
+      if (field.type === 'auto') {
+        nonEditableOrInvalidIds.add(field.id);
+        continue;
+      }
+      if (!EDITABLE_SCHEMA_FIELD_TYPES.has(field.type) || this.isProtectedAnswerKey(field.id, mapping)) {
+        hasInvalidFieldEntries = true;
+        nonEditableOrInvalidIds.add(field.id);
+        continue;
+      }
+      validSchemaEditableIds.add(field.id);
+    }
+
+    if (hasInvalidFieldEntries || validSchemaEditableIds.size === 0) {
+      this.logger.warn(
+        `Esquema incompleto o con entradas inválidas para ${formCode}; aplicando compatibilidad controlada con campos editables de la plantilla.`,
+      );
+    }
+
+    const combined = new Set<string>(validSchemaEditableIds);
+    for (const id of templateEditableIds) {
+      if (!nonEditableOrInvalidIds.has(id)) {
+        combined.add(id);
+      }
+    }
+    return combined;
+  }
+
+  private extractTemplateEditableFieldIds(mapping: TemplateMapping, formCode: string): Set<string> {
+    const editableIds = new Set<string>();
+    if (formCode === 'HSE-FO-016') {
+      for (const id of HISTORICAL_HSE_FO_016_EDITABLE_IDS) {
+        editableIds.add(id);
+      }
+    }
+    for (const [key, field] of Object.entries(mapping.fields ?? {})) {
+      if (
+        (field.type === 'TEXT' || field.type === 'MULTILINE_TEXT' || field.type === 'NUMBER') &&
+        !this.isProtectedAnswerKey(key, mapping)
+      ) {
+        editableIds.add(key);
+      } else if (field.type === 'CHECKBOX') {
+        const target = (field as CheckboxField).checkedWhen?.field;
+        if (typeof target === 'string' && !this.isProtectedAnswerKey(target, mapping)) {
+          editableIds.add(target);
+        }
+      }
+    }
+    return editableIds;
+  }
+
+  private isSafeEditableAnswerValue(value: unknown): boolean {
+    if (value === null || value === undefined) return false;
+    if (typeof value === 'string') {
+      return value.length <= 2000 && !/^data:image\//i.test(value.trim());
+    }
+    if (typeof value === 'number') {
+      return Number.isFinite(value);
+    }
+    if (typeof value === 'boolean') {
+      return true;
+    }
+    if (Array.isArray(value)) {
+      return (
+        value.length <= 50 &&
+        value.every((item) => typeof item === 'string' && item.length <= 500 && !/^data:image\//i.test(item.trim()))
+      );
+    }
+    return false;
+  }
+
+  private isProtectedAnswerKey(key: string, mapping?: TemplateMapping): boolean {
+    if (
+      RESERVED_AUTOMATIC_FIELD_IDS.has(key) ||
+      RESERVED_SIGNATURE_FIELD_IDS.has(key) ||
+      RESERVED_IDENTITY_FIELD_IDS.has(key) ||
+      RESERVED_CREW_ROW_PATTERN.test(key)
+    ) {
+      return true;
+    }
+    const mappedField = mapping?.fields?.[key];
+    if (
+      mappedField &&
+      (mappedField.type === 'SIGNATURE' ||
+        mappedField.type === 'IMAGE' ||
+        mappedField.type === 'CREW_TABLE' ||
+        mappedField.type === 'DATE' ||
+        mappedField.type === 'TIME')
+    ) {
+      return true;
+    }
+    return false;
   }
 }
