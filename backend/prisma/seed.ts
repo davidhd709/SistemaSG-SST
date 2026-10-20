@@ -110,12 +110,11 @@ async function main(): Promise<void> {
       description: 'Formato basado en HSE-FO-016, versión 00.',
     },
   });
-  // La versión 2 automatiza fecha, horas y verificación de requisitos, y saca
-  // el cargo del formulario porque ahora se define por integrante de cuadrilla.
-  // La 1 se conserva: los permisos firmados con ella deben poder leerse igual.
+  // Una versión publicada es inmutable. Reejecutar el seed no debe reescribir
+  // su esquema ni volver a publicar v4 si ya existe una versión posterior.
   const version = await prisma.formVersion.upsert({
     where: { formId_versionNumber: { formId: form.id, versionNumber: 4 } },
-    update: { schemaJson: workAtHeightSchema },
+    update: {},
     create: {
       formId: form.id,
       versionNumber: 4,
@@ -126,11 +125,13 @@ async function main(): Promise<void> {
       publishedAt: new Date(),
     },
   });
-  await prisma.formVersion.updateMany({
-    where: { formId: form.id, versionNumber: { not: 4 } },
-    data: { active: false },
-  });
-  await prisma.form.update({ where: { id: form.id }, data: { status: 'PUBLISHED', currentVersionId: version.id } });
+  if (!form.currentVersionId) {
+    await prisma.formVersion.updateMany({
+      where: { formId: form.id, versionNumber: { not: 4 } },
+      data: { active: false },
+    });
+    await prisma.form.update({ where: { id: form.id }, data: { status: 'PUBLISHED', currentVersionId: version.id } });
+  }
   const email = process.env.BOOTSTRAP_ADMIN_EMAIL?.trim().toLowerCase();
   const password = process.env.BOOTSTRAP_ADMIN_PASSWORD;
   if (!email || !password)
