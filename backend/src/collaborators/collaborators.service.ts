@@ -70,6 +70,9 @@ export class CollaboratorsService {
     if (this.esOficialElectrico(cargoFinal) && !previous.pinHash && !dto.pin) {
       throw new BadRequestException('El Oficial eléctrico debe tener un PIN de acceso.');
     }
+    const pinRemoved = dto.jobTitle !== undefined && !this.esOficialElectrico(cargoFinal) && !!previous.pinHash;
+    const pinChanged = (this.esOficialElectrico(cargoFinal) && !!dto.pin) || pinRemoved;
+    const inactivated = dto.status === 'INACTIVE' && previous.status !== 'INACTIVE';
     const actorUserId = request.principal?.kind === 'USER' ? request.principal.userId : undefined;
     const collaborator = await this.prisma.$transaction(async (tx) => {
       const updated = await tx.collaborator.update({
@@ -89,6 +92,12 @@ export class CollaboratorsService {
               : {}),
         },
       });
+      if (pinChanged || inactivated) {
+        await tx.refreshSession.updateMany({
+          where: { collaboratorId: id, revokedAt: null, expiresAt: { gt: new Date() } },
+          data: { revokedAt: new Date() },
+        });
+      }
       await tx.auditEvent.create({
         data: {
           actorUserId,
@@ -96,7 +105,7 @@ export class CollaboratorsService {
           entityType: 'COLLABORATOR',
           entityId: id,
           beforeJson: this.auditData(previous),
-          afterJson: this.auditData(updated),
+          afterJson: { ...this.auditData(updated), pinChanged, sessionsRevoked: pinChanged || inactivated },
           ip: request.ip,
           userAgent: request.header('user-agent'),
           correlationId: request.correlationId ?? 'unknown',
