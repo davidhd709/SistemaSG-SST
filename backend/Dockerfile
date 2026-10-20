@@ -21,6 +21,8 @@ COPY --from=build /workspace/node_modules /app/node_modules
 COPY --from=build /workspace/backend/node_modules /app/backend/node_modules
 COPY --from=build /workspace/backend/dist ./dist
 COPY --from=build /workspace/backend/prisma ./prisma
+# Plantilla oficial HSE-FO-016 y su mapping: sin ellas no se genera ningún PDF.
+COPY --from=build /workspace/backend/pdf-templates ./pdf-templates
 COPY --from=build /workspace/backend/package.json ./package.json
 EXPOSE 3000
 CMD ["sh", "-c", "./node_modules/.bin/prisma migrate deploy && node dist/main"]

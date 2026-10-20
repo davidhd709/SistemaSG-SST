@@ -114,6 +114,17 @@ describe('TemplateRegistry', () => {
     expect(result.mappingPath).toContain(path.join('HSE-FO-016', 'v00', 'mapping.json'));
   });
 
+  it('resuelve las plantillas en backend/pdf-templates sin depender del directorio de trabajo (TEC-001)', async () => {
+    const expectedRoot = path.resolve(__dirname, '..', '..', 'pdf-templates');
+    const cwdSpy = jest.spyOn(process, 'cwd').mockReturnValue(path.resolve(__dirname, '..', '..', '..'));
+    try {
+      const result = await new TemplateRegistry().resolve('HSE-FO-016');
+      expect(result.templatePath).toBe(path.join(expectedRoot, 'HSE-FO-016', 'v00', 'template.pdf'));
+    } finally {
+      cwdSpy.mockRestore();
+    }
+  });
+
   it('resuelve una versión específica cuando se proporciona', async () => {
     const result = await new TemplateRegistry().resolve('HSE-FO-016', 'v01');
     expect(result.templatePath).toContain(path.join('HSE-FO-016', 'v01', 'template.pdf'));
