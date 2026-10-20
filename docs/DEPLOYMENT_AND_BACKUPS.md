@@ -15,11 +15,22 @@ La API usa `TRUST_PROXY_HOPS=2` en producción para la cadena proxy HTTPS del ho
 
 ## Backups
 
-- Realice `pg_dump` cifrado diariamente y conserve una copia fuera del VPS.
+- Desde la raíz del repositorio, ejecute `bash scripts/backup.sh /ruta/privada/backups`. El script crea un `pg_dump` en formato custom, copia los archivos del volumen local y escribe `SHA256SUMS`. Use `STORAGE_BACKEND=r2` para copiar el bucket R2; exporte antes `R2_ENDPOINT`, `R2_BUCKET`, `R2_ACCESS_KEY_ID` y `R2_SECRET_ACCESS_KEY`, e instale AWS CLI. El respaldo no borra objetos del origen.
+- Restrinja el directorio de respaldo, cifre la copia antes de enviarla fuera del VPS y conserve una copia fuera del servidor. El script usa permisos privados (`umask 077`), pero no cifra por sí solo. Para una copia coherente, suspenda nuevas escrituras mientras respalda base y archivos.
+- Antes de usar una copia, ejecute `bash scripts/verify-restore.sh /ruta/privada/backups/sgsst-AAAAMMDDTHHMMSSZ`. Verifica checksums y restaura el volcado en un PostgreSQL 18 temporal, sin conectarse a la base de la aplicación. El contenedor de prueba se elimina al terminar.
 - Conserve copias diarias durante 30 días, semanales durante 12 semanas y mensuales conforme a la política legal aprobada.
 - Los archivos R2 requieren versionado/retención según la política documental; no active borrado automático de históricos sin autorización.
 - Pruebe mensualmente una restauración en un entorno aislado: base de datos, archivos y acceso a una muestra de PDFs.
 - Registre responsable, fecha, resultado y duración de cada prueba de restauración.
+
+### Restauración operativa
+
+1. Detenga las escrituras de la aplicación, respalde el estado actual y verifique la copia elegida con `scripts/verify-restore.sh`.
+2. Restaure el volcado en el PostgreSQL del entorno elegido: `docker compose exec -T postgres sh -c 'pg_restore --clean --if-exists --no-owner --no-acl -U "$POSTGRES_USER" -d "$POSTGRES_DB"' < /ruta/backup/database.dump`. **Este comando sustituye datos del destino**; ensáyelo primero en un entorno aislado.
+3. Para almacenamiento local, copie `files/` al volumen de la API con `docker compose cp /ruta/backup/files/. api:/app/backend/storage/`. Para R2, sincronice la carpeta `files/` hacia el bucket con AWS CLI y el endpoint R2, sin `--delete`.
+4. Arranque la aplicación y compruebe login, un envío y la descarga de una muestra de PDFs. Conserve el registro de la prueba y del respaldo utilizado.
+
+**Prueba aislada del 20/10/2026:** un Compose temporal con PostgreSQL 18 y un archivo de evidencia produjo un respaldo con `scripts/backup.sh`; `scripts/verify-restore.sh` verificó ambos checksums y restauró 1 tabla pública en otro PostgreSQL temporal. Los contenedores de prueba se retiraron. Queda pendiente repetir el procedimiento con una copia real del entorno de despliegue.
 
 ## Operación
 
