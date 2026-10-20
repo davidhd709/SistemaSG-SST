@@ -810,12 +810,8 @@ describe('PdfService — AUD-001 integridad de datos y firmas', () => {
     const pdfBytes = await minimalPdf(1);
     setupReadFile(pdfBytes, validMapping);
 
-    const authoritativeDate = new Date('2026-04-16T12:00:00.000Z');
-    const expectedFormattedDate = new Intl.DateTimeFormat('es-CO', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-    }).format(authoritativeDate);
+    const authoritativeDate = new Date('2026-04-16T00:00:00.000Z');
+    const expectedFormattedDate = '16/04/2026';
 
     const { pdfService, fieldRenderer } = createPdfServiceContext({
       workDate: authoritativeDate,
@@ -836,18 +832,59 @@ describe('PdfService — AUD-001 integridad de datos y firmas', () => {
     expect(renderData.answers.fecha_trabajo).not.toBe('31/12/2099');
   });
 
+  it.each(['UTC', 'America/Bogota', 'Asia/Tokyo'])(
+    'formatea fecha y horas en hora de Colombia aunque el proceso corra en %s (AUD-003)',
+    async (tz) => {
+      const previousTz = process.env.TZ;
+      process.env.TZ = tz;
+      try {
+        const pdfBytes = await minimalPdf(1);
+        setupReadFile(pdfBytes, validMapping);
+        const { pdfService, fieldRenderer } = createPdfServiceContext({
+          workDate: new Date('2026-04-16T00:00:00.000Z'),
+          // 19:10 y 23:50 en Colombia: frontera en la que UTC ya está en el día siguiente.
+          startedAt: new Date('2026-04-17T00:10:00.000Z'),
+          closedAt: new Date('2026-04-17T04:50:00.000Z'),
+        });
+        const renderSpy = jest.spyOn(fieldRenderer, 'render');
+
+        await pdfService.generateFinalPdf('sub-aud001', 'user-coord-1');
+
+        const { answers } = renderSpy.mock.calls[0][2];
+        expect(answers.fecha_trabajo).toBe('16/04/2026');
+        expect(answers.vigencia_permiso).toBe('16/04/2026');
+        expect(answers.hora_inicio).toBe('07:10 p.m.');
+        expect(answers.hora_fin).toBe('11:50 p.m.');
+        expect(answers.hora_finalizacion).toBe('11:50 p.m.');
+      } finally {
+        if (previousTz === undefined) delete process.env.TZ;
+        else process.env.TZ = previousTz;
+      }
+    },
+  );
+
+  it('usa submittedAt en hora de Colombia cuando no hay workDate (AUD-003)', async () => {
+    const pdfBytes = await minimalPdf(1);
+    setupReadFile(pdfBytes, validMapping);
+    const { pdfService, fieldRenderer } = createPdfServiceContext({
+      workDate: null,
+      // 21:00 del 16 en Colombia; en UTC ya es el 17.
+      submittedAt: new Date('2026-04-17T02:00:00.000Z'),
+    });
+    const renderSpy = jest.spyOn(fieldRenderer, 'render');
+
+    await pdfService.generateFinalPdf('sub-aud001', 'user-coord-1');
+
+    expect(renderSpy.mock.calls[0][2].answers.fecha_trabajo).toBe('16/04/2026');
+  });
+
   it('ignora hora_inicio manipulada en registros históricos y usa startedAt autorizado o vacío si no ha iniciado', async () => {
     const pdfBytes = await minimalPdf(1);
     setupReadFile(pdfBytes, validMapping);
 
+    // 13:30 UTC son las 08:30 en Colombia (UTC-5).
     const authoritativeStart = new Date('2026-04-16T13:30:00.000Z');
-    const expectedStart = new Intl.DateTimeFormat('es-CO', {
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true,
-    })
-      .format(authoritativeStart)
-      .replace(/\s*([ap])\.\s*m\./i, ' $1.m.');
+    const expectedStart = '08:30 a.m.';
 
     const { pdfService, fieldRenderer } = createPdfServiceContext({
       startedAt: authoritativeStart,

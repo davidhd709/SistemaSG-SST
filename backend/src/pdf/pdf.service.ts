@@ -7,6 +7,9 @@ import { TemplateLoader, type CheckboxField, type TemplateMapping } from './temp
 import { FieldRenderer, ResolvedSignature } from './field-renderer';
 import { CrewMemberRow } from './renderers/crew-table.renderer';
 
+/** Zona horaria operativa del permiso: la misma que usa `businessDay` para `workDate`. */
+const BUSINESS_TIME_ZONE = 'America/Bogota';
+
 const EDITABLE_SCHEMA_FIELD_TYPES = new Set(['text', 'textarea', 'yes_no', 'select', 'multi_select', 'number', 'date']);
 
 const RESERVED_AUTOMATIC_FIELD_IDS = new Set([
@@ -125,30 +128,23 @@ export class PdfService {
       answers[key] = value;
     }
 
-    // Fechas y horas calculadas exclusivamente desde fuentes autorizadas de FormSubmission
-    const workOrSubmittedDate = submission.workDate ?? submission.submittedAt;
-    if (workOrSubmittedDate) {
-      const formattedDate = new Intl.DateTimeFormat('es-CO', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-      }).format(workOrSubmittedDate);
+    // Fechas y horas calculadas exclusivamente desde fuentes autorizadas de FormSubmission.
+    // AUD-003: nunca se usa la zona horaria del proceso. `workDate` es un DATE de
+    // PostgreSQL (medianoche UTC) y se lee en UTC; los instantes se muestran en Colombia.
+    const formattedDate = submission.workDate
+      ? this.formatDate(submission.workDate, 'UTC')
+      : submission.submittedAt
+        ? this.formatDate(submission.submittedAt, BUSINESS_TIME_ZONE)
+        : undefined;
+    if (formattedDate) {
       answers.fecha_trabajo = formattedDate;
       answers.vigencia_permiso = formattedDate;
     }
     if (submission.startedAt) {
-      answers.hora_inicio = new Intl.DateTimeFormat('es-CO', { hour: '2-digit', minute: '2-digit', hour12: true })
-        .format(submission.startedAt)
-        .replace(/\s*([ap])\.\s*m\./i, ' $1.m.');
+      answers.hora_inicio = this.formatTime(submission.startedAt);
     }
     if (submission.closedAt) {
-      const formattedCloseTime = new Intl.DateTimeFormat('es-CO', {
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: true,
-      })
-        .format(submission.closedAt)
-        .replace(/\s*([ap])\.\s*m\./i, ' $1.m.');
+      const formattedCloseTime = this.formatTime(submission.closedAt);
       answers.hora_fin = formattedCloseTime;
       answers.hora_finalizacion = formattedCloseTime;
     }
@@ -254,6 +250,23 @@ export class PdfService {
       await this.storage.deleteObject(stored.objectKey);
       throw error;
     }
+  }
+
+  private formatDate(value: Date, timeZone: string): string {
+    return new Intl.DateTimeFormat('es-CO', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone }).format(
+      value,
+    );
+  }
+
+  private formatTime(value: Date): string {
+    return new Intl.DateTimeFormat('es-CO', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true,
+      timeZone: BUSINESS_TIME_ZONE,
+    })
+      .format(value)
+      .replace(/\s*([ap])\.\s*m\./i, ' $1.m.');
   }
 
   private resolveAllowedEditableFieldIds(schemaJson: unknown, mapping: TemplateMapping, formCode: string): Set<string> {
