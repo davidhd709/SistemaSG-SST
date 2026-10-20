@@ -1,13 +1,53 @@
 import * as argon2 from 'argon2';
-import { BadRequestException, ConflictException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import type { AuthenticatedRequest } from '../common/request-context';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { ChangeOwnPasswordDto } from './dto/change-own-password.dto';
 
 @Injectable()
 export class UsersService {
   constructor(private readonly prisma: PrismaService) {}
+
+  async changeOwnPassword(dto: ChangeOwnPasswordDto, request: AuthenticatedRequest) {
+    const userId = request.principal?.kind === 'USER' ? request.principal.userId : undefined;
+    if (!userId) throw new ForbiddenException();
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user || user.status !== 'ACTIVE' || !(await argon2.verify(user.passwordHash, dto.currentPassword))) {
+      throw new UnauthorizedException('Contraseña actual incorrecta.');
+    }
+    if (await argon2.verify(user.passwordHash, dto.newPassword)) {
+      throw new BadRequestException('La nueva contraseña debe ser diferente.');
+    }
+    const passwordHash = await argon2.hash(dto.newPassword, { type: argon2.argon2id });
+    await this.prisma.$transaction(async (tx) => {
+      const changed = await tx.user.updateMany({
+        where: { id: userId, passwordHash: user.passwordHash, status: 'ACTIVE' },
+        data: { passwordHash, forcePasswordChange: false },
+      });
+      if (changed.count !== 1) throw new ConflictException('La contraseña fue modificada por otra operación.');
+      await tx.refreshSession.updateMany({ where: { userId, revokedAt: null }, data: { revokedAt: new Date() } });
+      await tx.auditEvent.create({
+        data: {
+          actorUserId: userId,
+          action: 'CHANGE_OWN_PASSWORD',
+          entityType: 'USER',
+          entityId: userId,
+          ip: request.ip,
+          userAgent: request.header('user-agent'),
+          correlationId: request.correlationId ?? 'unknown',
+        },
+      });
+    });
+    return { changed: true };
+  }
 
   async create(dto: CreateUserDto, request: AuthenticatedRequest) {
     const email = dto.email.trim().toLowerCase();

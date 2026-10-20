@@ -24,6 +24,8 @@ La API queda en `http://localhost:3000/api`, su healthcheck en `http://localhost
 
 La documentación Swagger (`/api/docs`) se publica solo fuera de producción.
 
+Los usuarios internos pueden cambiar su contraseña en **Mi contraseña**. La API verifica la clave actual en `PATCH /api/users/me/password`, audita el cambio y revoca las sesiones de renovación; deben iniciar sesión de nuevo.
+
 Para ejecutar todo en contenedores: `docker compose up --build`. La web se publica en `http://localhost:8080` y enruta `/api` hacia la API.
 
 Después de iniciar los contenedores por primera vez, cree los roles, permisos y administrador inicial con `docker compose exec api node dist-seed/seed.js`. La imagen incluye el seed compilado y usa las variables de entorno del contenedor. Es un paso intencional: no hay credenciales administrativas predeterminadas.

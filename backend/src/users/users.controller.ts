@@ -4,6 +4,7 @@ import { RequirePermissions } from '../auth/auth.decorators';
 import type { AuthenticatedRequest } from '../common/request-context';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { ChangeOwnPasswordDto } from './dto/change-own-password.dto';
 import { UsersService } from './users.service';
 
 @ApiTags('users')
@@ -12,6 +13,9 @@ export class UsersController {
   constructor(private readonly users: UsersService) {}
   @Get('me') me(@Req() request: AuthenticatedRequest) {
     return request.principal?.kind === 'USER' ? this.users.me(request.principal.userId) : null;
+  }
+  @Patch('me/password') changeOwnPassword(@Body() dto: ChangeOwnPasswordDto, @Req() request: AuthenticatedRequest) {
+    return this.users.changeOwnPassword(dto, request);
   }
   @Get('roles') @RequirePermissions('roles:read') roles() {
     return this.users.listRoles();

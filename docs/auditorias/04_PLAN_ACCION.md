@@ -121,4 +121,5 @@ AUD-030, AUD-031, AUD-032, AUD-008 + CSP, AUD-023, AUD-020 (retirar `charla-04..
 | TEC-003           | Pendiente           | Protección de `main` en GitHub; la conexión disponible no expone esa configuración.                                                          |
 | AUD-006           | Hecho `05cd063`     | Seed compilado dentro de la imagen Docker; migraciones y seed ejecutados contra PostgreSQL 18 temporal sin archivo `.env`. Rol ADMIN creado. |
 | AUD-009           | Hecho `b9f0f9f`     | Swagger solo se registra fuera de producción; pruebas verifican ambos entornos.                                                              |
-| AUD-011           | Hecho (este commit) | Rotación usa `updateMany` condicional y crea el reemplazo en la misma transacción; prueba de dos renovaciones concurrentes acepta solo una.  |
+| AUD-011           | Hecho `81eb6e7`     | Rotación usa `updateMany` condicional y crea el reemplazo en la misma transacción; prueba de dos renovaciones concurrentes acepta solo una.  |
+| AUD-012           | Hecho (este commit) | Cambio de contraseña propia con clave actual, auditoría, revocación de refresh y formulario para usuarios internos.                          |
