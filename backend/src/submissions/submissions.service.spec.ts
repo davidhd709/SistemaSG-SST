@@ -63,6 +63,7 @@ function setup() {
     ),
   };
   const jwt = {
+    signAsync: jest.fn().mockResolvedValue('signed-talk-token'),
     verifyAsync: jest.fn().mockResolvedValue({
       sub: collaboratorId,
       jti: challengeId,
@@ -72,7 +73,7 @@ function setup() {
       iat: Math.floor(Date.now() / 1000) - 60,
     }),
   };
-  const config = { getOrThrow: jest.fn().mockReturnValue('test-secret') };
+  const config = { getOrThrow: jest.fn().mockReturnValue('talk-secret') };
   const service = new SubmissionsService(
     prisma as never,
     storage as never,
@@ -83,6 +84,29 @@ function setup() {
   );
   return { service, prisma, tx, storage, jwt };
 }
+
+describe('Secreto dedicado de charla de seguridad (AUD-022)', () => {
+  it('firma y valida el reto con la clave de charla', async () => {
+    const { service, jwt, prisma } = setup();
+    await service.safetyTalkChallenge('charla-03', request as never);
+    expect(jwt.signAsync.mock.calls[0][1]).toEqual({ secret: 'talk-secret', expiresIn: 43_200 });
+
+    prisma.collaborator.count.mockResolvedValue(0);
+    await expect(
+      service.submit(
+        'HSE-FO-016',
+        {
+          answers: {},
+          safetyTalkConfirmed: true,
+          safetyTalkToken: 'token',
+          members: [{ collaboratorId, signatureDataUrl: 'data:image/png;base64,AAAA' }],
+        },
+        request as never,
+      ),
+    ).rejects.toThrow(ForbiddenException);
+    expect(jwt.verifyAsync.mock.calls[0][1]).toEqual({ secret: 'talk-secret' });
+  });
+});
 
 describe('SubmissionsService permit safeguards', () => {
   const signature = Buffer.alloc(100);

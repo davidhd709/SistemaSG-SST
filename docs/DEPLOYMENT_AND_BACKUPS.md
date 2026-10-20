@@ -3,7 +3,7 @@
 ## Producción en Ubuntu
 
 1. Instale Docker Engine y el plugin Docker Compose.
-2. Clone el repositorio, cree `.env` desde `.env.example` y asigne secretos largos y únicos para PostgreSQL y JWT.
+2. Clone el repositorio, cree `.env` desde `.env.example` y asigne secretos largos y únicos para PostgreSQL, JWT y `SAFETY_TALK_JWT_SECRET`. La clave de la charla debe ser distinta de las claves JWT de acceso y renovación.
 3. Configure el dominio en DNS y defina `API_CORS_ORIGIN` con el origen HTTPS real.
 4. Para almacenamiento privado, defina todas las variables R2. Si no se definen, la API usa disco local, opción no recomendada para producción.
 5. Ejecute `docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build` y ejecute el seed en el primer despliegue mediante un procedimiento controlado. La API aplica las migraciones al iniciar; la migración `20260928000000_collaborator_manage_permission` concede el nuevo permiso a los roles ADMIN y ARL_MANAGER existentes. El override de producción activa la auditoría y marca la cookie de refresco como `Secure`.

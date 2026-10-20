@@ -88,6 +88,7 @@ type FirmaGuardada = {
 @Injectable()
 export class SubmissionsService {
   private readonly logger = new Logger(SubmissionsService.name);
+  private readonly safetyTalkSecret: string;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -95,8 +96,10 @@ export class SubmissionsService {
     private readonly compliance: ComplianceService,
     private readonly pdf: PdfService,
     private readonly jwt: JwtService,
-    private readonly config: ConfigService,
-  ) {}
+    config: ConfigService,
+  ) {
+    this.safetyTalkSecret = config.getOrThrow<string>('SAFETY_TALK_JWT_SECRET');
+  }
 
   async safetyTalkChallenge(videoId: string, request: AuthenticatedRequest) {
     const collaboratorId = this.collaboratorId(request);
@@ -105,7 +108,7 @@ export class SubmissionsService {
     return {
       token: await this.jwt.signAsync(
         { sub: collaboratorId, jti: randomUUID(), purpose: 'SAFETY_TALK', videoId, videoSha256: video.sha256 },
-        { secret: this.config.getOrThrow<string>('JWT_REFRESH_SECRET'), expiresIn: 43_200 },
+        { secret: this.safetyTalkSecret, expiresIn: 43_200 },
       ),
       minimumSeconds: video.minimumSeconds,
     };
@@ -115,7 +118,7 @@ export class SubmissionsService {
     let payload: SafetyTalkPayload;
     try {
       payload = await this.jwt.verifyAsync<SafetyTalkPayload>(token, {
-        secret: this.config.getOrThrow<string>('JWT_REFRESH_SECRET'),
+        secret: this.safetyTalkSecret,
       });
     } catch {
       throw new ForbiddenException('La confirmación de la charla no es válida o expiró.');
