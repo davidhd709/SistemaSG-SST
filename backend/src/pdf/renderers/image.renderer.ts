@@ -27,7 +27,7 @@ export class ImageRenderer {
   private readonly logger = new Logger(ImageRenderer.name);
 
   async render({ page, pdfDoc, field, imageBytes }: RenderImageOptions): Promise<void> {
-    if (!imageBytes || imageBytes.length === 0) return;
+    if (!imageBytes || imageBytes.length === 0) throw new Error('La imagen de firma está vacía.');
 
     const { x, y, width, height, fit = 'contain' } = field;
     const align = 'align' in field ? (field.align ?? 'center') : 'center';
@@ -43,12 +43,11 @@ export class ImageRenderer {
       } else if (this.isJpeg(imageBytes)) {
         embeddedImage = await pdfDoc.embedJpg(imageBytes);
       } else {
-        this.logger.warn(`Formato de imagen no reconocido (firma en x=${x}, y=${y}). Se omite.`);
-        return;
+        throw new Error(`Formato de imagen no reconocido (x=${x}, y=${y}).`);
       }
     } catch (error) {
       this.logger.error(`No fue posible embeber la imagen en (x=${x}, y=${y}): ${String(error)}`);
-      return;
+      throw error;
     }
 
     const imgWidth = embeddedImage.width;
@@ -83,9 +82,7 @@ export class ImageRenderer {
     // Convertir Y: si es top-left a bottom-left, o usar bottom-left directamente.
     // Centramos verticalmente dentro del área.
     const isTopLeft = (field as { origin?: string }).origin === 'top-left';
-    const drawY = isTopLeft
-      ? pageHeight - y - height + (height - drawHeight) / 2
-      : y + (height - drawHeight) / 2;
+    const drawY = isTopLeft ? pageHeight - y - height + (height - drawHeight) / 2 : y + (height - drawHeight) / 2;
 
     try {
       page.drawImage(embeddedImage, {
@@ -97,6 +94,7 @@ export class ImageRenderer {
       });
     } catch (error) {
       this.logger.error(`Error al dibujar imagen en (x=${x}, y=${y}): ${String(error)}`);
+      throw error;
     }
   }
 

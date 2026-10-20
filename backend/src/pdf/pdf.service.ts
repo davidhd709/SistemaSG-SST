@@ -183,19 +183,24 @@ export class PdfService {
       answers[`ejecutor_${idx}_cargo`] = cargo;
       answers[`ejecutor_${idx}_seg_social`] = segSocial;
 
-      // Recuperar firma de storage si existe
-      let signatureBytes: Buffer | undefined;
-      if (member.signature?.file?.objectKey) {
-        try {
-          signatureBytes = await this.storage.getObject(member.signature.file.objectKey);
-          signatures.push({
-            memberIndex: i,
-            imageBytes: signatureBytes,
-          });
-        } catch (error) {
-          this.logger.warn(`No se pudo cargar la firma del integrante ${nombre}: ${String(error)}`);
-        }
+      // Una firma ausente o ilegible invalida el documento completo.
+      const signatureKey = member.signature?.file?.objectKey;
+      if (!signatureKey) {
+        this.logger.error(`Falta la firma del integrante ${member.id} en el permiso ${submission.id}.`);
+        throw new Error(`Falta la firma del integrante ${member.id}.`);
       }
+      let signatureBytes: Buffer;
+      try {
+        signatureBytes = await this.storage.getObject(signatureKey);
+      } catch (error) {
+        this.logger.error(`No se pudo cargar la firma del integrante ${member.id}: ${String(error)}`);
+        throw new Error(`No se pudo cargar la firma del integrante ${member.id}.`, { cause: error });
+      }
+      if (!signatureBytes.length) {
+        this.logger.error(`La firma del integrante ${member.id} está vacía.`);
+        throw new Error(`La firma del integrante ${member.id} está vacía.`);
+      }
+      signatures.push({ memberIndex: i, imageBytes: signatureBytes });
 
       crewMembers.push({
         cedula,

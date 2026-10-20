@@ -38,7 +38,7 @@ export interface RenderData {
  * - Cargar la fuente una sola vez y reutilizarla.
  * - Iterar el mapping y delegar a cada renderer especializado.
  * - No conocer el dominio del negocio; solo renderiza lo que recibe.
- * - Registrar advertencias de campos no renderizables sin interrumpir.
+ * - Propagar errores de renderizado para impedir persistir documentos incompletos.
  */
 @Injectable()
 export class FieldRenderer {
@@ -64,15 +64,14 @@ export class FieldRenderer {
     for (const [fieldKey, field] of Object.entries(mapping.fields)) {
       const page = pages[field.page];
       if (!page) {
-        this.logger.warn(`El campo "${fieldKey}" referencia la página ${field.page} que no existe en el PDF.`);
-        continue;
+        throw new Error(`El campo "${fieldKey}" referencia la página ${field.page} que no existe en el PDF.`);
       }
 
       try {
         await this.renderField(fieldKey, field, page, pdfDoc, font, data);
       } catch (error) {
-        // Un campo fallido no debe detener la generación del documento completo.
         this.logger.error(`Error al renderizar campo "${fieldKey}": ${String(error)}`);
+        throw error;
       }
     }
   }

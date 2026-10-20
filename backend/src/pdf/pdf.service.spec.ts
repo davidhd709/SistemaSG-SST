@@ -435,10 +435,10 @@ describe('ImageRenderer', () => {
     align: 'center' as const,
   };
 
-  it('no lanza si imageBytes está vacío', async () => {
-    await expect(
-      renderer.render({ page, pdfDoc: doc, field: baseField, imageBytes: Buffer.alloc(0) }),
-    ).resolves.not.toThrow();
+  it('rechaza una firma vacía', async () => {
+    await expect(renderer.render({ page, pdfDoc: doc, field: baseField, imageBytes: Buffer.alloc(0) })).rejects.toThrow(
+      /vacía/,
+    );
   });
 
   it('incrusta correctamente un PNG válido', async () => {
@@ -447,10 +447,10 @@ describe('ImageRenderer', () => {
     ).resolves.not.toThrow();
   });
 
-  it('no lanza con bytes de imagen inválidos (solo emite warn)', async () => {
+  it('rechaza bytes de firma inválidos', async () => {
     await expect(
       renderer.render({ page, pdfDoc: doc, field: baseField, imageBytes: Buffer.from('not-an-image') }),
-    ).resolves.not.toThrow();
+    ).rejects.toThrow(/Formato de imagen no reconocido/);
   });
 
   it('el PDF generado conserva 1 página después de insertar firma', async () => {
@@ -1031,6 +1031,60 @@ describe('PdfService — AUD-001 integridad de datos y firmas', () => {
       /6 integrantes.*solo admite 5/,
     );
     expect(storage.putObject).not.toHaveBeenCalled();
+  });
+
+  it('no guarda el PDF si falta la firma de un integrante (AUD-024)', async () => {
+    setupReadFile(await minimalPdf(1), crewMapping);
+    const { pdfService, storage, prisma } = createPdfServiceContext({
+      members: [
+        {
+          id: 'mem-sin-firma',
+          isLead: true,
+          collaborator: { id: 'collab-1', firstName: 'Ana', lastName: 'Pérez', documentNumber: '123', jobTitle: null },
+          jobPosition: null,
+          complianceJson: {},
+          signature: null,
+        },
+      ],
+    });
+
+    await expect(pdfService.generateFinalPdf('sub-aud001', 'user-coord-1')).rejects.toThrow(/Falta la firma/);
+    expect(storage.putObject).not.toHaveBeenCalled();
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+
+  it('no guarda el PDF si falla la lectura de la firma (AUD-024)', async () => {
+    setupReadFile(await minimalPdf(1), crewMapping);
+    const { pdfService, storage, prisma } = createPdfServiceContext();
+    storage.getObject.mockRejectedValueOnce(new Error('storage unavailable'));
+
+    await expect(pdfService.generateFinalPdf('sub-aud001', 'user-coord-1')).rejects.toThrow(
+      /No se pudo cargar la firma/,
+    );
+    expect(storage.putObject).not.toHaveBeenCalled();
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+
+  it('no guarda el PDF si una firma no se puede incrustar (AUD-024)', async () => {
+    setupReadFile(await minimalPdf(1), crewMapping);
+    const { pdfService, storage, prisma } = createPdfServiceContext();
+    storage.getObject.mockResolvedValueOnce(Buffer.from('not-an-image'));
+
+    await expect(pdfService.generateFinalPdf('sub-aud001', 'user-coord-1')).rejects.toThrow(
+      /Formato de imagen no reconocido/,
+    );
+    expect(storage.putObject).not.toHaveBeenCalled();
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+
+  it('no guarda el PDF si falla el renderizado de un campo (AUD-024)', async () => {
+    setupReadFile(await minimalPdf(1), crewMapping);
+    const { pdfService, fieldRenderer, storage, prisma } = createPdfServiceContext();
+    jest.spyOn(fieldRenderer, 'render').mockRejectedValueOnce(new Error('campo ilegible'));
+
+    await expect(pdfService.generateFinalPdf('sub-aud001', 'user-coord-1')).rejects.toThrow('campo ilegible');
+    expect(storage.putObject).not.toHaveBeenCalled();
+    expect(prisma.$transaction).not.toHaveBeenCalled();
   });
 
   it('aplica lista blanca segura cuando schemaJson es inválido o incompleto, conservando campos legítimos y bloqueando no verificados', async () => {
