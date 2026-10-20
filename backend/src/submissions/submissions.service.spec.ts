@@ -74,15 +74,20 @@ function setup() {
     }),
   };
   const config = { getOrThrow: jest.fn().mockReturnValue('talk-secret') };
+  const templateRegistry = {
+    defaultVersion: jest.fn().mockReturnValue('v00'),
+    resolve: jest.fn().mockResolvedValue({ templatePath: '/template.pdf', mappingPath: '/mapping.json' }),
+  };
   const service = new SubmissionsService(
     prisma as never,
     storage as never,
     compliance as never,
     {} as never,
+    templateRegistry as never,
     jwt as never,
     config as never,
   );
-  return { service, prisma, tx, storage, jwt };
+  return { service, prisma, tx, storage, jwt, templateRegistry };
 }
 
 describe('Secreto dedicado de charla de seguridad (AUD-022)', () => {
@@ -335,8 +340,9 @@ describe('SubmissionsService permit safeguards', () => {
       expect(response.id).toBe('submission-1');
       expect(tx.formSubmission.create).toHaveBeenCalledTimes(1);
       const createdArgs = tx.formSubmission.create.mock.calls[0][0] as {
-        data: { answersJson: Record<string, unknown> };
+        data: { answersJson: Record<string, unknown>; templateVersion: string };
       };
+      expect(createdArgs.data.templateVersion).toBe('v00');
       expect(createdArgs.data.answersJson).toMatchObject({
         empresa: 'OPAINN ESP SAS',
         lugar_trabajo: 'Poste 14',

@@ -15,6 +15,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { StorageService } from '../files/storage.service';
 import { ComplianceService, type Cumplimiento } from '../compliance/compliance.service';
 import { PdfService } from '../pdf/pdf.service';
+import { TemplateRegistry } from '../pdf/template-registry';
 import { SubmitFormDto, type CrewMemberDto } from './dto/submit-form.dto';
 import { CloseWorkdayDto } from './dto/close-workday.dto';
 import { businessDate, businessDay } from '../common/business-date';
@@ -95,6 +96,7 @@ export class SubmissionsService {
     private readonly storage: StorageService,
     private readonly compliance: ComplianceService,
     private readonly pdf: PdfService,
+    private readonly templateRegistry: TemplateRegistry,
     private readonly jwt: JwtService,
     config: ConfigService,
   ) {
@@ -211,6 +213,9 @@ export class SubmissionsService {
     if (!form?.currentVersion || form.status !== 'PUBLISHED' || !form.currentVersion.active) {
       throw new NotFoundException('No hay un formulario vigente.');
     }
+    const templateVersion = this.templateRegistry.defaultVersion(formCode);
+    if (!templateVersion) throw new NotFoundException('No hay una plantilla PDF vigente para este formulario.');
+    await this.templateRegistry.resolve(formCode, templateVersion);
     this.validateAnswers(form.currentVersion.schemaJson, dto.answers);
 
     const integrantes = this.normalizarCuadrilla(dto.members, oficialId);
@@ -254,6 +259,7 @@ export class SubmissionsService {
           data: {
             collaboratorId: oficialId,
             formVersionId: form.currentVersion!.id,
+            templateVersion,
             status: 'PENDING_APPROVAL',
             answersJson: this.completarAutomaticos(form.currentVersion!.schemaJson, dto.answers, {
               momento: ahora,

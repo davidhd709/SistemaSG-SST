@@ -724,6 +724,14 @@ describe('PdfService — AUD-001 integridad de datos y firmas', () => {
     return { pdfService, prisma, tx, storage, fieldRenderer, imageRenderer };
   }
 
+  it('no sustituye una versión de plantilla registrada que ya no está disponible (AUD-028)', async () => {
+    accessFailsOnCall(1);
+    const { pdfService, storage } = createPdfServiceContext({ templateVersion: 'v99' });
+
+    await expect(pdfService.generateFinalPdf('sub-aud001', 'user-coord-1')).rejects.toThrow(NotFoundException);
+    expect(storage.putObject).not.toHaveBeenCalled();
+  });
+
   it('protege identidades, cargos y firmas al generar PDF desde registros históricos manipulados', async () => {
     const pdfBytes = await minimalPdf(1);
     setupReadFile(pdfBytes, crewMapping);
@@ -810,7 +818,7 @@ describe('PdfService — AUD-001 integridad de datos y firmas', () => {
     );
     expect(tx.formSubmission.update).toHaveBeenCalledWith({
       where: { id: 'sub-aud001' },
-      data: { finalPdfFileId: 'pdf-file-id-1' },
+      data: { finalPdfFileId: 'pdf-file-id-1', templateVersion: 'v00' },
     });
     const auditCall = tx.auditEvent.create.mock.calls[0][0] as {
       data: { action: string; entityId: string };

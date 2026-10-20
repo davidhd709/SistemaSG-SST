@@ -96,18 +96,15 @@ export class PdfService {
     if (!submission.members.length) throw new Error('El permiso no tiene integrantes registrados.');
 
     const formCode = submission.formVersion.form.code;
-    const defaultVer = this.templateRegistry.defaultVersion(formCode) ?? 'v00';
-    const templateVersion = (submission as { templateVersion?: string | null }).templateVersion || defaultVer;
+    const templateVersion = submission.templateVersion ?? this.templateRegistry.defaultVersion(formCode);
+    if (!templateVersion) throw new NotFoundException(`No hay plantilla PDF vigente para ${formCode}.`);
 
     // 1. Resolver y cargar la plantilla base inmutable
-    let templateLocations: { templatePath: string; mappingPath: string };
-    try {
-      templateLocations = await this.templateRegistry.resolve(formCode, templateVersion);
-    } catch {
-      templateLocations = await this.templateRegistry.resolve(formCode, defaultVer);
-    }
-    const { templatePath, mappingPath } = templateLocations;
+    const { templatePath, mappingPath } = await this.templateRegistry.resolve(formCode, templateVersion);
     const { pdfDoc, mapping } = await this.templateLoader.load(templatePath, mappingPath);
+    if (mapping.meta.formCode !== formCode || mapping.meta.templateVersion !== templateVersion) {
+      throw new Error(`El mapping no corresponde a la plantilla ${formCode}/${templateVersion}.`);
+    }
 
     // 2. Preparar respuestas base permitiendo únicamente campos editables verificados
     const rawAnswers =
@@ -242,14 +239,17 @@ export class PdfService {
             createdById: actorUserId,
           },
         });
-        await tx.formSubmission.update({ where: { id: submission.id }, data: { finalPdfFileId: created.id } });
+        await tx.formSubmission.update({
+          where: { id: submission.id },
+          data: { finalPdfFileId: created.id, templateVersion },
+        });
         await tx.auditEvent.create({
           data: {
             actorUserId,
             action: 'GENERATE_FINAL_PDF',
             entityType: 'FORM_SUBMISSION',
             entityId: submission.id,
-            afterJson: { fileId: created.id, sha256: stored.sha256 },
+            afterJson: { fileId: created.id, sha256: stored.sha256, templateVersion },
             correlationId: `pdf-${submission.id}`,
           },
         });
