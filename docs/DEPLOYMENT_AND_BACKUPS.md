@@ -11,6 +11,8 @@
 
 Los puertos de PostgreSQL, Redis, API y web están ligados a `127.0.0.1`; publique la web mediante un proxy HTTPS en el host. No exponga PostgreSQL, Redis ni el bucket R2 a internet. Restringa puertos con firewall y cambie las credenciales de bootstrap después de crear los usuarios reales.
 
+La API usa `TRUST_PROXY_HOPS=2` en producción para la cadena proxy HTTPS del host → Nginx web → API. El proxy del host debe añadir la IP real a `X-Forwarded-For` y no aceptar cabeceras del cliente como fuente confiable. Si cambia el número de proxies, ajuste la variable (0, 1 o 2) antes de desplegar. Mantenga la API sin exposición pública directa.
+
 ## Backups
 
 - Realice `pg_dump` cifrado diariamente y conserve una copia fuera del VPS.

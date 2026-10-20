@@ -2,17 +2,19 @@ import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 import cookieParser from 'cookie-parser';
-import { json } from 'express';
+import { json, type Express } from 'express';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { setupSwagger } from './swagger';
 import { HttpExceptionFilter } from './common/http-exception.filter';
 import { getNumber } from './common/env';
+import { configureTrustedProxy } from './common/trust-proxy';
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule, { bodyParser: false });
   const config = app.get(ConfigService);
   const corsOrigin = config.get<string>('API_CORS_ORIGIN', 'http://localhost:4200');
+  configureTrustedProxy(app.getHttpAdapter().getInstance() as Express, getNumber(config, 'TRUST_PROXY_HOPS', 1));
 
   app.setGlobalPrefix('api');
   app.use(helmet());
