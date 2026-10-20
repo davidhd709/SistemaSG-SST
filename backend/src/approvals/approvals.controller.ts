@@ -33,4 +33,8 @@ export class ApprovalsController {
   ) {
     return this.approvals.decide(id, dto, request);
   }
+  /** Recupera el documento de un permiso ya cerrado o rechazado. */
+  @Post('submissions/:id/generate-pdf') generatePdf(@Param('id') id: string, @Req() request: AuthenticatedRequest) {
+    return this.approvals.generateMissingPdf(id, request);
+  }
 }

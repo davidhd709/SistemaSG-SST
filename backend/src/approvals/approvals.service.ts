@@ -230,4 +230,22 @@ export class ApprovalsService {
     }
     return { ...decision, pdfFileId: null };
   }
+
+  /** Genera un PDF pendiente sin volver a decidir ni modificar las horas del envío. */
+  async generateMissingPdf(id: string, request: AuthenticatedRequest) {
+    const actorUserId = request.principal?.kind === 'USER' ? request.principal.userId : undefined;
+    if (!actorUserId) throw new ForbiddenException();
+    const submission = await this.prisma.formSubmission.findUnique({
+      where: { id },
+      select: { status: true, approval: { select: { id: true } }, finalPdfFileId: true },
+    });
+    if (!submission) throw new NotFoundException('Envío no encontrado.');
+    if (!submission.approval || (submission.status !== 'CLOSED' && submission.status !== 'REJECTED')) {
+      throw new ConflictException('Solo se puede generar el PDF de un envío cerrado o rechazado.');
+    }
+    if (submission.finalPdfFileId) throw new ConflictException('Este envío ya tiene un PDF final.');
+
+    const pdfFileId = await this.pdf.generateFinalPdf(id, actorUserId);
+    return { submissionId: id, pdfFileId };
+  }
 }
