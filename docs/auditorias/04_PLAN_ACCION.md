@@ -124,4 +124,5 @@ AUD-030, AUD-031, AUD-032, AUD-008 + CSP, AUD-023, AUD-020 (retirar `charla-04..
 | AUD-011           | Hecho `81eb6e7`     | Rotación usa `updateMany` condicional y crea el reemplazo en la misma transacción; prueba de dos renovaciones concurrentes acepta solo una.   |
 | AUD-012           | Hecho `5c24e15`     | Cambio de contraseña propia con clave actual, auditoría, revocación de refresh y formulario para usuarios internos.                           |
 | AUD-022           | Hecho `e771b82`     | La charla usa `SAFETY_TALK_JWT_SECRET` separado de refresh; configuración obligatoria y prueba de firma y validación.                         |
-| AUD-026           | Hecho (este commit) | El seed conserva el esquema de la versión 4 publicada y no cambia la versión vigente. Verificado con una versión 5 en PostgreSQL 18 temporal. |
+| AUD-026           | Hecho `03b0c78`     | El seed conserva el esquema de la versión 4 publicada y no cambia la versión vigente. Verificado con una versión 5 en PostgreSQL 18 temporal. |
+| AUD-027           | Hecho (este commit) | Lista ARL y dashboard priorizan la afiliación que cubre hoy, igual que el control de acceso; prueba del caso con afiliación futura.           |

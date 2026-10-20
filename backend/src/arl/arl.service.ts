@@ -2,7 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import type { ArlAffiliation } from '@prisma/client';
 import type { AuthenticatedRequest } from '../common/request-context';
 import { PrismaService } from '../prisma/prisma.service';
-import { calculateArlStatus, type ArlStatus } from './arl-status';
+import { calculateArlStatus, selectArlAffiliation, type ArlStatus } from './arl-status';
 import { CreateArlAffiliationDto } from './dto/create-arl-affiliation.dto';
 import { UpdateArlAffiliationDto } from './dto/update-arl-affiliation.dto';
 import { StorageService } from '../files/storage.service';
@@ -22,9 +22,12 @@ export class ArlService {
       include: { arlAffiliations: { orderBy: { endDate: 'desc' } } },
       orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
     });
+    const now = new Date();
     const result = collaborators.map((collaborator) => {
-      const affiliation = collaborator.arlAffiliations[0];
-      const arlStatus = affiliation ? calculateArlStatus(affiliation.startDate, affiliation.endDate, days) : 'VENCIDA';
+      const affiliation = selectArlAffiliation(collaborator.arlAffiliations, now);
+      const arlStatus = affiliation
+        ? calculateArlStatus(affiliation.startDate, affiliation.endDate, days, now)
+        : 'VENCIDA';
       return {
         collaborator: {
           id: collaborator.id,

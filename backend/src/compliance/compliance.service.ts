@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { calculateArlStatus, type ArlStatus } from '../arl/arl-status';
+import { calculateArlStatus, selectArlAffiliation, type ArlStatus } from '../arl/arl-status';
 import { businessDate } from '../common/business-date';
 
 export type RequisitoEstado = 'VIGENTE' | 'PROXIMA_A_VENCER' | 'VENCIDA' | 'NO_APLICA';
@@ -57,9 +57,8 @@ export class ComplianceService {
       // Cuenta el registro que cubre hoy, no el de vencimiento más lejano: una
       // planilla que empieza el mes entrante no puede tapar a la que rige ahora.
       // Si ninguno cubre hoy se toma el más reciente, solo para informar.
-      const afiliacion = this.vigenteHoy(
+      const afiliacion = selectArlAffiliation(
         afiliaciones.filter((item) => item.collaboratorId === collaboratorId),
-        (item) => [item.startDate, item.endDate],
         now,
       );
       const cobertura = this.vigenteHoy(

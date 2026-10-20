@@ -149,7 +149,7 @@ type CrearColaborador = {
             </div>
           </form>
 
-          <h3>{{ fila.affiliation ? 'Actualizar afiliación vigente' : 'Registrar primera afiliación' }}</h3>
+          <h3>{{ fila.affiliation ? 'Actualizar afiliación' : 'Registrar primera afiliación' }}</h3>
           <form [formGroup]="formulario" (ngSubmit)="guardar()" class="rejilla-campos dos">
             <label class="campo ancho-total">
               <span>Administradora de riesgos laborales</span>
