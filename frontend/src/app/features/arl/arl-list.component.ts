@@ -123,14 +123,22 @@ type CrearColaborador = {
               </select>
             </label>
             <label class="campo"><span>Equipo</span><input formControlName="team" placeholder="Opcional" /></label>
-            <label class="campo"><span>Correo</span><input formControlName="email" type="email" placeholder="Opcional" /></label>
-            <label class="campo"><span>Teléfono</span><input formControlName="phone" inputmode="tel" placeholder="Opcional" /></label>
+            <label class="campo"
+              ><span>Correo</span><input formControlName="email" type="email" placeholder="Opcional"
+            /></label>
+            <label class="campo"
+              ><span>Teléfono</span><input formControlName="phone" inputmode="tel" placeholder="Opcional"
+            /></label>
             @if (requierePinEdicion()) {
               <label class="campo ancho-total">
                 <span>PIN de acceso del Oficial eléctrico</span>
                 <input formControlName="pin" type="password" inputmode="numeric" autocomplete="new-password" />
                 <span class="ayuda">
-                  {{ pinObligatorioEdicion() ? 'Asigna un PIN de 4 a 12 caracteres para habilitar su acceso.' : 'Déjalo vacío para conservar el PIN actual.' }}
+                  {{
+                    pinObligatorioEdicion()
+                      ? 'Asigna un PIN de 4 a 12 caracteres para habilitar su acceso.'
+                      : 'Déjalo vacío para conservar el PIN actual.'
+                  }}
                 </span>
               </label>
             }
@@ -620,8 +628,7 @@ export class ArlListComponent {
         Validators.minLength(4),
         Validators.maxLength(12),
       ]);
-    }
-    else {
+    } else {
       pin.clearValidators();
       pin.setValue('', { emitEvent: false });
     }
@@ -723,7 +730,9 @@ export class ArlListComponent {
         this.refrescarFicha(fila.collaborator.id);
       },
       error: () => {
-        this.error.set('No fue posible actualizar los datos del colaborador. Revisa la información e inténtalo de nuevo.');
+        this.error.set(
+          'No fue posible actualizar los datos del colaborador. Revisa la información e inténtalo de nuevo.',
+        );
         this.actualizandoColaborador.set(false);
       },
     });

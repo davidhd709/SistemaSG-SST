@@ -101,24 +101,24 @@ describe('ApprovalsService.adminCloseWorkday (AUD-025)', () => {
       request as never,
     );
 
+    expect(result.closedAt).toBeInstanceOf(Date);
     expect(result).toEqual({
       id: 'submission-1',
       status: 'CLOSED',
-      closedAt: expect.any(Date),
+      closedAt: result.closedAt,
       pdfFileId: 'pdf-file-1',
     });
     expect(tx.formSubmission.updateMany).toHaveBeenCalledWith({
       where: { id: 'submission-1', status: 'APPROVED', startedAt: { not: null } },
-      data: { status: 'CLOSED', closedAt: expect.any(Date) },
+      data: { status: 'CLOSED', closedAt: result.closedAt },
     });
-    expect(tx.auditEvent.create).toHaveBeenCalledWith({
-      data: expect.objectContaining({
-        actorUserId: 'coord-1',
-        action: 'ADMIN_CLOSE_WORKDAY',
-        entityId: 'submission-1',
-        reason: 'Oficial sin acceso',
-        correlationId: 'request-1',
-      }),
+    const audit = tx.auditEvent.create.mock.calls[0][0] as { data: Record<string, unknown> };
+    expect(audit.data).toMatchObject({
+      actorUserId: 'coord-1',
+      action: 'ADMIN_CLOSE_WORKDAY',
+      entityId: 'submission-1',
+      reason: 'Oficial sin acceso',
+      correlationId: 'request-1',
     });
     expect(pdf.generateFinalPdf).toHaveBeenCalledWith('submission-1', 'coord-1');
   });

@@ -1,12 +1,6 @@
 import { ExecutionContext, ForbiddenException, UnauthorizedException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import {
-  SkipThrottle,
-  Throttle,
-  ThrottlerException,
-  ThrottlerGuard,
-  ThrottlerStorageService,
-} from '@nestjs/throttler';
+import { SkipThrottle, Throttle, ThrottlerException, ThrottlerGuard, ThrottlerStorageService } from '@nestjs/throttler';
 import { HttpExceptionFilter } from '../common/http-exception.filter';
 import { AuthGuard } from './auth.guard';
 import { PermissionsGuard } from './permissions.guard';
@@ -83,7 +77,7 @@ describe('ThrottlerGuard & Rate Limiting (AUD-001)', () => {
       json: jest.fn().mockReturnThis(),
     };
     return {
-      getHandler: () => TestController.prototype[methodName],
+      getHandler: () => Reflect.get(TestController.prototype, methodName) as (...args: unknown[]) => unknown,
       getClass: () => TestController,
       switchToHttp: () => ({
         getRequest: () => req,
@@ -182,10 +176,11 @@ describe('ThrottlerGuard & Rate Limiting (AUD-001)', () => {
       expect(responseBody).toEqual({
         statusCode: 429,
         message: 'Has superado el límite de solicitudes.',
-        timestamp: expect.any(String),
+        timestamp: responseBody.timestamp,
         path: '/api/auth/collaborator/login',
         correlationId: 'test-correlation-xyz-789',
       });
+      expect(typeof responseBody.timestamp).toBe('string');
     });
   });
 

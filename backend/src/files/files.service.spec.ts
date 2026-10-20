@@ -128,4 +128,3 @@ describe('FilesService.download authorization', () => {
     ).rejects.toThrow(ForbiddenException);
   });
 });
-

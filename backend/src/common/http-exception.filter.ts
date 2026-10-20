@@ -16,7 +16,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
     const message =
       typeof raw === 'object' && raw !== null && 'message' in raw ? (raw as { message: unknown }).message : raw;
 
-    if (!isHttpException || status >= HttpStatus.INTERNAL_SERVER_ERROR) {
+    if (!isHttpException || status >= 500) {
       const err = exception instanceof Error ? exception : new Error(String(exception));
       this.logger.error(
         `[${request.method ?? 'HTTP'} ${request.url ?? ''}] ${err.message} (CorrelationId: ${request.correlationId ?? 'unknown'})`,

@@ -20,12 +20,6 @@ import { CrewTableRenderer } from './renderers/crew-table.renderer';
     ImageRenderer,
     CrewTableRenderer,
   ],
-  exports: [
-    PdfService,
-    TemplateRegistry,
-    TemplateLoader,
-    FieldRenderer,
-  ],
+  exports: [PdfService, TemplateRegistry, TemplateLoader, FieldRenderer],
 })
 export class PdfModule {}
-

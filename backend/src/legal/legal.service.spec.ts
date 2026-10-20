@@ -161,10 +161,7 @@ describe('LegalService', () => {
       expect(prisma.formSubmission.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: {
-            OR: [
-              { collaboratorId: colabId },
-              { members: { some: { collaboratorId: colabId } } },
-            ],
+            OR: [{ collaboratorId: colabId }, { members: { some: { collaboratorId: colabId } } }],
           },
           orderBy: { createdAt: 'desc' },
         }),
@@ -206,7 +203,12 @@ describe('LegalService', () => {
             {
               collaborator: { id: 'oficial-lead-id', firstName: 'Líder', lastName: 'Oficial', documentNumber: '111' },
               isLead: true,
-              signature: { id: 'sig-lead', sha256: 'lead-sha', signedAt: mockDate, file: { id: 'file-lead', sha256: 'lead-sha' } },
+              signature: {
+                id: 'sig-lead',
+                sha256: 'lead-sha',
+                signedAt: mockDate,
+                file: { id: 'file-lead', sha256: 'lead-sha' },
+              },
             },
             {
               collaborator: { id: colabId, firstName: 'Pedro', lastName: 'Gómez', documentNumber: '12345678' },
