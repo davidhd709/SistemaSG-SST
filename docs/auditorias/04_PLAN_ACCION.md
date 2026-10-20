@@ -112,3 +112,11 @@ AUD-030, AUD-031, AUD-032, AUD-008 + CSP, AUD-023, AUD-020 (retirar `charla-04..
 | 7    | AUD-004         | Hecho `3380ef4`     | `TRUST_PROXY_HOPS` configura 1 salto en desarrollo y 2 en producción (proxy HTTPS → web → API). Prueba de Express verifica `request.ip` con `X-Forwarded-For` y rechaza saltos inválidos.                                               |
 | 8    | AUD-007         | Hecho (este commit) | Scripts para respaldar PostgreSQL y archivos locales o R2, y verificar restauración aislada. Prueba del 20/10/2026: checksums correctos y 1 tabla restaurada con Compose temporal. Falta ensayo con datos reales de despliegue.         |
 | —    | REQ-001         | Pendiente           | Decisión SST                                                                                                                                                                                                                            |
+
+## 7. Seguimiento de la Etapa 2
+
+| ID                | Estado              | Evidencia                                                                                                                                    |
+| ----------------- | ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| AUD-014 / TEC-002 | Hecho `4cd9cf9`     | `format:check`, lint de API y frontend, 120 pruebas de API y ambos builds aprobados.                                                         |
+| TEC-003           | Pendiente           | Protección de `main` en GitHub; la conexión disponible no expone esa configuración.                                                          |
+| AUD-006           | Hecho (este commit) | Seed compilado dentro de la imagen Docker; migraciones y seed ejecutados contra PostgreSQL 18 temporal sin archivo `.env`. Rol ADMIN creado. |

@@ -1,9 +1,11 @@
 import * as argon2 from 'argon2';
 import { resolve } from 'node:path';
+import { existsSync } from 'node:fs';
 import { PrismaClient } from '@prisma/client';
 import { workAtHeightSchema } from './seed-data/work-at-height';
 
-process.loadEnvFile(resolve(__dirname, '../../.env'));
+const envPath = resolve(__dirname, '../../.env');
+if (existsSync(envPath)) process.loadEnvFile(envPath);
 
 const prisma = new PrismaClient();
 

@@ -8,7 +8,7 @@ COPY backend/package.json backend/package.json
 COPY frontend/package.json frontend/package.json
 RUN corepack enable && pnpm install --frozen-lockfile
 COPY backend backend
-RUN pnpm --filter @sg-sst/api run prisma:generate && pnpm --filter @sg-sst/api run build
+RUN pnpm --filter @sg-sst/api run prisma:generate && pnpm --filter @sg-sst/api run build && pnpm --filter @sg-sst/api run build:seed
 FROM node:22-alpine
 WORKDIR /app/backend
 ENV NODE_ENV=production
@@ -20,6 +20,7 @@ RUN apk add --no-cache chromium nss freetype harfbuzz ttf-freefont
 COPY --from=build /workspace/node_modules /app/node_modules
 COPY --from=build /workspace/backend/node_modules /app/backend/node_modules
 COPY --from=build /workspace/backend/dist ./dist
+COPY --from=build /workspace/backend/dist-seed ./dist-seed
 COPY --from=build /workspace/backend/prisma ./prisma
 # Plantilla oficial HSE-FO-016 y su mapping: sin ellas no se genera ningún PDF.
 COPY --from=build /workspace/backend/pdf-templates ./pdf-templates
