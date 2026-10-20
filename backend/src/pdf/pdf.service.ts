@@ -149,7 +149,14 @@ export class PdfService {
       answers.hora_finalizacion = formattedCloseTime;
     }
 
-    // 3. Procesar cuadrilla y firmas exclusivamente desde registros de base de datos
+    // 3. Procesar cuadrilla y firmas exclusivamente desde registros de base de datos.
+    // TEC-008: un integrante sin fila en la plantilla desaparecería del documento sin aviso.
+    const crewCapacity = this.crewCapacity(mapping);
+    if (submission.members.length > crewCapacity) {
+      throw new Error(
+        `El permiso ${submission.id} tiene ${submission.members.length} integrantes y la plantilla ${formCode}/${templateVersion} solo admite ${crewCapacity}.`,
+      );
+    }
     const signatures: ResolvedSignature[] = [];
     const crewMembers: CrewMemberRow[] = [];
 
@@ -159,11 +166,9 @@ export class PdfService {
       const nombre = `${member.collaborator.firstName} ${member.collaborator.lastName}`.trim();
       const cedula = member.collaborator.documentNumber;
       const cargo = member.jobPosition?.name ?? member.collaborator.jobTitle ?? '—';
-      // AUD-002: Los estados de cumplimiento (certificado_alturas y seguridad_social_verificada)
-      // requieren resolverse desde la evidencia histórica por integrante (member.complianceJson).
-      // No se confía en answersJson ni se sustituyen valores no verificados con "Vigente" o "Verificada".
-      const certificado = '';
-      const segSocial = '';
+      // AUD-002: los estados salen de la evidencia guardada al enviar el permiso
+      // (member.complianceJson), nunca de answersJson ni de valores por defecto.
+      const { certificado, segSocial } = this.complianceTexts(member.complianceJson);
 
       // Mapeo declarativo fila por fila (cuadrilla_01..05 y alias ejecutor_01..05)
       answers[`cuadrilla_${idx}_cedula`] = cedula;
@@ -249,6 +254,42 @@ export class PdfService {
     } catch (error) {
       await this.storage.deleteObject(stored.objectKey);
       throw error;
+    }
+  }
+
+  /** Filas de integrante que la plantilla puede firmar: una por `memberIndex` distinto. */
+  private crewCapacity(mapping: TemplateMapping): number {
+    const indexes = new Set<number>();
+    for (const field of Object.values(mapping.fields ?? {})) {
+      if (field.type === 'SIGNATURE' && typeof field.memberIndex === 'number') indexes.add(field.memberIndex);
+    }
+    return indexes.size;
+  }
+
+  private complianceTexts(complianceJson: unknown): { certificado: string; segSocial: string } {
+    const evidence =
+      complianceJson && typeof complianceJson === 'object' && !Array.isArray(complianceJson)
+        ? (complianceJson as { alturas?: { estado?: unknown }; seguridadSocial?: { estado?: unknown } })
+        : {};
+    return {
+      certificado: this.complianceStatusText(evidence.alturas?.estado),
+      segSocial: this.complianceStatusText(evidence.seguridadSocial?.estado),
+    };
+  }
+
+  /** Texto corto para celdas de ~60 pt; un estado desconocido no se presenta como vigente. */
+  private complianceStatusText(estado: unknown): string {
+    switch (estado) {
+      case 'VIGENTE':
+        return 'Vigente';
+      case 'PROXIMA_A_VENCER':
+        return 'Vigente (por vencer)';
+      case 'VENCIDA':
+        return 'No vigente';
+      case 'NO_APLICA':
+        return 'No aplica';
+      default:
+        return 'Sin registro';
     }
   }
 

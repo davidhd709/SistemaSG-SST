@@ -90,6 +90,9 @@ type Integrante = {
 
 const BORRADOR = 'sg-sst.borrador';
 
+/** Filas de integrantes del formato oficial HSE-FO-016; la API aplica el mismo límite. */
+const MAX_INTEGRANTES = 5;
+
 /**
  * Flujo previo al inicio de labores.
  *
@@ -226,9 +229,15 @@ const BORRADOR = 'sg-sst.borrador';
         <div class="bloque">
           <div class="titulo-seccion">
             <h2>
-              Integrantes <span class="conteo">({{ integrantes().length }})</span>
+              Integrantes <span class="conteo">({{ integrantes().length }} de {{ maxIntegrantes }})</span>
             </h2>
           </div>
+
+          @if (cuadrillaCompleta()) {
+            <p class="secundario" role="status">
+              El formato admite hasta {{ maxIntegrantes }} integrantes. Quita a alguien para elegir a otra persona.
+            </p>
+          }
 
           @if (candidatos().length) {
             <div class="casillas">
@@ -237,7 +246,7 @@ const BORRADOR = 'sg-sst.borrador';
                   <input
                     type="checkbox"
                     [checked]="estaEnCuadrilla(persona.id)"
-                    [disabled]="persona.id === yoId()"
+                    [disabled]="persona.id === yoId() || (cuadrillaCompleta() && !estaEnCuadrilla(persona.id))"
                     (change)="alternarIntegrante(persona)"
                   />
                   <span>
@@ -741,6 +750,8 @@ export class WorkAtHeightFormComponent implements OnDestroy {
   /** A quién le toca firmar ahora. */
   readonly firmante = computed<Integrante | null>(() => this.integrantes()[this.indiceFirma()] ?? null);
   readonly firmadas = computed(() => this.integrantes().filter((persona) => persona.firmaDataUrl).length);
+  readonly maxIntegrantes = MAX_INTEGRANTES;
+  readonly cuadrillaCompleta = computed(() => this.integrantes().length >= MAX_INTEGRANTES);
   readonly esUltimoFirmante = computed(() => this.indiceFirma() >= this.integrantes().length - 1);
 
   readonly respuestas = new FormGroup<Record<string, FormControl<unknown>>>({});
@@ -943,6 +954,7 @@ export class WorkAtHeightFormComponent implements OnDestroy {
   alternarIntegrante(candidato: Candidato): void {
     // El oficial no puede quitarse: es quien responde por el permiso.
     if (candidato.id === this.yoId()) return;
+    if (this.cuadrillaCompleta() && !this.estaEnCuadrilla(candidato.id)) return;
     this.integrantes.update((lista) =>
       lista.some((persona) => persona.candidato.id === candidato.id)
         ? lista.filter((persona) => persona.candidato.id !== candidato.id)

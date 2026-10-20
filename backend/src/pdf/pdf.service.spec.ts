@@ -89,6 +89,20 @@ const validMapping = JSON.stringify({
   },
 });
 
+/** `validMapping` con las cinco filas firmables de cuadrilla de HSE-FO-016 v00. */
+const crewMapping = JSON.stringify({
+  ...(JSON.parse(validMapping) as Record<string, unknown>),
+  fields: {
+    ...(JSON.parse(validMapping) as { fields: Record<string, unknown> }).fields,
+    ...Object.fromEntries(
+      Array.from({ length: 5 }, (_, i) => [
+        `cuadrilla_0${i + 1}_firma`,
+        { type: 'SIGNATURE', page: 0, x: 450, y: 300 + i * 10, width: 40, height: 8, memberIndex: i },
+      ]),
+    ),
+  },
+});
+
 function setupReadFile(pdfBytes: Uint8Array, mappingJson: string): void {
   mockReadFileImpl = async (p: string, enc?: string) => {
     if (String(p).endsWith('.pdf')) return Buffer.from(pdfBytes);
@@ -712,7 +726,7 @@ describe('PdfService — AUD-001 integridad de datos y firmas', () => {
 
   it('protege identidades, cargos y firmas al generar PDF desde registros históricos manipulados', async () => {
     const pdfBytes = await minimalPdf(1);
-    setupReadFile(pdfBytes, validMapping);
+    setupReadFile(pdfBytes, crewMapping);
 
     const fakeSig = `data:image/png;base64,${MINIMAL_PNG.toString('base64')}`;
     const { pdfService, fieldRenderer } = createPdfServiceContext({
@@ -751,8 +765,9 @@ describe('PdfService — AUD-001 integridad de datos y firmas', () => {
     expect(renderData.answers.cuadrilla_01_cedula).toBe('1020304050');
     expect(renderData.answers.cuadrilla_01_nombre).toBe('Carlos Pérez');
     expect(renderData.answers.cuadrilla_01_cargo).toBe('Liniero Líder');
-    expect(renderData.answers.cuadrilla_01_certificado).toBe('');
-    expect(renderData.answers.cuadrilla_01_seg_social).toBe('');
+    // Sin complianceJson en el integrante: el "Vigente" de answersJson no se usa (AUD-002).
+    expect(renderData.answers.cuadrilla_01_certificado).toBe('Sin registro');
+    expect(renderData.answers.cuadrilla_01_seg_social).toBe('Sin registro');
     expect(renderData.answers.ejecutor_01_cedula).toBe('1020304050');
     expect(renderData.answers.ejecutor_01_nombre).toBe('Carlos Pérez');
     expect(renderData.answers.ejecutor_01_cargo).toBe('Liniero Líder');
@@ -769,7 +784,7 @@ describe('PdfService — AUD-001 integridad de datos y firmas', () => {
 
   it('genera un permiso PDF válido cuando los datos son correctos y conserva las firmas legítimas', async () => {
     const pdfBytes = await minimalPdf(1);
-    setupReadFile(pdfBytes, validMapping);
+    setupReadFile(pdfBytes, crewMapping);
 
     const { pdfService, storage, tx, fieldRenderer } = createPdfServiceContext();
     const renderSpy = jest.spyOn(fieldRenderer, 'render');
@@ -808,7 +823,7 @@ describe('PdfService — AUD-001 integridad de datos y firmas', () => {
 
   it('ignora fecha_trabajo y vigencia_permiso manipuladas en registros históricos y usa la fecha autorizada del servidor', async () => {
     const pdfBytes = await minimalPdf(1);
-    setupReadFile(pdfBytes, validMapping);
+    setupReadFile(pdfBytes, crewMapping);
 
     const authoritativeDate = new Date('2026-04-16T00:00:00.000Z');
     const expectedFormattedDate = '16/04/2026';
@@ -839,7 +854,7 @@ describe('PdfService — AUD-001 integridad de datos y firmas', () => {
       process.env.TZ = tz;
       try {
         const pdfBytes = await minimalPdf(1);
-        setupReadFile(pdfBytes, validMapping);
+        setupReadFile(pdfBytes, crewMapping);
         const { pdfService, fieldRenderer } = createPdfServiceContext({
           workDate: new Date('2026-04-16T00:00:00.000Z'),
           // 19:10 y 23:50 en Colombia: frontera en la que UTC ya está en el día siguiente.
@@ -865,7 +880,7 @@ describe('PdfService — AUD-001 integridad de datos y firmas', () => {
 
   it('usa submittedAt en hora de Colombia cuando no hay workDate (AUD-003)', async () => {
     const pdfBytes = await minimalPdf(1);
-    setupReadFile(pdfBytes, validMapping);
+    setupReadFile(pdfBytes, crewMapping);
     const { pdfService, fieldRenderer } = createPdfServiceContext({
       workDate: null,
       // 21:00 del 16 en Colombia; en UTC ya es el 17.
@@ -880,7 +895,7 @@ describe('PdfService — AUD-001 integridad de datos y firmas', () => {
 
   it('ignora hora_inicio manipulada en registros históricos y usa startedAt autorizado o vacío si no ha iniciado', async () => {
     const pdfBytes = await minimalPdf(1);
-    setupReadFile(pdfBytes, validMapping);
+    setupReadFile(pdfBytes, crewMapping);
 
     // 13:30 UTC son las 08:30 en Colombia (UTC-5).
     const authoritativeStart = new Date('2026-04-16T13:30:00.000Z');
@@ -919,7 +934,7 @@ describe('PdfService — AUD-001 integridad de datos y firmas', () => {
 
   it('nunca confía en campos automáticos por estar en answersJson ni sustituye cumplimiento con Vigente o Verificada', async () => {
     const pdfBytes = await minimalPdf(1);
-    setupReadFile(pdfBytes, validMapping);
+    setupReadFile(pdfBytes, crewMapping);
 
     const { pdfService, fieldRenderer } = createPdfServiceContext({
       workDate: null,
@@ -949,15 +964,78 @@ describe('PdfService — AUD-001 integridad de datos y firmas', () => {
     expect(answers.hora_fin).toBeUndefined();
     expect(answers.certificado_alturas).toBeUndefined();
     expect(answers.seguridad_social_verificada).toBeUndefined();
-    expect(answers.cuadrilla_01_certificado).toBe('');
-    expect(answers.cuadrilla_01_seg_social).toBe('');
-    expect(answers.ejecutor_01_certificado).toBe('');
-    expect(answers.ejecutor_01_seg_social).toBe('');
+    // El integrante no tiene complianceJson: answersJson dice "Vigente" y no se le cree.
+    expect(answers.cuadrilla_01_certificado).toBe('Sin registro');
+    expect(answers.cuadrilla_01_seg_social).toBe('Sin registro');
+    expect(answers.ejecutor_01_certificado).toBe('Sin registro');
+    expect(answers.ejecutor_01_seg_social).toBe('Sin registro');
+  });
+
+  it('muestra por integrante los estados de cumplimiento guardados en complianceJson (AUD-002)', async () => {
+    const pdfBytes = await minimalPdf(1);
+    setupReadFile(pdfBytes, crewMapping);
+    const integrante = (id: string, complianceJson: unknown) => ({
+      id: `mem-${id}`,
+      isLead: id === '1',
+      collaborator: {
+        id: `collab-${id}`,
+        firstName: 'Persona',
+        lastName: id,
+        documentNumber: `10000${id}`,
+        jobTitle: null,
+      },
+      jobPosition: null,
+      complianceJson,
+      signature: { id: `sig-${id}`, file: { id: `file-sig-${id}`, objectKey: `signatures/member-${id}.png` } },
+    });
+    const { pdfService, fieldRenderer } = createPdfServiceContext({
+      members: [
+        integrante('1', { alturas: { estado: 'VIGENTE' }, seguridadSocial: { estado: 'PROXIMA_A_VENCER' } }),
+        integrante('2', { alturas: { estado: 'NO_APLICA' }, seguridadSocial: { estado: 'VIGENTE' } }),
+        integrante('3', { alturas: { estado: 'VENCIDA' }, seguridadSocial: { estado: 'OTRO' } }),
+      ],
+    });
+    const renderSpy = jest.spyOn(fieldRenderer, 'render');
+
+    await pdfService.generateFinalPdf('sub-aud001', 'user-coord-1');
+
+    const { answers } = renderSpy.mock.calls[0][2];
+    expect(answers.cuadrilla_01_certificado).toBe('Vigente');
+    expect(answers.cuadrilla_01_seg_social).toBe('Vigente (por vencer)');
+    expect(answers.cuadrilla_02_certificado).toBe('No aplica');
+    expect(answers.cuadrilla_02_seg_social).toBe('Vigente');
+    expect(answers.cuadrilla_03_certificado).toBe('No vigente');
+    expect(answers.cuadrilla_03_seg_social).toBe('Sin registro');
+  });
+
+  it('rechaza generar el PDF si la cuadrilla supera las filas de la plantilla y no guarda nada (TEC-008)', async () => {
+    const pdfBytes = await minimalPdf(1);
+    setupReadFile(pdfBytes, crewMapping);
+    const members = Array.from({ length: 6 }, (_, i) => ({
+      id: `mem-${i}`,
+      isLead: i === 0,
+      collaborator: {
+        id: `collab-${i}`,
+        firstName: 'Persona',
+        lastName: `${i}`,
+        documentNumber: `2000${i}`,
+        jobTitle: null,
+      },
+      jobPosition: null,
+      complianceJson: {},
+      signature: null,
+    }));
+    const { pdfService, storage } = createPdfServiceContext({ members });
+
+    await expect(pdfService.generateFinalPdf('sub-aud001', 'user-coord-1')).rejects.toThrow(
+      /6 integrantes.*solo admite 5/,
+    );
+    expect(storage.putObject).not.toHaveBeenCalled();
   });
 
   it('aplica lista blanca segura cuando schemaJson es inválido o incompleto, conservando campos legítimos y bloqueando no verificados', async () => {
     const pdfBytes = await minimalPdf(1);
-    setupReadFile(pdfBytes, validMapping);
+    setupReadFile(pdfBytes, crewMapping);
 
     const { pdfService, fieldRenderer } = createPdfServiceContext({
       formVersion: {
