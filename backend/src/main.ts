@@ -23,7 +23,7 @@ async function bootstrap(): Promise<void> {
   app.enableCors({ origin: corsOrigin.split(','), credentials: true });
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }));
   app.useGlobalFilters(new HttpExceptionFilter());
-  setupSwagger(app);
+  setupSwagger(app, config.get<string>('NODE_ENV'));
 
   await app.listen(getNumber(config, 'API_PORT', 3000), '0.0.0.0');
 }

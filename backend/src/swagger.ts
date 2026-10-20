@@ -1,7 +1,8 @@
 import type { INestApplication } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 
-export function setupSwagger(app: INestApplication): void {
+export function setupSwagger(app: INestApplication, nodeEnv: string | undefined): void {
+  if (nodeEnv === 'production') return;
   const config = new DocumentBuilder()
     .setTitle('Sistema SG-SST API')
     .setDescription('API para control previo al inicio de labores.')

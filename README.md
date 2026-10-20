@@ -22,6 +22,8 @@ El sistema implementa autenticación administrativa y de colaboradores, permisos
 
 La API queda en `http://localhost:3000/api`, su healthcheck en `http://localhost:3000/api/health`, y la PWA en `http://localhost:4200`.
 
+La documentación Swagger (`/api/docs`) se publica solo fuera de producción.
+
 Para ejecutar todo en contenedores: `docker compose up --build`. La web se publica en `http://localhost:8080` y enruta `/api` hacia la API.
 
 Después de iniciar los contenedores por primera vez, cree los roles, permisos y administrador inicial con `docker compose exec api node dist-seed/seed.js`. La imagen incluye el seed compilado y usa las variables de entorno del contenedor. Es un paso intencional: no hay credenciales administrativas predeterminadas.
