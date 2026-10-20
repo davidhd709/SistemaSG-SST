@@ -115,16 +115,22 @@ AUD-030, AUD-031, AUD-032, AUD-008 + CSP, AUD-023, AUD-020 (retirar `charla-04..
 
 ## 7. Seguimiento de la Etapa 2
 
-| ID                | Estado              | Evidencia                                                                                                                                     |
-| ----------------- | ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| AUD-014 / TEC-002 | Hecho `4cd9cf9`     | `format:check`, lint de API y frontend, 120 pruebas de API y ambos builds aprobados.                                                          |
-| TEC-003           | Pendiente           | Protección de `main` en GitHub; la conexión disponible no expone esa configuración.                                                           |
-| AUD-006           | Hecho `05cd063`     | Seed compilado dentro de la imagen Docker; migraciones y seed ejecutados contra PostgreSQL 18 temporal sin archivo `.env`. Rol ADMIN creado.  |
-| AUD-009           | Hecho `b9f0f9f`     | Swagger solo se registra fuera de producción; pruebas verifican ambos entornos.                                                               |
-| AUD-011           | Hecho `81eb6e7`     | Rotación usa `updateMany` condicional y crea el reemplazo en la misma transacción; prueba de dos renovaciones concurrentes acepta solo una.   |
-| AUD-012           | Hecho `5c24e15`     | Cambio de contraseña propia con clave actual, auditoría, revocación de refresh y formulario para usuarios internos.                           |
-| AUD-022           | Hecho `e771b82`     | La charla usa `SAFETY_TALK_JWT_SECRET` separado de refresh; configuración obligatoria y prueba de firma y validación.                         |
-| AUD-026           | Hecho `03b0c78`     | El seed conserva el esquema de la versión 4 publicada y no cambia la versión vigente. Verificado con una versión 5 en PostgreSQL 18 temporal. |
-| AUD-027           | Hecho `06f7601`     | Lista ARL y dashboard priorizan la afiliación que cubre hoy, igual que el control de acceso; prueba del caso con afiliación futura.           |
-| AUD-028           | Hecho `93b691b`     | La versión PDF se fija al enviar, se guarda al generar documentos históricos y nunca se sustituye en silencio. Pruebas de versión faltante.   |
-| AUD-019           | Hecho (este commit) | Cambio o retiro de PIN e inactivación revocan sesiones refresh en la misma transacción; la auditoría registra el hecho sin guardar el PIN.    |
+| ID                | Estado          | Evidencia                                                                                                                                     |
+| ----------------- | --------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| AUD-014 / TEC-002 | Hecho `4cd9cf9` | `format:check`, lint de API y frontend, 120 pruebas de API y ambos builds aprobados.                                                          |
+| TEC-003           | Pendiente       | Protección de `main` en GitHub; la conexión disponible no expone esa configuración.                                                           |
+| AUD-006           | Hecho `05cd063` | Seed compilado dentro de la imagen Docker; migraciones y seed ejecutados contra PostgreSQL 18 temporal sin archivo `.env`. Rol ADMIN creado.  |
+| AUD-009           | Hecho `b9f0f9f` | Swagger solo se registra fuera de producción; pruebas verifican ambos entornos.                                                               |
+| AUD-011           | Hecho `81eb6e7` | Rotación usa `updateMany` condicional y crea el reemplazo en la misma transacción; prueba de dos renovaciones concurrentes acepta solo una.   |
+| AUD-012           | Hecho `5c24e15` | Cambio de contraseña propia con clave actual, auditoría, revocación de refresh y formulario para usuarios internos.                           |
+| AUD-022           | Hecho `e771b82` | La charla usa `SAFETY_TALK_JWT_SECRET` separado de refresh; configuración obligatoria y prueba de firma y validación.                         |
+| AUD-026           | Hecho `03b0c78` | El seed conserva el esquema de la versión 4 publicada y no cambia la versión vigente. Verificado con una versión 5 en PostgreSQL 18 temporal. |
+| AUD-027           | Hecho `06f7601` | Lista ARL y dashboard priorizan la afiliación que cubre hoy, igual que el control de acceso; prueba del caso con afiliación futura.           |
+| AUD-028           | Hecho `93b691b` | La versión PDF se fija al enviar, se guarda al generar documentos históricos y nunca se sustituye en silencio. Pruebas de versión faltante.   |
+| AUD-019           | Hecho `605eeba` | Cambio o retiro de PIN e inactivación revocan sesiones refresh en la misma transacción; la auditoría registra el hecho sin guardar el PIN.    |
+
+## 8. Seguimiento de la Etapa 3
+
+| ID      | Estado              | Evidencia                                                                                               |
+| ------- | ------------------- | ------------------------------------------------------------------------------------------------------- |
+| TEC-005 | Hecho (este commit) | La ruta local se ancla al módulo y apunta a `backend/storage` o `/app/backend/storage` según la imagen. |
