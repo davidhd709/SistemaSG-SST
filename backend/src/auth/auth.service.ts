@@ -168,10 +168,15 @@ export class AuthService {
 
     const ttlSeconds = esColaborador ? this.collaboratorRefreshTtlSeconds : this.refreshTtlSeconds;
     const nuevoRefresh = randomBytes(48).toString('base64url');
-    // Rotación: el token usado se revoca en el mismo paso en que nace su reemplazo.
-    await this.prisma.$transaction([
-      this.prisma.refreshSession.update({ where: { id: session.id }, data: { revokedAt: new Date() } }),
-      this.prisma.refreshSession.create({
+    // Compare-and-swap: solo una petición concurrente puede consumir este token.
+    const rotatedAt = new Date();
+    await this.prisma.$transaction(async (tx) => {
+      const consumed = await tx.refreshSession.updateMany({
+        where: { id: session.id, revokedAt: null, expiresAt: { gt: rotatedAt } },
+        data: { revokedAt: rotatedAt },
+      });
+      if (consumed.count !== 1) throw new UnauthorizedException('Sesión inválida o expirada.');
+      await tx.refreshSession.create({
         data: {
           userId: session.userId,
           collaboratorId: session.collaboratorId,
@@ -181,8 +186,8 @@ export class AuthService {
           ip: request.ip,
           userAgent: request.header('user-agent'),
         },
-      }),
-    ]);
+      });
+    });
 
     return {
       kind: esColaborador ? 'COLLABORATOR' : 'ADMIN',

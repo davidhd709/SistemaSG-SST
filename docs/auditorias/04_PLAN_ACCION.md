@@ -120,4 +120,5 @@ AUD-030, AUD-031, AUD-032, AUD-008 + CSP, AUD-023, AUD-020 (retirar `charla-04..
 | AUD-014 / TEC-002 | Hecho `4cd9cf9`     | `format:check`, lint de API y frontend, 120 pruebas de API y ambos builds aprobados.                                                         |
 | TEC-003           | Pendiente           | Protección de `main` en GitHub; la conexión disponible no expone esa configuración.                                                          |
 | AUD-006           | Hecho `05cd063`     | Seed compilado dentro de la imagen Docker; migraciones y seed ejecutados contra PostgreSQL 18 temporal sin archivo `.env`. Rol ADMIN creado. |
-| AUD-009           | Hecho (este commit) | Swagger solo se registra fuera de producción; pruebas verifican ambos entornos.                                                              |
+| AUD-009           | Hecho `b9f0f9f`     | Swagger solo se registra fuera de producción; pruebas verifican ambos entornos.                                                              |
+| AUD-011           | Hecho (este commit) | Rotación usa `updateMany` condicional y crea el reemplazo en la misma transacción; prueba de dos renovaciones concurrentes acepta solo una.  |
