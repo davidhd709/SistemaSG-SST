@@ -4,6 +4,7 @@ import { RequirePermissions } from '../auth/auth.decorators';
 import type { AuthenticatedRequest } from '../common/request-context';
 import { ApprovalsService } from './approvals.service';
 import { DecideSubmissionDto } from './dto/decide-submission.dto';
+import { AdminCloseWorkdayDto } from './dto/admin-close-workday.dto';
 @ApiTags('coordination')
 @Controller('coordination')
 @RequirePermissions('submissions:review')
@@ -36,5 +37,10 @@ export class ApprovalsController {
   /** Recupera el documento de un permiso ya cerrado o rechazado. */
   @Post('submissions/:id/generate-pdf') generatePdf(@Param('id') id: string, @Req() request: AuthenticatedRequest) {
     return this.approvals.generateMissingPdf(id, request);
+  }
+  @RequirePermissions('submissions:close-admin')
+  @Post('submissions/:id/admin-close')
+  adminClose(@Param('id') id: string, @Body() dto: AdminCloseWorkdayDto, @Req() request: AuthenticatedRequest) {
+    return this.approvals.adminCloseWorkday(id, dto, request);
   }
 }

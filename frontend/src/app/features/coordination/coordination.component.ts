@@ -493,8 +493,46 @@ type Grupo = { seccion: string; respuestas: Respuesta[] };
                     </td>
                     <td>
                       <button class="boton compacto" type="button" (click)="abrir(jornada.id)">Ver permiso</button>
+                      @if (jornada.startedAt) {
+                        <button class="boton secundario compacto" type="button" (click)="cierreId.set(jornada.id)">
+                          Cierre administrativo
+                        </button>
+                      }
                     </td>
                   </tr>
+                  @if (cierreId() === jornada.id) {
+                    <tr>
+                      <td colspan="5">
+                        <label class="campo">
+                          <span>Motivo obligatorio del cierre administrativo</span>
+                          <textarea
+                            rows="3"
+                            maxlength="1000"
+                            [value]="motivoCierre()"
+                            (input)="motivoCierre.set($any($event.target).value)"
+                          ></textarea>
+                        </label>
+                        <div class="acciones">
+                          <button
+                            class="boton"
+                            type="button"
+                            [disabled]="cerrando() || !motivoCierre().trim()"
+                            (click)="cerrarAdministrativamente(jornada.id)"
+                          >
+                            Confirmar cierre
+                          </button>
+                          <button
+                            class="boton secundario"
+                            type="button"
+                            [disabled]="cerrando()"
+                            (click)="cierreId.set(null); motivoCierre.set('')"
+                          >
+                            Cancelar
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  }
                 }
               </tbody>
             </table>
@@ -573,7 +611,18 @@ type Grupo = { seccion: string; respuestas: Respuesta[] };
                             Descargar PDF
                           </button>
                         } @else {
-                          <span class="secundario">PDF pendiente de cierre</span>
+                          @if (documento.status === 'CLOSED' || documento.status === 'REJECTED') {
+                            <button
+                              class="boton secundario compacto"
+                              type="button"
+                              [disabled]="generandoPdf()"
+                              (click)="generarPdf(documento.id)"
+                            >
+                              Generar PDF pendiente
+                            </button>
+                          } @else {
+                            <span class="secundario">PDF pendiente de cierre</span>
+                          }
                         }
                       </td>
                     </tr>
@@ -1051,6 +1100,10 @@ export class CoordinationComponent {
 
   // ── Jornadas y requisitos ──
   readonly jornadas = signal<JornadaAbierta[]>([]);
+  readonly cierreId = signal<string | null>(null);
+  readonly motivoCierre = signal('');
+  readonly cerrando = signal(false);
+  readonly generandoPdf = signal(false);
   readonly cumplimiento = signal<FilaCumplimiento[]>([]);
   readonly planillas = signal<Planilla[]>([]);
   readonly certificados = signal<Certificado[]>([]);
@@ -1186,6 +1239,27 @@ export class CoordinationComponent {
     });
   }
 
+  cerrarAdministrativamente(id: string): void {
+    const reason = this.motivoCierre().trim();
+    if (!reason || this.cerrando()) return;
+    this.cerrando.set(true);
+    this.error.set('');
+    this.http.post(`/api/coordination/submissions/${id}/admin-close`, { reason }).subscribe({
+      next: () => {
+        this.cerrando.set(false);
+        this.cierreId.set(null);
+        this.motivoCierre.set('');
+        this.aviso.set('Jornada cerrada administrativamente.');
+        this.cargarJornadas();
+        this.cargar();
+      },
+      error: () => {
+        this.cerrando.set(false);
+        this.error.set('No fue posible cerrar la jornada administrativamente.');
+      },
+    });
+  }
+
   // ── Custodia documental ──────────────────────────────────
   verCustodia(): void {
     this.pestana.set('custodia');
@@ -1201,6 +1275,23 @@ export class CoordinationComponent {
     this.http.get<DocumentoCustodia[]>(`/api/coordination/submissions${consulta}`).subscribe({
       next: (documentos) => this.documentosCustodia.set(documentos),
       error: () => this.error.set('No fue posible consultar el archivo documental.'),
+    });
+  }
+
+  generarPdf(id: string): void {
+    if (this.generandoPdf()) return;
+    this.generandoPdf.set(true);
+    this.error.set('');
+    this.http.post(`/api/coordination/submissions/${id}/generate-pdf`, {}).subscribe({
+      next: () => {
+        this.generandoPdf.set(false);
+        this.aviso.set('PDF generado y registrado.');
+        this.cargarCustodia();
+      },
+      error: () => {
+        this.generandoPdf.set(false);
+        this.error.set('No fue posible generar el PDF pendiente. Revisa las firmas del permiso.');
+      },
     });
   }
 

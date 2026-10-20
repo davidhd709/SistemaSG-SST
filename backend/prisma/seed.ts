@@ -22,6 +22,7 @@ const roles: Record<string, { name: string; permissions: string[] }> = {
       'arl:manage',
       'forms:manage',
       'submissions:review',
+      'submissions:close-admin',
       'files:read',
       'legal:read',
       'compliance:read',
@@ -34,6 +35,7 @@ const roles: Record<string, { name: string; permissions: string[] }> = {
     name: 'Coordinador operativo',
     permissions: [
       'submissions:review',
+      'submissions:close-admin',
       'files:read',
       'signatures:manage',
       'collaborators:read',

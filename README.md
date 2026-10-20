@@ -34,6 +34,8 @@ El PDF final se genera al cerrar una jornada autorizada o al rechazar un envío.
 
 Si falla esa generación, Coordinación puede usar `POST /coordination/submissions/:id/generate-pdf` con el permiso `submissions:review`. Solo admite envíos `CLOSED` o `REJECTED` sin PDF; genera el archivo y registra `GENERATE_FINAL_PDF` en auditoría sin modificar las fechas del envío.
 
+Para una jornada autorizada e iniciada que la cuadrilla no puede cerrar, `POST /coordination/submissions/:id/admin-close` exige `submissions:close-admin` y un `reason` obligatorio. Registra `ADMIN_CLOSE_WORKDAY` con el usuario y el motivo, libera a la cuadrilla y genera el PDF. Ejecuta el seed de roles después de desplegar para asignar el permiso a Administración y Coordinación.
+
 La charla de seguridad se confirma mediante una declaración del colaborador. La API vincula la declaración con el video y exige que transcurra su duración mínima antes de aceptar el permiso. Este control no certifica la atención de la persona al video.
 
 ## Validación

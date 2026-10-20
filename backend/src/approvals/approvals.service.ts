@@ -3,6 +3,7 @@ import type { AuthenticatedRequest } from '../common/request-context';
 import { ArlService } from '../arl/arl.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { DecideSubmissionDto } from './dto/decide-submission.dto';
+import { AdminCloseWorkdayDto } from './dto/admin-close-workday.dto';
 import { PdfService } from '../pdf/pdf.service';
 import { Prisma } from '@prisma/client';
 import { businessDate } from '../common/business-date';
@@ -247,5 +248,55 @@ export class ApprovalsService {
 
     const pdfFileId = await this.pdf.generateFinalPdf(id, actorUserId);
     return { submissionId: id, pdfFileId };
+  }
+
+  /** Cierre excepcional por Coordinación; la autoría y el motivo viven en AuditEvent. */
+  async adminCloseWorkday(id: string, dto: AdminCloseWorkdayDto, request: AuthenticatedRequest) {
+    const principal = request.principal;
+    if (principal?.kind !== 'USER' || !principal.permissions.includes('submissions:close-admin')) {
+      throw new ForbiddenException();
+    }
+    const actorUserId = principal.userId;
+    const reason = dto.reason?.trim();
+    if (!reason) throw new ConflictException('El cierre administrativo requiere un motivo.');
+    const closedAt = new Date();
+    const closed = await this.prisma.$transaction(async (tx) => {
+      const submission = await tx.formSubmission.findUnique({
+        where: { id },
+        select: { status: true, startedAt: true, approval: { select: { id: true } } },
+      });
+      if (!submission) throw new NotFoundException('Envío no encontrado.');
+      if (submission.status !== 'APPROVED' || !submission.startedAt || !submission.approval) {
+        throw new ConflictException('Solo se puede cerrar administrativamente una jornada iniciada y autorizada.');
+      }
+      const changed = await tx.formSubmission.updateMany({
+        where: { id, status: 'APPROVED', startedAt: { not: null } },
+        data: { status: 'CLOSED', closedAt },
+      });
+      if (changed.count !== 1) throw new ConflictException('La jornada fue cerrada por otra operación.');
+      await tx.auditEvent.create({
+        data: {
+          actorUserId,
+          action: 'ADMIN_CLOSE_WORKDAY',
+          entityType: 'FORM_SUBMISSION',
+          entityId: id,
+          beforeJson: { status: 'APPROVED' },
+          afterJson: { status: 'CLOSED', closedAt: closedAt.toISOString() },
+          reason,
+          ip: request.ip,
+          userAgent: request.header('user-agent'),
+          correlationId: request.correlationId ?? 'unknown',
+        },
+      });
+      return { id, status: 'CLOSED' as const, closedAt };
+    });
+
+    let pdfFileId: string | null = null;
+    try {
+      pdfFileId = await this.pdf.generateFinalPdf(id, actorUserId);
+    } catch (error) {
+      this.logger.error(`No fue posible generar el PDF del cierre administrativo ${id}`, error as Error);
+    }
+    return { ...closed, pdfFileId };
   }
 }
