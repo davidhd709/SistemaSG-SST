@@ -15,7 +15,7 @@ describe('work-at-height-form.models (AUD-016 / AUD-013)', () => {
 
   it('ordena los campos por order y hereda la última sección declarada', () => {
     const bloques = agruparCamposEnBloques(fields);
-    expect(bloques).toHaveLength(2);
+    expect(bloques.length).toBe(2);
     expect(bloques[0].titulo).toBe('Datos básicos');
     expect(bloques[0].campos.map((c) => c.id)).toEqual(['empresa']);
     expect(bloques[1].titulo).toBe('EPP');

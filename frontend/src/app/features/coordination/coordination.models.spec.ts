@@ -26,7 +26,7 @@ describe('coordination.models (AUD-016 / AUD-013)', () => {
     } as unknown as Detail;
 
     const grupos = agruparRespuestasDetalle(detail);
-    expect(grupos).toHaveLength(3);
+    expect(grupos.length).toBe(3);
     expect(grupos[0]).toEqual({
       seccion: 'Datos básicos',
       respuestas: [{ etiqueta: 'Empresa', valor: 'ACME', alerta: false }],
