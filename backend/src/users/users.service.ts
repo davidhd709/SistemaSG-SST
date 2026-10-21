@@ -158,8 +158,25 @@ export class UsersService {
     const roleCodes = dto.roleCodes ? [...new Set(dto.roleCodes)] : undefined;
     const roles = roleCodes ? await this.prisma.role.findMany({ where: { code: { in: roleCodes } } }) : undefined;
     if (roles && roles.length !== roleCodes!.length) throw new BadRequestException('Uno o más roles no existen.');
+    const wasActiveAdmin = previous.status === 'ACTIVE' && previous.roles.some(({ role }) => role.code === 'ADMIN');
+    const losesActiveAdmin =
+      wasActiveAdmin && (dto.status === 'INACTIVE' || (roleCodes !== undefined && !roleCodes.includes('ADMIN')));
     const actorUserId = request.principal?.kind === 'USER' ? request.principal.userId : undefined;
     const updated = await this.prisma.$transaction(async (tx) => {
+      if (losesActiveAdmin) {
+        const otherActiveAdmins = await tx.user.count({
+          where: {
+            id: { not: id },
+            status: 'ACTIVE',
+            roles: { some: { role: { code: 'ADMIN' } } },
+          },
+        });
+        if (otherActiveAdmins === 0) {
+          throw new BadRequestException(
+            'No se puede inactivar ni retirar el rol ADMIN al último administrador activo.',
+          );
+        }
+      }
       const user = await tx.user.update({
         where: { id },
         data: {

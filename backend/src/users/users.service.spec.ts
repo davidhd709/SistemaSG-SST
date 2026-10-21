@@ -74,4 +74,70 @@ describe('UsersService.changeOwnPassword (AUD-012)', () => {
     expect(tx.refreshSession.updateMany).not.toHaveBeenCalled();
     expect(tx.auditEvent.create).not.toHaveBeenCalled();
   });
+
+  describe('UsersService.update — protección del último administrador (AUD-018)', () => {
+    function setupUpdate(otherActiveAdmins: number) {
+      const previous = {
+        id: 'admin-1',
+        email: 'admin@local.test',
+        status: 'ACTIVE',
+        createdAt: new Date(),
+        roles: [{ role: { id: 'r-admin', code: 'ADMIN', name: 'Administrador' } }],
+      };
+      const tx = {
+        user: {
+          count: jest.fn().mockResolvedValue(otherActiveAdmins),
+          update: jest.fn().mockImplementation(({ data }: { data: { status?: string } }) =>
+            Promise.resolve({
+              ...previous,
+              status: data.status ?? previous.status,
+            }),
+          ),
+        },
+        userRole: {
+          deleteMany: jest.fn().mockResolvedValue({ count: 1 }),
+          createMany: jest.fn().mockResolvedValue({ count: 1 }),
+        },
+        refreshSession: { updateMany: jest.fn().mockResolvedValue({ count: 1 }) },
+        auditEvent: { create: jest.fn().mockResolvedValue({}) },
+      };
+      const prisma = {
+        user: {
+          findUniqueOrThrow: jest.fn().mockResolvedValue(previous),
+          findUnique: jest.fn().mockResolvedValue(null),
+        },
+        role: {
+          findMany: jest
+            .fn()
+            .mockImplementation(({ where }: { where: { code: { in: string[] } } }) =>
+              Promise.resolve(where.code.in.map((code) => ({ id: `r-${code}`, code, name: code }))),
+            ),
+        },
+        $transaction: jest.fn((callback: (client: typeof tx) => Promise<unknown>) => callback(tx)),
+      };
+      return { service: new UsersService(prisma as never), tx };
+    }
+
+    it('rechaza inactivar o retirar el rol ADMIN cuando es el último administrador activo', async () => {
+      const { service, tx } = setupUpdate(0);
+      await expect(service.update('admin-1', { status: 'INACTIVE' }, request as never)).rejects.toThrow(
+        BadRequestException,
+      );
+      await expect(service.update('admin-1', { roleCodes: ['COORDINATOR'] }, request as never)).rejects.toThrow(
+        BadRequestException,
+      );
+      expect(tx.user.update).not.toHaveBeenCalled();
+      expect(tx.refreshSession.updateMany).not.toHaveBeenCalled();
+    });
+
+    it('permite inactivar o cambiar roles de un administrador cuando existe otro administrador activo', async () => {
+      const { service, tx } = setupUpdate(1);
+      await expect(service.update('admin-1', { status: 'INACTIVE' }, request as never)).resolves.toMatchObject({
+        id: 'admin-1',
+        status: 'INACTIVE',
+      });
+      expect(tx.user.update).toHaveBeenCalledTimes(1);
+      expect(tx.refreshSession.updateMany).toHaveBeenCalledTimes(1);
+    });
+  });
 });
