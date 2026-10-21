@@ -135,14 +135,15 @@ AUD-030, AUD-031, AUD-032, AUD-008 + CSP, AUD-023, AUD-020 (retirar `charla-04..
 
 ## 8. Seguimiento de la Etapa 3
 
-| ID      | Estado            | Evidencia                                                                                                                                          |
-| ------- | ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| TEC-005 | Hecho `b508330`   | La ruta local se ancla al módulo y apunta a `backend/storage` o `/app/backend/storage` según la imagen.                                            |
-| TEC-006 | Hecho `736040d`   | La imagen API ya no instala Chromium ni define variables de Puppeteer; build y Prisma CLI verificados.                                             |
-| AUD-015 | Parcial `736040d` | API usa UID 1000, web UID 101 en puerto 8080; ambas imágenes construyen y web responde. Falta separar dependencias de desarrollo de la imagen API. |
-| AUD-021 | Hecho `5f17e63`   | Redis se retira de Compose y de las instrucciones: la API no contiene cliente Redis ni usa `REDIS_URL`.                                            |
-| AUD-017 | Hecho `b2dfb2a`   | Colaboradores se vinculan con `JobPosition`; PIN, autenticación y liderazgo de cuadrilla usan `canLead`, con migración de cargos existentes.       |
-| AUD-033 | Hecho `133fd4c`   | La API acepta campos automáticos con origen soportado y rechaza identificadores reservados en campos editables o automáticos no permitidos.        |
+| ID      | Estado                      | Evidencia                                                                                                                                              |
+| ------- | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| TEC-005 | Hecho `b508330`             | La ruta local se ancla al módulo y apunta a `backend/storage` o `/app/backend/storage` según la imagen.                                                |
+| TEC-006 | Hecho `736040d`             | La imagen API ya no instala Chromium ni define variables de Puppeteer; build y Prisma CLI verificados.                                                 |
+| AUD-015 | Hecho `736040d` / `46d4ebb` | API usa UID 1000, web UID 101 en puerto 8080; `backend/Dockerfile` poda `devDependencies` (`pnpm prune --prod`) conservando `prisma` para migraciones. |
+| AUD-016 | Hecho `1a80f30`             | `work-at-height-form` y `coordination` separan `.component.html`, `.component.css`, `.models.ts` y pruebas unitarias (`.models.spec.ts`).              |
+| AUD-021 | Hecho `5f17e63`             | Redis se retira de Compose y de las instrucciones: la API no contiene cliente Redis ni usa `REDIS_URL`.                                                |
+| AUD-017 | Hecho `b2dfb2a`             | Colaboradores se vinculan con `JobPosition`; PIN, autenticación y liderazgo de cuadrilla usan `canLead`, con migración de cargos existentes.           |
+| AUD-033 | Hecho `133fd4c`             | La API acepta campos automáticos con origen soportado y rechaza identificadores reservados en campos editables o automáticos no permitidos.            |
 
 ## 9. Seguimiento de la Etapa 4
 
