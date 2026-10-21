@@ -13,6 +13,9 @@ export class CollaboratorsController {
   @Get() @RequirePermissions('collaborators:read') list() {
     return this.collaborators.list();
   }
+  @Get('job-positions') @RequirePermissions('collaborators:read') jobPositions() {
+    return this.collaborators.jobPositions();
+  }
   @Post() @RequirePermissions('collaborators:create') create(
     @Body() dto: CreateCollaboratorDto,
     @Req() request: AuthenticatedRequest,

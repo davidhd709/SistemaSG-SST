@@ -7,6 +7,7 @@ import { LogoutButtonComponent } from '../../core/logout-button.component';
 import { fechaHora } from '../../core/fechas';
 
 type Rol = { code: string; name: string; permissions: { permission: { code: string } }[] };
+type Cargo = { id: string; code: string; name: string; canLead: boolean };
 
 type Evento = {
   id: string;
@@ -51,6 +52,8 @@ type Colaborador = {
   email: string | null;
   phone: string | null;
   jobTitle: string | null;
+  jobPositionId: string | null;
+  jobPosition: Cargo | null;
   team: string | null;
   status: 'ACTIVE' | 'INACTIVE';
   createdAt: string;
@@ -288,7 +291,15 @@ const ENTIDADES: Record<string, string> = {
                   <label class="campo"><span>Nombres</span><input formControlName="firstName" /></label>
                   <label class="campo"><span>Apellidos</span><input formControlName="lastName" /></label>
                   <label class="campo"><span>Teléfono</span><input formControlName="phone" /></label>
-                  <label class="campo"><span>Cargo</span><input formControlName="jobTitle" /></label>
+                  <label class="campo"
+                    ><span>Cargo</span
+                    ><select formControlName="jobPositionId">
+                      <option value="">Sin cargo</option>
+                      @for (cargo of cargos(); track cargo.id) {
+                        <option [value]="cargo.id">{{ cargo.name }}</option>
+                      }
+                    </select></label
+                  >
                   <label class="campo ancho-total"><span>Equipo</span><input formControlName="team" /></label>
                 }
                 <label class="campo"><span>Correo</span><input formControlName="email" type="email" /></label>
@@ -1402,6 +1413,7 @@ export class AdminDashboardComponent {
   readonly roles = signal<Rol[]>([]);
   readonly usuarios = signal<Usuario[]>([]);
   readonly colaboradores = signal<Colaborador[]>([]);
+  readonly cargos = signal<Cargo[]>([]);
   readonly seleccionados = signal<string[]>([]);
   readonly busqueda = signal('');
   readonly mostrarCrear = signal(false);
@@ -1426,7 +1438,7 @@ export class AdminDashboardComponent {
     firstName: [''],
     lastName: [''],
     phone: [''],
-    jobTitle: [''],
+    jobPositionId: [''],
     team: [''],
   });
 
@@ -1471,6 +1483,7 @@ export class AdminDashboardComponent {
     this.cargarRoles();
     this.cargarUsuarios();
     this.cargarColaboradores();
+    this.cargarCargos();
     this.cargarAuditoria();
     this.cargarFormato();
   }
@@ -1506,7 +1519,7 @@ export class AdminDashboardComponent {
       firstName: cuenta.colaborador?.firstName || '',
       lastName: cuenta.colaborador?.lastName || '',
       phone: cuenta.colaborador?.phone || '',
-      jobTitle: cuenta.colaborador?.jobTitle || '',
+      jobPositionId: cuenta.colaborador?.jobPositionId || '',
       team: cuenta.colaborador?.team || '',
     });
   }
@@ -1529,7 +1542,7 @@ export class AdminDashboardComponent {
             firstName: value.firstName,
             lastName: value.lastName,
             phone: value.phone,
-            jobTitle: value.jobTitle,
+            jobPositionId: value.jobPositionId || null,
             team: value.team,
           };
     this.guardando.set(true);
@@ -1644,6 +1657,13 @@ export class AdminDashboardComponent {
     this.http.get<Colaborador[]>('/api/collaborators').subscribe({
       next: (colaboradores) => this.colaboradores.set(colaboradores),
       error: () => this.error.set('No fue posible cargar los colaboradores o no tienes permiso.'),
+    });
+  }
+
+  private cargarCargos(): void {
+    this.http.get<Cargo[]>('/api/collaborators/job-positions').subscribe({
+      next: (cargos) => this.cargos.set(cargos),
+      error: () => this.error.set('No fue posible cargar el catálogo de cargos.'),
     });
   }
 

@@ -4,6 +4,7 @@ import { businessDate } from '../common/business-date';
 
 const collaboratorId = '11111111-1111-4111-8111-111111111111';
 const challengeId = '22222222-2222-4222-8222-222222222222';
+const leadPositionId = '33333333-3333-4333-8333-333333333333';
 const request = {
   principal: { kind: 'COLLABORATOR', collaboratorId },
   ip: '127.0.0.1',
@@ -44,7 +45,7 @@ function setup() {
       }),
     },
     collaborator: { count: jest.fn().mockResolvedValue(1) },
-    jobPosition: { count: jest.fn().mockResolvedValue(1) },
+    jobPosition: { findMany: jest.fn().mockResolvedValue([{ id: leadPositionId, canLead: true }]) },
     $transaction: jest.fn((callback: (client: typeof tx) => Promise<unknown>) => callback(tx)),
   };
   const storage = { putObject: jest.fn(), deleteObject: jest.fn().mockResolvedValue(undefined) };
@@ -104,7 +105,7 @@ describe('Secreto dedicado de charla de seguridad (AUD-022)', () => {
           answers: {},
           safetyTalkConfirmed: true,
           safetyTalkToken: 'token',
-          members: [{ collaboratorId, signatureDataUrl: 'data:image/png;base64,AAAA' }],
+          members: [{ collaboratorId, jobPositionId: leadPositionId, signatureDataUrl: 'data:image/png;base64,AAAA' }],
         },
         request as never,
       ),
@@ -121,13 +122,27 @@ describe('SubmissionsService permit safeguards', () => {
     answers: {},
     safetyTalkConfirmed: true,
     safetyTalkToken: 'challenge',
-    members: [{ collaboratorId, signatureDataUrl: `data:image/png;base64,${signature.toString('base64')}` }],
+    members: [
+      {
+        collaboratorId,
+        jobPositionId: leadPositionId,
+        signatureDataUrl: `data:image/png;base64,${signature.toString('base64')}`,
+      },
+    ],
   };
 
   it('rejects inactive crew members before saving signatures', async () => {
     const { service, prisma, storage } = setup();
     prisma.collaborator.count.mockResolvedValue(0);
     await expect(service.submit('HSE-FO-016', dto, request as never)).rejects.toThrow(ForbiddenException);
+    expect(storage.putObject).not.toHaveBeenCalled();
+  });
+
+  it('rejects a lead assigned to a catalog position that cannot lead (AUD-017)', async () => {
+    const { service, prisma, storage } = setup();
+    prisma.jobPosition.findMany.mockResolvedValue([{ id: leadPositionId, canLead: false }]);
+
+    await expect(service.submit('HSE-FO-016', dto, request as never)).rejects.toThrow(BadRequestException);
     expect(storage.putObject).not.toHaveBeenCalled();
   });
 

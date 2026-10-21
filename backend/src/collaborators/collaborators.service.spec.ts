@@ -18,6 +18,8 @@ describe('CollaboratorsService.update sessions (AUD-019)', () => {
       email: null,
       phone: null,
       jobTitle: 'Oficial eléctrico',
+      jobPositionId: 'position-lead',
+      jobPosition: { id: 'position-lead', name: 'Oficial eléctrico', code: 'OFICIAL', canLead: true, active: true },
       team: null,
       status: 'ACTIVE',
       pinHash: 'previous-hash',
@@ -31,6 +33,15 @@ describe('CollaboratorsService.update sessions (AUD-019)', () => {
     };
     const prisma = {
       collaborator: { findUniqueOrThrow: jest.fn().mockResolvedValue(previous) },
+      jobPosition: {
+        findFirst: jest.fn().mockResolvedValue({
+          id: 'position-helper',
+          name: 'Auxiliar',
+          code: 'AUXILIAR',
+          canLead: false,
+          active: true,
+        }),
+      },
       $transaction: jest.fn((callback: (client: typeof tx) => Promise<unknown>) => callback(tx)),
     };
     return { service: new CollaboratorsService(prisma as never), tx };

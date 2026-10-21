@@ -144,6 +144,7 @@ model Collaborator {
   email               String?
   phone               String?
   jobTitle            String?
+  jobPositionId       String?             @db.Uuid
   team                String?
   pinHash             String?
   status              CollaboratorStatus  @default(ACTIVE)
@@ -153,6 +154,7 @@ model Collaborator {
   createdAt           DateTime            @default(now())
   updatedAt           DateTime            @updatedAt
   createdBy           User?               @relation("CollaboratorCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  jobPosition         JobPosition?        @relation(fields: [jobPositionId], references: [id], onDelete: Restrict)
   auditEvents         AuditEvent[]        @relation("AuditActorCollaborator")
   arlAffiliations     ArlAffiliation[]
   submissions         FormSubmission[]
@@ -163,6 +165,7 @@ model Collaborator {
   refreshSessions     RefreshSession[]
 
   @@index([status])
+  @@index([jobPositionId])
   @@map("collaborators")
 }
 
@@ -350,15 +353,16 @@ model Signature {
 /// Catálogo de cargos de la cuadrilla. Evita que el cargo sea texto libre y
 /// permite distinguir quién puede diligenciar el permiso.
 model JobPosition {
-  id        String             @id @default(uuid()) @db.Uuid
-  code      String             @unique
-  name      String
+  id            String             @id @default(uuid()) @db.Uuid
+  code          String             @unique
+  name          String
   /// Solo los cargos marcados así pueden abrir un permiso de trabajo.
-  canLead   Boolean            @default(false)
-  active    Boolean            @default(true)
-  createdAt DateTime           @default(now())
-  updatedAt DateTime           @updatedAt
-  members   SubmissionMember[]
+  canLead       Boolean            @default(false)
+  active        Boolean            @default(true)
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+  members       SubmissionMember[]
+  collaborators Collaborator[]
 
   @@map("job_positions")
 }

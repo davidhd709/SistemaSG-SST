@@ -1,4 +1,4 @@
-import { IsEmail, IsOptional, IsString, Matches, MaxLength, MinLength } from 'class-validator';
+import { IsEmail, IsOptional, IsString, IsUUID, Matches, MaxLength, MinLength } from 'class-validator';
 
 export class CreateCollaboratorDto {
   @IsString() @MaxLength(20) documentType!: string;
@@ -9,5 +9,6 @@ export class CreateCollaboratorDto {
   @IsOptional() @IsEmail() @MaxLength(254) email?: string;
   @IsOptional() @IsString() @MaxLength(30) phone?: string;
   @IsOptional() @IsString() @MaxLength(150) jobTitle?: string;
+  @IsOptional() @IsUUID() jobPositionId?: string | null;
   @IsOptional() @IsString() @MaxLength(100) team?: string;
 }

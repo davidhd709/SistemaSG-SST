@@ -1,6 +1,6 @@
 import * as argon2 from 'argon2';
 import { BadRequestException, ConflictException, Injectable } from '@nestjs/common';
-import type { Collaborator } from '@prisma/client';
+import type { Collaborator, JobPosition } from '@prisma/client';
 import type { AuthenticatedRequest } from '../common/request-context';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateCollaboratorDto } from './dto/create-collaborator.dto';
@@ -15,9 +15,9 @@ export class CollaboratorsService {
       where: { documentNumber: dto.documentNumber.trim() },
     });
     if (existing) throw new ConflictException('Ya existe un colaborador con ese documento.');
-    const esOficial = this.esOficialElectrico(dto.jobTitle);
-    if (esOficial && !dto.pin) {
-      throw new BadRequestException('El Oficial eléctrico debe tener un PIN de acceso.');
+    const position = await this.resolvePosition(dto.jobPositionId, dto.jobTitle);
+    if (position?.canLead && !dto.pin) {
+      throw new BadRequestException('Los cargos habilitados para liderar deben tener un PIN de acceso.');
     }
     const actorUserId = request.principal?.kind === 'USER' ? request.principal.userId : undefined;
     const collaborator = await this.prisma.$transaction(async (tx) => {
@@ -29,11 +29,13 @@ export class CollaboratorsService {
           lastName: dto.lastName.trim(),
           email: dto.email?.trim().toLowerCase(),
           phone: dto.phone?.trim(),
-          jobTitle: dto.jobTitle?.trim(),
+          jobTitle: position?.name,
+          jobPositionId: position?.id,
           team: dto.team?.trim(),
-          pinHash: esOficial && dto.pin ? await argon2.hash(dto.pin, { type: argon2.argon2id }) : null,
+          pinHash: position?.canLead && dto.pin ? await argon2.hash(dto.pin, { type: argon2.argon2id }) : null,
           createdById: actorUserId,
         },
+        include: { jobPosition: true },
       });
       await tx.auditEvent.create({
         data: {
@@ -59,19 +61,33 @@ export class CollaboratorsService {
   }
 
   async list() {
-    return (await this.prisma.collaborator.findMany({ orderBy: { createdAt: 'desc' } })).map((item) =>
-      this.serialize(item),
-    );
+    return (
+      await this.prisma.collaborator.findMany({ include: { jobPosition: true }, orderBy: { createdAt: 'desc' } })
+    ).map((item) => this.serialize(item));
+  }
+
+  async jobPositions() {
+    return this.prisma.jobPosition.findMany({
+      where: { active: true },
+      select: { id: true, code: true, name: true, canLead: true },
+      orderBy: { name: 'asc' },
+    });
   }
 
   async update(id: string, dto: UpdateCollaboratorDto, request: AuthenticatedRequest) {
-    const previous = await this.prisma.collaborator.findUniqueOrThrow({ where: { id } });
-    const cargoFinal = dto.jobTitle !== undefined ? dto.jobTitle.trim() : previous.jobTitle;
-    if (this.esOficialElectrico(cargoFinal) && !previous.pinHash && !dto.pin) {
-      throw new BadRequestException('El Oficial eléctrico debe tener un PIN de acceso.');
+    const previous = await this.prisma.collaborator.findUniqueOrThrow({
+      where: { id },
+      include: { jobPosition: true },
+    });
+    const positionChanged = dto.jobPositionId !== undefined || dto.jobTitle !== undefined;
+    const position = positionChanged
+      ? await this.resolvePosition(dto.jobPositionId, dto.jobTitle)
+      : previous.jobPosition;
+    if (position?.canLead && !previous.pinHash && !dto.pin) {
+      throw new BadRequestException('Los cargos habilitados para liderar deben tener un PIN de acceso.');
     }
-    const pinRemoved = dto.jobTitle !== undefined && !this.esOficialElectrico(cargoFinal) && !!previous.pinHash;
-    const pinChanged = (this.esOficialElectrico(cargoFinal) && !!dto.pin) || pinRemoved;
+    const pinRemoved = positionChanged && !position?.canLead && !!previous.pinHash;
+    const pinChanged = (position?.canLead && !!dto.pin) || pinRemoved;
     const inactivated = dto.status === 'INACTIVE' && previous.status !== 'INACTIVE';
     const actorUserId = request.principal?.kind === 'USER' ? request.principal.userId : undefined;
     const collaborator = await this.prisma.$transaction(async (tx) => {
@@ -82,15 +98,16 @@ export class CollaboratorsService {
           ...(dto.lastName !== undefined ? { lastName: dto.lastName.trim() } : {}),
           ...(dto.email !== undefined ? { email: dto.email.trim().toLowerCase() || null } : {}),
           ...(dto.phone !== undefined ? { phone: dto.phone.trim() || null } : {}),
-          ...(dto.jobTitle !== undefined ? { jobTitle: dto.jobTitle.trim() || null } : {}),
+          ...(positionChanged ? { jobTitle: position?.name ?? null, jobPositionId: position?.id ?? null } : {}),
           ...(dto.team !== undefined ? { team: dto.team.trim() || null } : {}),
           ...(dto.status ? { status: dto.status } : {}),
-          ...(dto.jobTitle !== undefined && !this.esOficialElectrico(cargoFinal)
+          ...(positionChanged && !position?.canLead
             ? { pinHash: null }
             : dto.pin
               ? { pinHash: await argon2.hash(dto.pin, { type: argon2.argon2id }) }
               : {}),
         },
+        include: { jobPosition: true },
       });
       if (pinChanged || inactivated) {
         await tx.refreshSession.updateMany({
@@ -128,21 +145,20 @@ export class CollaboratorsService {
       status: collaborator.status,
     };
   }
-  private esOficialElectrico(cargo?: string | null): boolean {
-    return (
-      (cargo ?? '')
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .trim()
-        .toUpperCase() === 'OFICIAL ELECTRICO'
-    );
+  private async resolvePosition(jobPositionId?: string | null, legacyTitle?: string): Promise<JobPosition | null> {
+    if (!jobPositionId && !legacyTitle?.trim()) return null;
+    const position = await this.prisma.jobPosition.findFirst({
+      where: jobPositionId ? { id: jobPositionId, active: true } : { name: legacyTitle!.trim(), active: true },
+    });
+    if (!position) throw new BadRequestException('El cargo no existe o está inactivo.');
+    return position;
   }
   private serialize({
     pinHash: _pinHash,
     failedLoginAttempts: _attempts,
     lockedUntil: _locked,
     ...collaborator
-  }: Collaborator) {
+  }: Collaborator & { jobPosition?: JobPosition | null }) {
     return collaborator;
   }
 }

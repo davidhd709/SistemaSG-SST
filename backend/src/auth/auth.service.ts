@@ -3,7 +3,7 @@ import * as argon2 from 'argon2';
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import type { Collaborator, User } from '@prisma/client';
+import type { Collaborator, JobPosition, User } from '@prisma/client';
 import type { RequestContext, AuthPrincipal } from '../common/request-context';
 import { getNumber } from '../common/env';
 import { AuditService } from '../audit/audit.service';
@@ -28,6 +28,8 @@ export interface LoginResult {
 
 /** @deprecated Conservado por compatibilidad; use `LoginResult`. */
 export type AdminLoginResult = LoginResult;
+
+type AuthenticatableCollaborator = Collaborator & { jobPosition: Pick<JobPosition, 'canLead'> | null };
 
 @Injectable()
 export class AuthService {
@@ -102,7 +104,10 @@ export class AuthService {
 
   async loginCollaborator(dto: CollaboratorLoginDto, request: RequestContext): Promise<LoginResult> {
     const documentNumber = dto.documentNumber.trim();
-    const collaborator = await this.prisma.collaborator.findUnique({ where: { documentNumber } });
+    const collaborator = await this.prisma.collaborator.findUnique({
+      where: { documentNumber },
+      include: { jobPosition: { select: { canLead: true } } },
+    });
     if (!collaborator || !(await this.canAuthenticateCollaborator(collaborator, dto.pin))) {
       await this.audit.record({
         action: 'COLLABORATOR_LOGIN_FAILED',
@@ -153,7 +158,10 @@ export class AuthService {
     if (!refreshToken) throw new UnauthorizedException('Sesión inválida o expirada.');
     const session = await this.prisma.refreshSession.findUnique({
       where: { tokenHash: this.hashToken(refreshToken) },
-      include: { user: true, collaborator: true },
+      include: {
+        user: true,
+        collaborator: { include: { jobPosition: { select: { canLead: true } } } },
+      },
     });
     if (!session || session.revokedAt || session.expiresAt <= new Date()) {
       throw new UnauthorizedException('Sesión inválida o expirada.');
@@ -162,7 +170,12 @@ export class AuthService {
     const esColaborador = session.sessionType === 'COLLABORATOR';
     const titular = esColaborador ? session.collaborator : session.user;
     // Una cuenta desactivada o bloqueada no debe poder renovar su sesión.
-    if (!titular || titular.status !== 'ACTIVE' || this.isLocked(titular.lockedUntil)) {
+    if (
+      !titular ||
+      titular.status !== 'ACTIVE' ||
+      this.isLocked(titular.lockedUntil) ||
+      (esColaborador && !(session.collaborator as AuthenticatableCollaborator | null)?.jobPosition?.canLead)
+    ) {
       throw new UnauthorizedException('Sesión inválida o expirada.');
     }
 
@@ -210,9 +223,9 @@ export class AuthService {
     if (payload.kind === 'COLLABORATOR') {
       const collaborator = await this.prisma.collaborator.findUnique({
         where: { id: payload.sub },
-        select: { status: true },
+        select: { status: true, jobPosition: { select: { canLead: true } } },
       });
-      if (collaborator?.status !== 'ACTIVE') throw new UnauthorizedException();
+      if (collaborator?.status !== 'ACTIVE' || !collaborator.jobPosition?.canLead) throw new UnauthorizedException();
       return { kind: 'COLLABORATOR', collaboratorId: payload.sub };
     }
     const user = await this.prisma.user.findUnique({
@@ -245,27 +258,17 @@ export class AuthService {
     return valid;
   }
 
-  private async canAuthenticateCollaborator(collaborator: Collaborator, pin: string): Promise<boolean> {
+  private async canAuthenticateCollaborator(collaborator: AuthenticatableCollaborator, pin: string): Promise<boolean> {
     if (
       collaborator.status !== 'ACTIVE' ||
       this.isLocked(collaborator.lockedUntil) ||
-      !this.esOficialElectrico(collaborator.jobTitle) ||
+      !collaborator.jobPosition?.canLead ||
       !collaborator.pinHash
     )
       return false;
     const valid = await argon2.verify(collaborator.pinHash, pin);
     if (!valid) await this.registerCollaboratorFailure(collaborator);
     return valid;
-  }
-
-  private esOficialElectrico(cargo: string | null): boolean {
-    return (
-      (cargo ?? '')
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .trim()
-        .toUpperCase() === 'OFICIAL ELECTRICO'
-    );
   }
 
   private async registerUserFailure(user: User): Promise<void> {

@@ -11,6 +11,7 @@ function dtoWithMembers(count: number): SubmitFormDto {
     safetyTalkToken: 'token',
     members: Array.from({ length: count }, () => ({
       collaboratorId: randomUUID(),
+      jobPositionId: randomUUID(),
       signatureDataUrl: 'data:image/png;base64,AAAA',
     })),
   });

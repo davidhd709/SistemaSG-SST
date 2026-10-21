@@ -65,3 +65,37 @@ describe('AuthService.rotateRefresh (AUD-011)', () => {
     expect(tx.refreshSession.create).not.toHaveBeenCalled();
   });
 });
+
+describe('AuthService collaborator position (AUD-017)', () => {
+  it('rejects collaborator login when the catalog position cannot lead', async () => {
+    const prisma = {
+      collaborator: {
+        findUnique: jest.fn().mockResolvedValue({
+          id: 'collaborator-1',
+          status: 'ACTIVE',
+          lockedUntil: null,
+          pinHash: 'hash-not-evaluated',
+          jobTitle: 'Oficial eléctrico',
+          jobPosition: { canLead: false },
+        }),
+      },
+    };
+    const jwt = { signAsync: jest.fn() };
+    const config = { get: jest.fn().mockReturnValue(undefined), getOrThrow: jest.fn().mockReturnValue('test-secret') };
+    const audit = { record: jest.fn().mockResolvedValue(undefined) };
+    const service = new AuthService(prisma as never, jwt as never, config as never, audit as never);
+
+    await expect(
+      service.loginCollaborator({ documentNumber: '12345678', pin: '1234' }, {
+        ip: '127.0.0.1',
+        header: () => 'agent',
+        correlationId: 'test',
+      } as never),
+    ).rejects.toThrow(UnauthorizedException);
+    expect(prisma.collaborator.findUnique).toHaveBeenCalledWith({
+      where: { documentNumber: '12345678' },
+      include: { jobPosition: { select: { canLead: true } } },
+    });
+    expect(jwt.signAsync).not.toHaveBeenCalled();
+  });
+});

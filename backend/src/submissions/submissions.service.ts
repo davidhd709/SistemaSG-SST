@@ -233,7 +233,7 @@ export class SubmissionsService {
         `No puedes incluir a ${incumplen.length} ${incumplen.length === 1 ? 'integrante' : 'integrantes'} sin los requisitos al día.`,
       );
     }
-    await this.validarCargos(integrantes);
+    await this.validarCargos(integrantes, oficialId);
 
     // Las firmas se guardan antes de abrir la transacción: escribir archivos
     // dentro de ella alargaría el bloqueo y dejaría basura si algo falla.
@@ -553,11 +553,18 @@ export class SubmissionsService {
     return unicos;
   }
 
-  private async validarCargos(members: CrewMemberDto[]): Promise<void> {
-    const ids = [...new Set(members.map((persona) => persona.jobPositionId).filter(Boolean))] as string[];
-    if (!ids.length) return;
-    const existentes = await this.prisma.jobPosition.count({ where: { id: { in: ids }, active: true } });
-    if (existentes !== ids.length) throw new BadRequestException('Uno o más cargos no existen o están inactivos.');
+  private async validarCargos(members: CrewMemberDto[], leadId: string): Promise<void> {
+    const ids = [...new Set(members.map((persona) => persona.jobPositionId))];
+    const positions = await this.prisma.jobPosition.findMany({
+      where: { id: { in: ids }, active: true },
+      select: { id: true, canLead: true },
+    });
+    if (positions.length !== ids.length)
+      throw new BadRequestException('Uno o más cargos no existen o están inactivos.');
+    const lead = members.find((persona) => persona.collaboratorId === leadId);
+    const leadPosition = positions.find((position) => position.id === lead?.jobPositionId);
+    if (!leadPosition?.canLead)
+      throw new BadRequestException('El cargo del oficial no está habilitado para liderar la cuadrilla.');
   }
 
   private async guardarFirmas(members: CrewMemberDto[]): Promise<FirmaGuardada[]> {

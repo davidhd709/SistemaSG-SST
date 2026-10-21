@@ -19,7 +19,7 @@ export class ArlService {
   async list(status?: ArlStatus) {
     const days = await this.getExpiringDays();
     const collaborators = await this.prisma.collaborator.findMany({
-      include: { arlAffiliations: { orderBy: { endDate: 'desc' } } },
+      include: { arlAffiliations: { orderBy: { endDate: 'desc' } }, jobPosition: true },
       orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
     });
     const now = new Date();
@@ -37,6 +37,8 @@ export class ArlService {
           email: collaborator.email,
           phone: collaborator.phone,
           jobTitle: collaborator.jobTitle,
+          jobPositionId: collaborator.jobPositionId,
+          jobPosition: collaborator.jobPosition,
           team: collaborator.team,
           status: collaborator.status,
         },

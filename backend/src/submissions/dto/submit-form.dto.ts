@@ -6,7 +6,6 @@ import {
   IsArray,
   IsBoolean,
   IsObject,
-  IsOptional,
   IsString,
   IsUUID,
   MaxLength,
@@ -22,7 +21,7 @@ export const MAX_CREW_SIZE = 5;
 /** Un integrante de la cuadrilla con su firma manuscrita. */
 export class CrewMemberDto {
   @IsUUID() collaboratorId!: string;
-  @IsOptional() @IsUUID() jobPositionId?: string;
+  @IsUUID() jobPositionId!: string;
   @IsString() @MaxLength(1_500_000) signatureDataUrl!: string;
 }
 
