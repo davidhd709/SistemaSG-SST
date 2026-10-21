@@ -2,4 +2,5 @@ services:
   api:
     environment:
       NODE_ENV: production
+      TRUST_PROXY_HOPS: 2
       AUDIT_ENABLED: 'true'

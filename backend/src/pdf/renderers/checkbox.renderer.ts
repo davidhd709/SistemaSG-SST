@@ -58,16 +58,23 @@ export class CheckboxRenderer {
   shouldCheck(checkedWhen: CheckboxField['checkedWhen'], answers: Record<string, unknown>): boolean {
     const { field, includes, equals } = checkedWhen;
     const rawValue = answers[field];
+    const comparable =
+      typeof rawValue === 'string' || typeof rawValue === 'number' || typeof rawValue === 'boolean'
+        ? String(rawValue)
+        : '';
 
     if (equals !== undefined) {
-      return String(rawValue ?? '').trim().toLocaleUpperCase('es-CO') === equals.trim().toLocaleUpperCase('es-CO');
+      return comparable.trim().toLocaleUpperCase('es-CO') === equals.trim().toLocaleUpperCase('es-CO');
     }
 
     if (includes !== undefined) {
       const values = Array.isArray(rawValue) ? rawValue : [rawValue];
       const normalized = includes.trim().toLocaleUpperCase('es-CO');
       return values.some(
-        (v) => String(v ?? '').trim().toLocaleUpperCase('es-CO') === normalized,
+        (v) =>
+          String(v ?? '')
+            .trim()
+            .toLocaleUpperCase('es-CO') === normalized,
       );
     }
 

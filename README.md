@@ -15,22 +15,30 @@ El sistema implementa autenticación administrativa y de colaboradores, permisos
 
 1. Copie `.env.example` a `.env` y cambie `POSTGRES_PASSWORD`.
 2. Active pnpm e instale dependencias: `corepack enable` y `pnpm install`.
-3. Inicie infraestructura: `docker compose up -d postgres redis`.
+3. Inicie infraestructura: `docker compose up -d postgres`.
 4. Genere Prisma y aplique migraciones: `pnpm db:generate` y `pnpm db:migrate`.
 5. Cree los roles, permisos y administrador inicial: `pnpm --filter @sg-sst/api run seed`.
 6. En terminales separadas ejecute `pnpm dev:api` y `pnpm dev:web`.
 
 La API queda en `http://localhost:3000/api`, su healthcheck en `http://localhost:3000/api/health`, y la PWA en `http://localhost:4200`.
 
+La documentación Swagger (`/api/docs`) se publica solo fuera de producción.
+
+Los usuarios internos pueden cambiar su contraseña en **Mi contraseña**. La API verifica la clave actual en `PATCH /api/users/me/password`, audita el cambio y revoca las sesiones de renovación; deben iniciar sesión de nuevo.
+
 Para ejecutar todo en contenedores: `docker compose up --build`. La web se publica en `http://localhost:8080` y enruta `/api` hacia la API.
 
-Después de iniciar los contenedores por primera vez, cree los roles, permisos y administrador inicial con `docker compose exec api ./node_modules/.bin/ts-node prisma/seed.ts`. Es un paso intencional: no hay credenciales administrativas predeterminadas.
+Después de iniciar los contenedores por primera vez, cree los roles, permisos y administrador inicial con `docker compose exec api node dist-seed/seed.js`. La imagen incluye el seed compilado y usa las variables de entorno del contenedor. Es un paso intencional: no hay credenciales administrativas predeterminadas.
 
 ## Archivos y PDF
 
-En desarrollo, firmas y PDFs se almacenan en `storage/`, directorio que no se versiona. Si se definen `R2_ENDPOINT`, `R2_BUCKET`, `R2_ACCESS_KEY_ID` y `R2_SECRET_ACCESS_KEY`, la misma interfaz `StorageService` usa Cloudflare R2. El bucket debe ser privado. Las descargas pasan por la API y se auditan.
+En desarrollo, firmas y PDFs se almacenan en `backend/storage/`, directorio que no se versiona. Si se definen `R2_ENDPOINT`, `R2_BUCKET`, `R2_ACCESS_KEY_ID` y `R2_SECRET_ACCESS_KEY`, la misma interfaz `StorageService` usa Cloudflare R2. El bucket debe ser privado. Las descargas pasan por la API y se auditan.
 
-El PDF final se genera al cerrar una jornada autorizada o al rechazar un envío. La interfaz queda aislada para sustituir esa llamada síncrona por un trabajo BullMQ antes de producción.
+El PDF final se genera de forma síncrona al cerrar una jornada autorizada o al rechazar un envío. `pdf-lib` completa la plantilla oficial versionada y agrega el registro de cierre; el proceso no requiere navegador, Redis ni un worker externo.
+
+Si falla esa generación, Coordinación puede usar `POST /api/coordination/submissions/:id/generate-pdf` con el permiso `submissions:review`. Solo admite envíos `CLOSED` o `REJECTED` sin PDF; genera el archivo y registra `GENERATE_FINAL_PDF` en auditoría sin modificar las fechas del envío.
+
+Para una jornada autorizada e iniciada que la cuadrilla no puede cerrar, `POST /api/coordination/submissions/:id/admin-close` exige `submissions:close-admin` y un `reason` obligatorio. Registra `ADMIN_CLOSE_WORKDAY` con el usuario y el motivo, libera a la cuadrilla y genera el PDF. Ejecuta el seed de roles después de desplegar para asignar el permiso a Administración y Coordinación.
 
 La charla de seguridad se confirma mediante una declaración del colaborador. La API vincula la declaración con el video y exige que transcurra su duración mínima antes de aceptar el permiso. Este control no certifica la atención de la persona al video.
 

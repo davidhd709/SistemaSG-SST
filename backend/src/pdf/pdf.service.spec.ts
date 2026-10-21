@@ -18,7 +18,7 @@ jest.mock('node:fs/promises', () => ({
 
 import { TemplateRegistry } from './template-registry';
 import { TemplateLoader } from './template-loader';
-import { PDFDocument, StandardFonts } from 'pdf-lib';
+import { PDFDocument, PDFPage, StandardFonts } from 'pdf-lib';
 import { PNG } from 'pngjs';
 import { TextRenderer } from './renderers/text.renderer';
 import { CheckboxRenderer } from './renderers/checkbox.renderer';
@@ -89,6 +89,20 @@ const validMapping = JSON.stringify({
   },
 });
 
+/** `validMapping` con las cinco filas firmables de cuadrilla de HSE-FO-016 v00. */
+const crewMapping = JSON.stringify({
+  ...(JSON.parse(validMapping) as Record<string, unknown>),
+  fields: {
+    ...(JSON.parse(validMapping) as { fields: Record<string, unknown> }).fields,
+    ...Object.fromEntries(
+      Array.from({ length: 5 }, (_, i) => [
+        `cuadrilla_0${i + 1}_firma`,
+        { type: 'SIGNATURE', page: 0, x: 450, y: 300 + i * 10, width: 40, height: 8, memberIndex: i },
+      ]),
+    ),
+  },
+});
+
 function setupReadFile(pdfBytes: Uint8Array, mappingJson: string): void {
   mockReadFileImpl = async (p: string, enc?: string) => {
     if (String(p).endsWith('.pdf')) return Buffer.from(pdfBytes);
@@ -112,6 +126,17 @@ describe('TemplateRegistry', () => {
     const result = await new TemplateRegistry().resolve('HSE-FO-016');
     expect(result.templatePath).toContain(path.join('HSE-FO-016', 'v00', 'template.pdf'));
     expect(result.mappingPath).toContain(path.join('HSE-FO-016', 'v00', 'mapping.json'));
+  });
+
+  it('resuelve las plantillas en backend/pdf-templates sin depender del directorio de trabajo (TEC-001)', async () => {
+    const expectedRoot = path.resolve(__dirname, '..', '..', 'pdf-templates');
+    const cwdSpy = jest.spyOn(process, 'cwd').mockReturnValue(path.resolve(__dirname, '..', '..', '..'));
+    try {
+      const result = await new TemplateRegistry().resolve('HSE-FO-016');
+      expect(result.templatePath).toBe(path.join(expectedRoot, 'HSE-FO-016', 'v00', 'template.pdf'));
+    } finally {
+      cwdSpy.mockRestore();
+    }
   });
 
   it('resuelve una versión específica cuando se proporciona', async () => {
@@ -410,10 +435,10 @@ describe('ImageRenderer', () => {
     align: 'center' as const,
   };
 
-  it('no lanza si imageBytes está vacío', async () => {
-    await expect(
-      renderer.render({ page, pdfDoc: doc, field: baseField, imageBytes: Buffer.alloc(0) }),
-    ).resolves.not.toThrow();
+  it('rechaza una firma vacía', async () => {
+    await expect(renderer.render({ page, pdfDoc: doc, field: baseField, imageBytes: Buffer.alloc(0) })).rejects.toThrow(
+      /vacía/,
+    );
   });
 
   it('incrusta correctamente un PNG válido', async () => {
@@ -422,10 +447,10 @@ describe('ImageRenderer', () => {
     ).resolves.not.toThrow();
   });
 
-  it('no lanza con bytes de imagen inválidos (solo emite warn)', async () => {
+  it('rechaza bytes de firma inválidos', async () => {
     await expect(
       renderer.render({ page, pdfDoc: doc, field: baseField, imageBytes: Buffer.from('not-an-image') }),
-    ).resolves.not.toThrow();
+    ).rejects.toThrow(/Formato de imagen no reconocido/);
   });
 
   it('el PDF generado conserva 1 página después de insertar firma', async () => {
@@ -699,9 +724,19 @@ describe('PdfService — AUD-001 integridad de datos y firmas', () => {
     return { pdfService, prisma, tx, storage, fieldRenderer, imageRenderer };
   }
 
+  it('no sustituye una versión de plantilla registrada que ya no está disponible (AUD-028)', async () => {
+    accessFailsOnCall(1);
+    const { pdfService, storage } = createPdfServiceContext({ templateVersion: 'v99' });
+
+    await expect(pdfService.generateFinalPdf('sub-aud001', { kind: 'USER', id: 'user-coord-1' })).rejects.toThrow(
+      NotFoundException,
+    );
+    expect(storage.putObject).not.toHaveBeenCalled();
+  });
+
   it('protege identidades, cargos y firmas al generar PDF desde registros históricos manipulados', async () => {
     const pdfBytes = await minimalPdf(1);
-    setupReadFile(pdfBytes, validMapping);
+    setupReadFile(pdfBytes, crewMapping);
 
     const fakeSig = `data:image/png;base64,${MINIMAL_PNG.toString('base64')}`;
     const { pdfService, fieldRenderer } = createPdfServiceContext({
@@ -732,7 +767,7 @@ describe('PdfService — AUD-001 integridad de datos y firmas', () => {
 
     const renderSpy = jest.spyOn(fieldRenderer, 'render');
 
-    const fileId = await pdfService.generateFinalPdf('sub-aud001', 'user-coord-1');
+    const fileId = await pdfService.generateFinalPdf('sub-aud001', { kind: 'USER', id: 'user-coord-1' });
     expect(fileId).toBe('pdf-file-id-1');
     expect(renderSpy).toHaveBeenCalledTimes(1);
 
@@ -740,8 +775,9 @@ describe('PdfService — AUD-001 integridad de datos y firmas', () => {
     expect(renderData.answers.cuadrilla_01_cedula).toBe('1020304050');
     expect(renderData.answers.cuadrilla_01_nombre).toBe('Carlos Pérez');
     expect(renderData.answers.cuadrilla_01_cargo).toBe('Liniero Líder');
-    expect(renderData.answers.cuadrilla_01_certificado).toBe('');
-    expect(renderData.answers.cuadrilla_01_seg_social).toBe('');
+    // Sin complianceJson en el integrante: el "Vigente" de answersJson no se usa (AUD-002).
+    expect(renderData.answers.cuadrilla_01_certificado).toBe('Sin registro');
+    expect(renderData.answers.cuadrilla_01_seg_social).toBe('Sin registro');
     expect(renderData.answers.ejecutor_01_cedula).toBe('1020304050');
     expect(renderData.answers.ejecutor_01_nombre).toBe('Carlos Pérez');
     expect(renderData.answers.ejecutor_01_cargo).toBe('Liniero Líder');
@@ -758,12 +794,12 @@ describe('PdfService — AUD-001 integridad de datos y firmas', () => {
 
   it('genera un permiso PDF válido cuando los datos son correctos y conserva las firmas legítimas', async () => {
     const pdfBytes = await minimalPdf(1);
-    setupReadFile(pdfBytes, validMapping);
+    setupReadFile(pdfBytes, crewMapping);
 
     const { pdfService, storage, tx, fieldRenderer } = createPdfServiceContext();
     const renderSpy = jest.spyOn(fieldRenderer, 'render');
 
-    const fileId = await pdfService.generateFinalPdf('sub-aud001', 'user-coord-1');
+    const fileId = await pdfService.generateFinalPdf('sub-aud001', { kind: 'USER', id: 'user-coord-1' });
 
     expect(fileId).toBe('pdf-file-id-1');
     expect(storage.getObject).toHaveBeenCalledWith('signatures/member-1.png');
@@ -784,27 +820,58 @@ describe('PdfService — AUD-001 integridad de datos y firmas', () => {
     );
     expect(tx.formSubmission.update).toHaveBeenCalledWith({
       where: { id: 'sub-aud001' },
-      data: { finalPdfFileId: 'pdf-file-id-1' },
+      data: { finalPdfFileId: 'pdf-file-id-1', templateVersion: 'v00' },
     });
+    const fileCall = tx.fileObject.create.mock.calls[0][0] as { data: { createdById: string | null } };
+    expect(fileCall.data.createdById).toBe('user-coord-1');
     const auditCall = tx.auditEvent.create.mock.calls[0][0] as {
-      data: { action: string; entityId: string };
+      data: { action: string; entityId: string; actorUserId?: string };
     };
     expect(auditCall.data).toMatchObject({
       action: 'GENERATE_FINAL_PDF',
       entityId: 'sub-aud001',
+      actorUserId: 'user-coord-1',
     });
+  });
+
+  it('anexa las notas de cierre y audita al integrante que generó el documento (AUD-032)', async () => {
+    const pdfBytes = await minimalPdf(1);
+    setupReadFile(pdfBytes, crewMapping);
+    const { pdfService, storage, tx } = createPdfServiceContext({
+      closureNotes: 'Se entregó el área limpia y sin incidentes.',
+      closedBy: {
+        firstName: 'Laura',
+        lastName: 'Gómez',
+        documentNumber: '1098765432',
+      },
+      closedByUser: null,
+    });
+    const drawText = jest.spyOn(PDFPage.prototype, 'drawText');
+
+    await pdfService.generateFinalPdf('sub-aud001', { kind: 'COLLABORATOR', id: 'collab-closer' });
+
+    const renderedText = drawText.mock.calls.map(([value]) => value);
+    expect(renderedText).toContain('REGISTRO DE CIERRE DEL PERMISO');
+    expect(renderedText).toContain('Se entregó el área limpia y sin incidentes.');
+    expect(renderedText).toContain('Laura Gómez - 1098765432');
+    const storedPdf = storage.putObject.mock.calls[0][0] as { body: Buffer };
+    await expect(PDFDocument.load(storedPdf.body).then((document) => document.getPageCount())).resolves.toBe(2);
+    const fileCreate = tx.fileObject.create.mock.calls[0][0] as { data: { createdById: string | null } };
+    expect(fileCreate.data.createdById).toBeNull();
+    const auditCreate = tx.auditEvent.create.mock.calls[0][0] as {
+      data: { actorUserId?: string; actorCollaboratorId?: string };
+    };
+    expect(auditCreate.data).toMatchObject({ actorCollaboratorId: 'collab-closer' });
+    expect(auditCreate.data.actorUserId).toBeUndefined();
+    drawText.mockRestore();
   });
 
   it('ignora fecha_trabajo y vigencia_permiso manipuladas en registros históricos y usa la fecha autorizada del servidor', async () => {
     const pdfBytes = await minimalPdf(1);
-    setupReadFile(pdfBytes, validMapping);
+    setupReadFile(pdfBytes, crewMapping);
 
-    const authoritativeDate = new Date('2026-04-16T12:00:00.000Z');
-    const expectedFormattedDate = new Intl.DateTimeFormat('es-CO', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-    }).format(authoritativeDate);
+    const authoritativeDate = new Date('2026-04-16T00:00:00.000Z');
+    const expectedFormattedDate = '16/04/2026';
 
     const { pdfService, fieldRenderer } = createPdfServiceContext({
       workDate: authoritativeDate,
@@ -817,7 +884,7 @@ describe('PdfService — AUD-001 integridad de datos y firmas', () => {
     });
     const renderSpy = jest.spyOn(fieldRenderer, 'render');
 
-    await pdfService.generateFinalPdf('sub-aud001', 'user-coord-1');
+    await pdfService.generateFinalPdf('sub-aud001', { kind: 'USER', id: 'user-coord-1' });
 
     const renderData = renderSpy.mock.calls[0][2];
     expect(renderData.answers.fecha_trabajo).toBe(expectedFormattedDate);
@@ -825,18 +892,59 @@ describe('PdfService — AUD-001 integridad de datos y firmas', () => {
     expect(renderData.answers.fecha_trabajo).not.toBe('31/12/2099');
   });
 
+  it.each(['UTC', 'America/Bogota', 'Asia/Tokyo'])(
+    'formatea fecha y horas en hora de Colombia aunque el proceso corra en %s (AUD-003)',
+    async (tz) => {
+      const previousTz = process.env.TZ;
+      process.env.TZ = tz;
+      try {
+        const pdfBytes = await minimalPdf(1);
+        setupReadFile(pdfBytes, crewMapping);
+        const { pdfService, fieldRenderer } = createPdfServiceContext({
+          workDate: new Date('2026-04-16T00:00:00.000Z'),
+          // 19:10 y 23:50 en Colombia: frontera en la que UTC ya está en el día siguiente.
+          startedAt: new Date('2026-04-17T00:10:00.000Z'),
+          closedAt: new Date('2026-04-17T04:50:00.000Z'),
+        });
+        const renderSpy = jest.spyOn(fieldRenderer, 'render');
+
+        await pdfService.generateFinalPdf('sub-aud001', { kind: 'USER', id: 'user-coord-1' });
+
+        const { answers } = renderSpy.mock.calls[0][2];
+        expect(answers.fecha_trabajo).toBe('16/04/2026');
+        expect(answers.vigencia_permiso).toBe('16/04/2026');
+        expect(answers.hora_inicio).toBe('07:10 p.m.');
+        expect(answers.hora_fin).toBe('11:50 p.m.');
+        expect(answers.hora_finalizacion).toBe('11:50 p.m.');
+      } finally {
+        if (previousTz === undefined) delete process.env.TZ;
+        else process.env.TZ = previousTz;
+      }
+    },
+  );
+
+  it('usa submittedAt en hora de Colombia cuando no hay workDate (AUD-003)', async () => {
+    const pdfBytes = await minimalPdf(1);
+    setupReadFile(pdfBytes, crewMapping);
+    const { pdfService, fieldRenderer } = createPdfServiceContext({
+      workDate: null,
+      // 21:00 del 16 en Colombia; en UTC ya es el 17.
+      submittedAt: new Date('2026-04-17T02:00:00.000Z'),
+    });
+    const renderSpy = jest.spyOn(fieldRenderer, 'render');
+
+    await pdfService.generateFinalPdf('sub-aud001', { kind: 'USER', id: 'user-coord-1' });
+
+    expect(renderSpy.mock.calls[0][2].answers.fecha_trabajo).toBe('16/04/2026');
+  });
+
   it('ignora hora_inicio manipulada en registros históricos y usa startedAt autorizado o vacío si no ha iniciado', async () => {
     const pdfBytes = await minimalPdf(1);
-    setupReadFile(pdfBytes, validMapping);
+    setupReadFile(pdfBytes, crewMapping);
 
+    // 13:30 UTC son las 08:30 en Colombia (UTC-5).
     const authoritativeStart = new Date('2026-04-16T13:30:00.000Z');
-    const expectedStart = new Intl.DateTimeFormat('es-CO', {
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true,
-    })
-      .format(authoritativeStart)
-      .replace(/\s*([ap])\.\s*m\./i, ' $1.m.');
+    const expectedStart = '08:30 a.m.';
 
     const { pdfService, fieldRenderer } = createPdfServiceContext({
       startedAt: authoritativeStart,
@@ -847,7 +955,7 @@ describe('PdfService — AUD-001 integridad de datos y firmas', () => {
     });
     const renderSpy = jest.spyOn(fieldRenderer, 'render');
 
-    await pdfService.generateFinalPdf('sub-aud001', 'user-coord-1');
+    await pdfService.generateFinalPdf('sub-aud001', { kind: 'USER', id: 'user-coord-1' });
     expect(renderSpy.mock.calls[0][2].answers.hora_inicio).toBe(expectedStart);
     expect(renderSpy.mock.calls[0][2].answers.hora_inicio).not.toBe('01:00 a.m.');
 
@@ -863,7 +971,7 @@ describe('PdfService — AUD-001 integridad de datos y firmas', () => {
       },
     });
     const spyNoStart = jest.spyOn(rendererNoStart, 'render');
-    await pdfServiceNoStart.generateFinalPdf('sub-aud001', 'user-coord-1');
+    await pdfServiceNoStart.generateFinalPdf('sub-aud001', { kind: 'USER', id: 'user-coord-1' });
     expect(spyNoStart.mock.calls[0][2].answers.hora_inicio).toBeUndefined();
     expect(spyNoStart.mock.calls[0][2].answers.hora_finalizacion).toBeUndefined();
     expect(spyNoStart.mock.calls[0][2].answers.hora_fin).toBeUndefined();
@@ -871,7 +979,7 @@ describe('PdfService — AUD-001 integridad de datos y firmas', () => {
 
   it('nunca confía en campos automáticos por estar en answersJson ni sustituye cumplimiento con Vigente o Verificada', async () => {
     const pdfBytes = await minimalPdf(1);
-    setupReadFile(pdfBytes, validMapping);
+    setupReadFile(pdfBytes, crewMapping);
 
     const { pdfService, fieldRenderer } = createPdfServiceContext({
       workDate: null,
@@ -891,7 +999,7 @@ describe('PdfService — AUD-001 integridad de datos y firmas', () => {
     });
     const renderSpy = jest.spyOn(fieldRenderer, 'render');
 
-    await pdfService.generateFinalPdf('sub-aud001', 'user-coord-1');
+    await pdfService.generateFinalPdf('sub-aud001', { kind: 'USER', id: 'user-coord-1' });
 
     const { answers } = renderSpy.mock.calls[0][2];
     expect(answers.fecha_trabajo).toBeUndefined();
@@ -901,15 +1009,136 @@ describe('PdfService — AUD-001 integridad de datos y firmas', () => {
     expect(answers.hora_fin).toBeUndefined();
     expect(answers.certificado_alturas).toBeUndefined();
     expect(answers.seguridad_social_verificada).toBeUndefined();
-    expect(answers.cuadrilla_01_certificado).toBe('');
-    expect(answers.cuadrilla_01_seg_social).toBe('');
-    expect(answers.ejecutor_01_certificado).toBe('');
-    expect(answers.ejecutor_01_seg_social).toBe('');
+    // El integrante no tiene complianceJson: answersJson dice "Vigente" y no se le cree.
+    expect(answers.cuadrilla_01_certificado).toBe('Sin registro');
+    expect(answers.cuadrilla_01_seg_social).toBe('Sin registro');
+    expect(answers.ejecutor_01_certificado).toBe('Sin registro');
+    expect(answers.ejecutor_01_seg_social).toBe('Sin registro');
+  });
+
+  it('muestra por integrante los estados de cumplimiento guardados en complianceJson (AUD-002)', async () => {
+    const pdfBytes = await minimalPdf(1);
+    setupReadFile(pdfBytes, crewMapping);
+    const integrante = (id: string, complianceJson: unknown) => ({
+      id: `mem-${id}`,
+      isLead: id === '1',
+      collaborator: {
+        id: `collab-${id}`,
+        firstName: 'Persona',
+        lastName: id,
+        documentNumber: `10000${id}`,
+        jobTitle: null,
+      },
+      jobPosition: null,
+      complianceJson,
+      signature: { id: `sig-${id}`, file: { id: `file-sig-${id}`, objectKey: `signatures/member-${id}.png` } },
+    });
+    const { pdfService, fieldRenderer } = createPdfServiceContext({
+      members: [
+        integrante('1', { alturas: { estado: 'VIGENTE' }, seguridadSocial: { estado: 'PROXIMA_A_VENCER' } }),
+        integrante('2', { alturas: { estado: 'NO_APLICA' }, seguridadSocial: { estado: 'VIGENTE' } }),
+        integrante('3', { alturas: { estado: 'VENCIDA' }, seguridadSocial: { estado: 'OTRO' } }),
+      ],
+    });
+    const renderSpy = jest.spyOn(fieldRenderer, 'render');
+
+    await pdfService.generateFinalPdf('sub-aud001', { kind: 'USER', id: 'user-coord-1' });
+
+    const { answers } = renderSpy.mock.calls[0][2];
+    expect(answers.cuadrilla_01_certificado).toBe('Vigente');
+    expect(answers.cuadrilla_01_seg_social).toBe('Vigente (por vencer)');
+    expect(answers.cuadrilla_02_certificado).toBe('No aplica');
+    expect(answers.cuadrilla_02_seg_social).toBe('Vigente');
+    expect(answers.cuadrilla_03_certificado).toBe('No vigente');
+    expect(answers.cuadrilla_03_seg_social).toBe('Sin registro');
+  });
+
+  it('rechaza generar el PDF si la cuadrilla supera las filas de la plantilla y no guarda nada (TEC-008)', async () => {
+    const pdfBytes = await minimalPdf(1);
+    setupReadFile(pdfBytes, crewMapping);
+    const members = Array.from({ length: 6 }, (_, i) => ({
+      id: `mem-${i}`,
+      isLead: i === 0,
+      collaborator: {
+        id: `collab-${i}`,
+        firstName: 'Persona',
+        lastName: `${i}`,
+        documentNumber: `2000${i}`,
+        jobTitle: null,
+      },
+      jobPosition: null,
+      complianceJson: {},
+      signature: null,
+    }));
+    const { pdfService, storage } = createPdfServiceContext({ members });
+
+    await expect(pdfService.generateFinalPdf('sub-aud001', { kind: 'USER', id: 'user-coord-1' })).rejects.toThrow(
+      /6 integrantes.*solo admite 5/,
+    );
+    expect(storage.putObject).not.toHaveBeenCalled();
+  });
+
+  it('no guarda el PDF si falta la firma de un integrante (AUD-024)', async () => {
+    setupReadFile(await minimalPdf(1), crewMapping);
+    const { pdfService, storage, prisma } = createPdfServiceContext({
+      members: [
+        {
+          id: 'mem-sin-firma',
+          isLead: true,
+          collaborator: { id: 'collab-1', firstName: 'Ana', lastName: 'Pérez', documentNumber: '123', jobTitle: null },
+          jobPosition: null,
+          complianceJson: {},
+          signature: null,
+        },
+      ],
+    });
+
+    await expect(pdfService.generateFinalPdf('sub-aud001', { kind: 'USER', id: 'user-coord-1' })).rejects.toThrow(
+      /Falta la firma/,
+    );
+    expect(storage.putObject).not.toHaveBeenCalled();
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+
+  it('no guarda el PDF si falla la lectura de la firma (AUD-024)', async () => {
+    setupReadFile(await minimalPdf(1), crewMapping);
+    const { pdfService, storage, prisma } = createPdfServiceContext();
+    storage.getObject.mockRejectedValueOnce(new Error('storage unavailable'));
+
+    await expect(pdfService.generateFinalPdf('sub-aud001', { kind: 'USER', id: 'user-coord-1' })).rejects.toThrow(
+      /No se pudo cargar la firma/,
+    );
+    expect(storage.putObject).not.toHaveBeenCalled();
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+
+  it('no guarda el PDF si una firma no se puede incrustar (AUD-024)', async () => {
+    setupReadFile(await minimalPdf(1), crewMapping);
+    const { pdfService, storage, prisma } = createPdfServiceContext();
+    storage.getObject.mockResolvedValueOnce(Buffer.from('not-an-image'));
+
+    await expect(pdfService.generateFinalPdf('sub-aud001', { kind: 'USER', id: 'user-coord-1' })).rejects.toThrow(
+      /Formato de imagen no reconocido/,
+    );
+    expect(storage.putObject).not.toHaveBeenCalled();
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+
+  it('no guarda el PDF si falla el renderizado de un campo (AUD-024)', async () => {
+    setupReadFile(await minimalPdf(1), crewMapping);
+    const { pdfService, fieldRenderer, storage, prisma } = createPdfServiceContext();
+    jest.spyOn(fieldRenderer, 'render').mockRejectedValueOnce(new Error('campo ilegible'));
+
+    await expect(pdfService.generateFinalPdf('sub-aud001', { kind: 'USER', id: 'user-coord-1' })).rejects.toThrow(
+      'campo ilegible',
+    );
+    expect(storage.putObject).not.toHaveBeenCalled();
+    expect(prisma.$transaction).not.toHaveBeenCalled();
   });
 
   it('aplica lista blanca segura cuando schemaJson es inválido o incompleto, conservando campos legítimos y bloqueando no verificados', async () => {
     const pdfBytes = await minimalPdf(1);
-    setupReadFile(pdfBytes, validMapping);
+    setupReadFile(pdfBytes, crewMapping);
 
     const { pdfService, fieldRenderer } = createPdfServiceContext({
       formVersion: {
@@ -930,7 +1159,7 @@ describe('PdfService — AUD-001 integridad de datos y firmas', () => {
     });
     const renderSpy = jest.spyOn(fieldRenderer, 'render');
 
-    await pdfService.generateFinalPdf('sub-aud001', 'user-coord-1');
+    await pdfService.generateFinalPdf('sub-aud001', { kind: 'USER', id: 'user-coord-1' });
 
     const { answers } = renderSpy.mock.calls[0][2];
     expect(answers.empresa).toBe('OPAINN ESP SAS');
@@ -995,7 +1224,7 @@ describe('PdfService — AUD-001 integridad de datos y firmas', () => {
 
     const embedPngSpy = jest.spyOn(PDFDocument.prototype, 'embedPng');
 
-    const fileId = await pdfService.generateFinalPdf('sub-aud001', 'user-coord-1');
+    const fileId = await pdfService.generateFinalPdf('sub-aud001', { kind: 'USER', id: 'user-coord-1' });
     expect(fileId).toBe('pdf-file-id-1');
 
     // Solo debe embeber la firma legítima del integrante (memberIndex: 0) y no las firmas falsas de answersJson

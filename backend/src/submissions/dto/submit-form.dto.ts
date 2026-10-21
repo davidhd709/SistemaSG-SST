@@ -6,17 +6,22 @@ import {
   IsArray,
   IsBoolean,
   IsObject,
-  IsOptional,
   IsString,
   IsUUID,
   MaxLength,
   ValidateNested,
 } from 'class-validator';
 
+/**
+ * Filas de integrantes (con su firma) del formato oficial HSE-FO-016 v00. Un
+ * permiso con más personas no cabría en el documento final (TEC-008).
+ */
+export const MAX_CREW_SIZE = 5;
+
 /** Un integrante de la cuadrilla con su firma manuscrita. */
 export class CrewMemberDto {
   @IsUUID() collaboratorId!: string;
-  @IsOptional() @IsUUID() jobPositionId?: string;
+  @IsUUID() jobPositionId!: string;
   @IsString() @MaxLength(1_500_000) signatureDataUrl!: string;
 }
 
@@ -31,7 +36,9 @@ export class SubmitFormDto {
    */
   @IsArray()
   @ArrayMinSize(1)
-  @ArrayMaxSize(20)
+  @ArrayMaxSize(MAX_CREW_SIZE, {
+    message: `El formato HSE-FO-016 admite hasta ${MAX_CREW_SIZE} integrantes por permiso.`,
+  })
   @ValidateNested({ each: true })
   @Type(() => CrewMemberDto)
   members!: CrewMemberDto[];

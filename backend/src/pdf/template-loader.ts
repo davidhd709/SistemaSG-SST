@@ -145,15 +145,31 @@ export class TemplateLoader {
     }
 
     const mapping = parsed as TemplateMapping;
-    if (!mapping?.meta?.formCode) throw new InternalServerErrorException(`El mapping ${mappingPath} no tiene meta.formCode.`);
-    if (!mapping?.meta?.templateVersion) throw new InternalServerErrorException(`El mapping ${mappingPath} no tiene meta.templateVersion.`);
-    if (typeof mapping.meta.pageCount !== 'number' || mapping.meta.pageCount < 1) throw new InternalServerErrorException(`El mapping ${mappingPath} tiene pageCount inválido.`);
-    if (!mapping.fields || typeof mapping.fields !== 'object') throw new InternalServerErrorException(`El mapping ${mappingPath} no tiene campos definidos.`);
+    if (!mapping?.meta?.formCode)
+      throw new InternalServerErrorException(`El mapping ${mappingPath} no tiene meta.formCode.`);
+    if (!mapping?.meta?.templateVersion)
+      throw new InternalServerErrorException(`El mapping ${mappingPath} no tiene meta.templateVersion.`);
+    if (typeof mapping.meta.pageCount !== 'number' || mapping.meta.pageCount < 1)
+      throw new InternalServerErrorException(`El mapping ${mappingPath} tiene pageCount inválido.`);
+    if (!mapping.fields || typeof mapping.fields !== 'object')
+      throw new InternalServerErrorException(`El mapping ${mappingPath} no tiene campos definidos.`);
 
-    const validTypes = new Set(['TEXT', 'MULTILINE_TEXT', 'NUMBER', 'DATE', 'TIME', 'CHECKBOX', 'SIGNATURE', 'IMAGE', 'CREW_TABLE']);
+    const validTypes = new Set([
+      'TEXT',
+      'MULTILINE_TEXT',
+      'NUMBER',
+      'DATE',
+      'TIME',
+      'CHECKBOX',
+      'SIGNATURE',
+      'IMAGE',
+      'CREW_TABLE',
+    ]);
     for (const [key, field] of Object.entries(mapping.fields)) {
       if (!validTypes.has((field as MappingField).type)) {
-        throw new InternalServerErrorException(`El campo "${key}" tiene un tipo inválido: "${(field as MappingField).type}".`);
+        throw new InternalServerErrorException(
+          `El campo "${key}" tiene un tipo inválido: "${(field as MappingField).type}".`,
+        );
       }
     }
     return mapping;

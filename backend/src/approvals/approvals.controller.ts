@@ -2,8 +2,11 @@ import { Body, Controller, Get, Param, Post, Query, Req } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { RequirePermissions } from '../auth/auth.decorators';
 import type { AuthenticatedRequest } from '../common/request-context';
+import { UUID_PARAM_PIPE } from '../common/uuid-param.pipe';
 import { ApprovalsService } from './approvals.service';
 import { DecideSubmissionDto } from './dto/decide-submission.dto';
+import { AdminCloseWorkdayDto } from './dto/admin-close-workday.dto';
+import { CustodyQueryDto } from './dto/custody-query.dto';
 @ApiTags('coordination')
 @Controller('coordination')
 @RequirePermissions('submissions:review')
@@ -20,17 +23,31 @@ export class ApprovalsController {
     return this.approvals.pending();
   }
   /** Archivo documental filtrable por mes o por una fecha de trabajo exacta. */
-  @Get('submissions') custody(@Query('month') month?: string, @Query('date') date?: string) {
-    return this.approvals.custody(month, date);
+  @Get('submissions') custody(@Query() query: CustodyQueryDto) {
+    return this.approvals.custody(query);
   }
-  @Get('submissions/:id') detail(@Param('id') id: string) {
+  @Get('submissions/:id') detail(@Param('id', UUID_PARAM_PIPE) id: string) {
     return this.approvals.detail(id);
   }
   @Post('submissions/:id/decision') decide(
-    @Param('id') id: string,
+    @Param('id', UUID_PARAM_PIPE) id: string,
     @Body() dto: DecideSubmissionDto,
     @Req() request: AuthenticatedRequest,
   ) {
     return this.approvals.decide(id, dto, request);
+  }
+  /** Recupera el documento de un permiso ya cerrado o rechazado. */
+  @Post('submissions/:id/generate-pdf')
+  generatePdf(@Param('id', UUID_PARAM_PIPE) id: string, @Req() request: AuthenticatedRequest) {
+    return this.approvals.generateMissingPdf(id, request);
+  }
+  @RequirePermissions('submissions:close-admin')
+  @Post('submissions/:id/admin-close')
+  adminClose(
+    @Param('id', UUID_PARAM_PIPE) id: string,
+    @Body() dto: AdminCloseWorkdayDto,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    return this.approvals.adminCloseWorkday(id, dto, request);
   }
 }

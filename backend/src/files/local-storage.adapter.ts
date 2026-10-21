@@ -5,7 +5,8 @@ import { StorageService, type PutObjectInput, type StoredObject } from './storag
 
 @Injectable()
 export class LocalStorageAdapter extends StorageService {
-  private readonly root = resolve(process.cwd(), 'storage');
+  // src/files y dist/files están siempre dos niveles debajo de backend/.
+  private readonly root = resolve(__dirname, '..', '..', 'storage');
   async putObject(input: PutObjectInput): Promise<StoredObject> {
     const target = this.path(input.objectKey);
     await mkdir(dirname(target), { recursive: true });

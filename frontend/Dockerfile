@@ -11,7 +11,8 @@ ARG WEB_API_BASE_URL=/api
 ENV WEB_API_BASE_URL=$WEB_API_BASE_URL
 RUN pnpm --filter @sg-sst/web run build
 
-FROM nginx:1.29-alpine
+FROM nginxinc/nginx-unprivileged:1.29-alpine
 COPY infra/nginx/web.conf /etc/nginx/conf.d/default.conf
+COPY infra/nginx/security-headers.conf /etc/nginx/security-headers.conf
 COPY --from=build /workspace/frontend/dist/web/browser /usr/share/nginx/html
-EXPOSE 80
+EXPOSE 8080

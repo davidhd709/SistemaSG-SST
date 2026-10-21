@@ -51,7 +51,14 @@ export class LegalService {
     });
 
     return collaborators.map(
-      ({ pinHash: _pin, failedLoginAttempts: _attempts, lockedUntil: _locked, submissions, crewMemberships, ...item }) => {
+      ({
+        pinHash: _pin,
+        failedLoginAttempts: _attempts,
+        lockedUntil: _locked,
+        submissions,
+        crewMemberships,
+        ...item
+      }) => {
         const submissionMap = new Map<string, (typeof submissions)[number]>();
 
         for (const sub of submissions) {
@@ -94,10 +101,7 @@ export class LegalService {
 
     const submissions = await this.prisma.formSubmission.findMany({
       where: {
-        OR: [
-          { collaboratorId },
-          { members: { some: { collaboratorId } } },
-        ],
+        OR: [{ collaboratorId }, { members: { some: { collaboratorId } } }],
       },
       include: {
         formVersion: { include: { form: { select: { code: true, name: true } } } },

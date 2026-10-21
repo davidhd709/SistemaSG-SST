@@ -161,13 +161,7 @@ export class TextRenderer {
    * Trunca el texto para que quepa en la celda con la fuente más pequeña,
    * añadiendo "…" al final si fue necesario recortar.
    */
-  private truncateToFit(
-    text: string,
-    font: PDFFont,
-    fontSize: number,
-    maxWidth: number,
-    maxHeight: number,
-  ): string[] {
+  private truncateToFit(text: string, font: PDFFont, fontSize: number, maxWidth: number, maxHeight: number): string[] {
     const maxLinesCount = Math.max(1, Math.floor(maxHeight / (fontSize * 1.2)));
     const lines = this.wrapText(text, font, fontSize, maxWidth).slice(0, maxLinesCount);
 

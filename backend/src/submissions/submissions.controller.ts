@@ -2,6 +2,7 @@ import { Body, Controller, Get, Param, Post, Req } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import type { AuthenticatedRequest } from '../common/request-context';
+import { UUID_PARAM_PIPE } from '../common/uuid-param.pipe';
 import { SubmitFormDto } from './dto/submit-form.dto';
 import { CloseWorkdayDto } from './dto/close-workday.dto';
 import { SafetyTalkChallengeDto } from './dto/safety-talk-challenge.dto';
@@ -43,14 +44,14 @@ export class SubmissionsController {
 
   @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @Post(':id/start')
-  start(@Param('id') id: string, @Req() request: AuthenticatedRequest) {
+  start(@Param('id', UUID_PARAM_PIPE) id: string, @Req() request: AuthenticatedRequest) {
     return this.submissions.startWorkday(id, request);
   }
 
   /** Cierra la jornada y deja el permiso listo para su documento final. */
   @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @Post(':id/close')
-  close(@Param('id') id: string, @Body() dto: CloseWorkdayDto, @Req() request: AuthenticatedRequest) {
+  close(@Param('id', UUID_PARAM_PIPE) id: string, @Body() dto: CloseWorkdayDto, @Req() request: AuthenticatedRequest) {
     return this.submissions.closeWorkday(id, dto, request);
   }
 }

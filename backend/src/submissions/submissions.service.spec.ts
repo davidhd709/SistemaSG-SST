@@ -4,6 +4,7 @@ import { businessDate } from '../common/business-date';
 
 const collaboratorId = '11111111-1111-4111-8111-111111111111';
 const challengeId = '22222222-2222-4222-8222-222222222222';
+const leadPositionId = '33333333-3333-4333-8333-333333333333';
 const request = {
   principal: { kind: 'COLLABORATOR', collaboratorId },
   ip: '127.0.0.1',
@@ -18,6 +19,12 @@ function setup() {
       findFirst: jest.fn().mockResolvedValue(null),
       updateMany: jest.fn().mockResolvedValue({ count: 1 }),
       create: jest.fn().mockResolvedValue({ id: 'submission-1', status: 'PENDING_APPROVAL', submittedAt: new Date() }),
+      findUniqueOrThrow: jest.fn().mockResolvedValue({
+        id: 'submission-1',
+        status: 'CLOSED',
+        startedAt: new Date('2026-10-21T13:00:00Z'),
+        closedAt: new Date('2026-10-21T14:00:00Z'),
+      }),
     },
     submissionMember: {
       create: jest.fn().mockResolvedValue({ id: 'member-1' }),
@@ -44,7 +51,7 @@ function setup() {
       }),
     },
     collaborator: { count: jest.fn().mockResolvedValue(1) },
-    jobPosition: { count: jest.fn().mockResolvedValue(1) },
+    jobPosition: { findMany: jest.fn().mockResolvedValue([{ id: leadPositionId, canLead: true }]) },
     $transaction: jest.fn((callback: (client: typeof tx) => Promise<unknown>) => callback(tx)),
   };
   const storage = { putObject: jest.fn(), deleteObject: jest.fn().mockResolvedValue(undefined) };
@@ -63,6 +70,7 @@ function setup() {
     ),
   };
   const jwt = {
+    signAsync: jest.fn().mockResolvedValue('signed-talk-token'),
     verifyAsync: jest.fn().mockResolvedValue({
       sub: collaboratorId,
       jti: challengeId,
@@ -72,17 +80,46 @@ function setup() {
       iat: Math.floor(Date.now() / 1000) - 60,
     }),
   };
-  const config = { getOrThrow: jest.fn().mockReturnValue('test-secret') };
+  const config = { getOrThrow: jest.fn().mockReturnValue('talk-secret') };
+  const templateRegistry = {
+    defaultVersion: jest.fn().mockReturnValue('v00'),
+    resolve: jest.fn().mockResolvedValue({ templatePath: '/template.pdf', mappingPath: '/mapping.json' }),
+  };
+  const pdf = { generateFinalPdf: jest.fn().mockResolvedValue('pdf-file-1') };
   const service = new SubmissionsService(
     prisma as never,
     storage as never,
     compliance as never,
-    {} as never,
+    pdf as never,
+    templateRegistry as never,
     jwt as never,
     config as never,
   );
-  return { service, prisma, tx, storage, jwt };
+  return { service, prisma, tx, storage, jwt, templateRegistry, pdf };
 }
+
+describe('Secreto dedicado de charla de seguridad (AUD-022)', () => {
+  it('firma y valida el reto con la clave de charla', async () => {
+    const { service, jwt, prisma } = setup();
+    await service.safetyTalkChallenge('charla-03', request as never);
+    expect(jwt.signAsync.mock.calls[0][1]).toEqual({ secret: 'talk-secret', expiresIn: 43_200 });
+
+    prisma.collaborator.count.mockResolvedValue(0);
+    await expect(
+      service.submit(
+        'HSE-FO-016',
+        {
+          answers: {},
+          safetyTalkConfirmed: true,
+          safetyTalkToken: 'token',
+          members: [{ collaboratorId, jobPositionId: leadPositionId, signatureDataUrl: 'data:image/png;base64,AAAA' }],
+        },
+        request as never,
+      ),
+    ).rejects.toThrow(ForbiddenException);
+    expect(jwt.verifyAsync.mock.calls[0][1]).toEqual({ secret: 'talk-secret' });
+  });
+});
 
 describe('SubmissionsService permit safeguards', () => {
   const signature = Buffer.alloc(100);
@@ -92,13 +129,27 @@ describe('SubmissionsService permit safeguards', () => {
     answers: {},
     safetyTalkConfirmed: true,
     safetyTalkToken: 'challenge',
-    members: [{ collaboratorId, signatureDataUrl: `data:image/png;base64,${signature.toString('base64')}` }],
+    members: [
+      {
+        collaboratorId,
+        jobPositionId: leadPositionId,
+        signatureDataUrl: `data:image/png;base64,${signature.toString('base64')}`,
+      },
+    ],
   };
 
   it('rejects inactive crew members before saving signatures', async () => {
     const { service, prisma, storage } = setup();
     prisma.collaborator.count.mockResolvedValue(0);
     await expect(service.submit('HSE-FO-016', dto, request as never)).rejects.toThrow(ForbiddenException);
+    expect(storage.putObject).not.toHaveBeenCalled();
+  });
+
+  it('rejects a lead assigned to a catalog position that cannot lead (AUD-017)', async () => {
+    const { service, prisma, storage } = setup();
+    prisma.jobPosition.findMany.mockResolvedValue([{ id: leadPositionId, canLead: false }]);
+
+    await expect(service.submit('HSE-FO-016', dto, request as never)).rejects.toThrow(BadRequestException);
     expect(storage.putObject).not.toHaveBeenCalled();
   });
 
@@ -148,6 +199,33 @@ describe('SubmissionsService permit safeguards', () => {
     );
     prisma.formSubmission.findUnique.mockResolvedValue({ ...current, startedAt: new Date() });
     await expect(service.startWorkday('permit', request as never)).rejects.toThrow(ConflictException);
+  });
+
+  it('persiste notas y atribuye el PDF al integrante que cierra la jornada (AUD-032)', async () => {
+    const { service, prisma, tx, pdf } = setup();
+    prisma.formSubmission.findUnique.mockResolvedValue({
+      status: 'APPROVED',
+      startedAt: new Date('2026-10-21T13:00:00Z'),
+      answersJson: {},
+      members: [{ collaboratorId }],
+      approval: { id: 'approval-1' },
+      formVersion: { schemaJson: { fields: [{ id: 'hora_fin', type: 'auto', source: 'closedAt' }] } },
+    });
+
+    await service.closeWorkday('submission-1', { notes: ' Sin novedades de seguridad ' }, request as never);
+
+    const update = tx.formSubmission.updateMany.mock.calls[0][0] as {
+      data: { status: string; closedById: string; closureNotes: string };
+    };
+    expect(update.data).toMatchObject({
+      status: 'CLOSED',
+      closedById: collaboratorId,
+      closureNotes: 'Sin novedades de seguridad',
+    });
+    expect(pdf.generateFinalPdf).toHaveBeenCalledWith('submission-1', {
+      kind: 'COLLABORATOR',
+      id: collaboratorId,
+    });
   });
 
   it('expires an unused permit and records why the crew was released', async () => {
@@ -311,8 +389,9 @@ describe('SubmissionsService permit safeguards', () => {
       expect(response.id).toBe('submission-1');
       expect(tx.formSubmission.create).toHaveBeenCalledTimes(1);
       const createdArgs = tx.formSubmission.create.mock.calls[0][0] as {
-        data: { answersJson: Record<string, unknown> };
+        data: { answersJson: Record<string, unknown>; templateVersion: string };
       };
+      expect(createdArgs.data.templateVersion).toBe('v00');
       expect(createdArgs.data.answersJson).toMatchObject({
         empresa: 'OPAINN ESP SAS',
         lugar_trabajo: 'Poste 14',

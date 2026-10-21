@@ -1,8 +1,11 @@
-node_modules
-dist
-coverage
-.angular
+# Los patrones de .dockerignore se anclan a la raíz del contexto: sin `**/`,
+# `backend/node_modules` del host se copiaría sobre el instalado en la imagen.
+**/node_modules
+**/dist
+**/dist-seed
+**/coverage
+**/.angular
+**/storage
 .env
 .git
-storage
 frontend/src/assets/**/*.pdf

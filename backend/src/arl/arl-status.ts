@@ -10,3 +10,14 @@ export function calculateArlStatus(startDate: Date, endDate: Date, expiringDays:
   if (start > today || end < today) return 'VENCIDA';
   return end <= today + Math.max(0, expiringDays) * 86_400_000 ? 'PROXIMA_A_VENCER' : 'VIGENTE';
 }
+
+/** Input is ordered by endDate descending, so the fallback is the latest record. */
+export function selectArlAffiliation<T extends { startDate: Date; endDate: Date }>(
+  affiliations: T[],
+  now = new Date(),
+): T | undefined {
+  return (
+    affiliations.find((item) => calculateArlStatus(item.startDate, item.endDate, 0, now) !== 'VENCIDA') ??
+    affiliations[0]
+  );
+}

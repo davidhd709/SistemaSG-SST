@@ -65,6 +65,7 @@ model User {
   createdArlAffiliations ArlAffiliation[]        @relation("ArlCreatedBy")
   updatedArlAffiliations ArlAffiliation[]        @relation("ArlUpdatedBy")
   approvals              Approval[]              @relation("ApprovalDecidedBy")
+  closedSubmissions      FormSubmission[]        @relation("SubmissionClosedByUser")
   createdPayrolls        SocialSecurityPayroll[] @relation("PayrollCreatedBy")
   createdHeightCerts     HeightCertificate[]     @relation("HeightCertificateCreatedBy")
 
@@ -144,6 +145,7 @@ model Collaborator {
   email               String?
   phone               String?
   jobTitle            String?
+  jobPositionId       String?             @db.Uuid
   team                String?
   pinHash             String?
   status              CollaboratorStatus  @default(ACTIVE)
@@ -153,6 +155,7 @@ model Collaborator {
   createdAt           DateTime            @default(now())
   updatedAt           DateTime            @updatedAt
   createdBy           User?               @relation("CollaboratorCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  jobPosition         JobPosition?        @relation(fields: [jobPositionId], references: [id], onDelete: Restrict)
   auditEvents         AuditEvent[]        @relation("AuditActorCollaborator")
   arlAffiliations     ArlAffiliation[]
   submissions         FormSubmission[]
@@ -163,6 +166,7 @@ model Collaborator {
   refreshSessions     RefreshSession[]
 
   @@index([status])
+  @@index([jobPositionId])
   @@map("collaborators")
 }
 
@@ -272,10 +276,13 @@ model FormSubmission {
   startedAt             DateTime?
   closedAt              DateTime?
   closedById            String?            @db.Uuid
+  closedByUserId        String?            @db.Uuid
+  closureNotes          String?
   previousSubmissionId  String?            @db.Uuid
   createdAt             DateTime           @default(now())
   collaborator          Collaborator       @relation(fields: [collaboratorId], references: [id], onDelete: Restrict)
   closedBy              Collaborator?      @relation("SubmissionClosedBy", fields: [closedById], references: [id], onDelete: Restrict)
+  closedByUser          User?              @relation("SubmissionClosedByUser", fields: [closedByUserId], references: [id], onDelete: Restrict)
   formVersion           FormVersion        @relation(fields: [formVersionId], references: [id], onDelete: Restrict)
   previousSubmission    FormSubmission?    @relation("SubmissionCorrections", fields: [previousSubmissionId], references: [id], onDelete: Restrict)
   correctionAttempts    FormSubmission[]   @relation("SubmissionCorrections")
@@ -290,6 +297,7 @@ model FormSubmission {
   @@index([collaboratorId, createdAt])
   @@index([status, createdAt])
   @@index([status, workDate])
+  @@index([closedByUserId])
   @@map("form_submissions")
 }
 
@@ -350,15 +358,16 @@ model Signature {
 /// Catálogo de cargos de la cuadrilla. Evita que el cargo sea texto libre y
 /// permite distinguir quién puede diligenciar el permiso.
 model JobPosition {
-  id        String             @id @default(uuid()) @db.Uuid
-  code      String             @unique
-  name      String
+  id            String             @id @default(uuid()) @db.Uuid
+  code          String             @unique
+  name          String
   /// Solo los cargos marcados así pueden abrir un permiso de trabajo.
-  canLead   Boolean            @default(false)
-  active    Boolean            @default(true)
-  createdAt DateTime           @default(now())
-  updatedAt DateTime           @updatedAt
-  members   SubmissionMember[]
+  canLead       Boolean            @default(false)
+  active        Boolean            @default(true)
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+  members       SubmissionMember[]
+  collaborators Collaborator[]
 
   @@map("job_positions")
 }

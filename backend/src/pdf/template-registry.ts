@@ -15,7 +15,10 @@ export interface TemplateLocations {
 @Injectable()
 export class TemplateRegistry {
   private readonly logger = new Logger(TemplateRegistry.name);
-  private readonly root = resolve(process.cwd(), 'pdf-templates');
+  // Relativa al módulo y no a `process.cwd()`: `src/pdf` y `dist/pdf` están a dos
+  // niveles de `backend/`, así que la ruta es la misma al arrancar desde la raíz,
+  // desde `backend/` o dentro de la imagen Docker (TEC-001).
+  private readonly root = resolve(__dirname, '..', '..', 'pdf-templates');
   private readonly defaults: Record<string, string> = {
     'HSE-FO-016': 'v00',
   };

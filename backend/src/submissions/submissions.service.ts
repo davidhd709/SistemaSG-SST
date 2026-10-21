@@ -15,9 +15,17 @@ import { PrismaService } from '../prisma/prisma.service';
 import { StorageService } from '../files/storage.service';
 import { ComplianceService, type Cumplimiento } from '../compliance/compliance.service';
 import { PdfService } from '../pdf/pdf.service';
+import { TemplateRegistry } from '../pdf/template-registry';
 import { SubmitFormDto, type CrewMemberDto } from './dto/submit-form.dto';
 import { CloseWorkdayDto } from './dto/close-workday.dto';
 import { businessDate, businessDay } from '../common/business-date';
+import {
+  EDITABLE_FIELD_TYPES,
+  RESERVED_AUTOMATIC_FIELD_IDS,
+  isAutoFieldSource,
+  isReservedSystemFieldId,
+  type AutoFieldSource,
+} from '../forms/form-schema-policy';
 
 type Field = {
   id?: unknown;
@@ -27,31 +35,6 @@ type Field = {
   source?: unknown;
   maxLength?: unknown;
 };
-
-const EDITABLE_FIELD_TYPES = new Set(['text', 'textarea', 'yes_no', 'select', 'multi_select', 'number', 'date']);
-
-const RESERVED_AUTOMATIC_FIELD_IDS = new Set([
-  'vigencia_permiso',
-  'fecha_trabajo',
-  'hora_inicio',
-  'hora_finalizacion',
-  'hora_fin',
-  'certificado_alturas',
-  'seguridad_social_verificada',
-]);
-
-const RESERVED_SIGNATURE_FIELD_IDS = new Set([
-  'autorizador_firma',
-  'firma_autorizador',
-  'responsable_emergencia_firma',
-  'firma_responsable_emergencia',
-  'coordinador_alturas_firma',
-  'firma_coordinador_alturas',
-]);
-
-const RESERVED_IDENTITY_FIELD_IDS = new Set(['cedula', 'documento', 'nombre', 'cargo']);
-
-const RESERVED_CREW_ROW_PATTERN = /^(cuadrilla|ejecutor)_\d+_/i;
 
 const DEFAULT_MAX_TEXT_LENGTH = 500;
 const DEFAULT_MAX_TEXTAREA_LENGTH = 2000;
@@ -72,7 +55,7 @@ type SafetyTalkPayload = {
 };
 
 /** De dónde sale el valor de un campo que el sistema resuelve por su cuenta. */
-type Origen = 'workDate' | 'startedAt' | 'closedAt' | 'heightCertificate' | 'socialSecurity';
+type Origen = AutoFieldSource;
 
 /** Firma ya guardada en el almacén, lista para asociarse a su integrante. */
 type FirmaGuardada = {
@@ -88,15 +71,19 @@ type FirmaGuardada = {
 @Injectable()
 export class SubmissionsService {
   private readonly logger = new Logger(SubmissionsService.name);
+  private readonly safetyTalkSecret: string;
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly storage: StorageService,
     private readonly compliance: ComplianceService,
     private readonly pdf: PdfService,
+    private readonly templateRegistry: TemplateRegistry,
     private readonly jwt: JwtService,
-    private readonly config: ConfigService,
-  ) {}
+    config: ConfigService,
+  ) {
+    this.safetyTalkSecret = config.getOrThrow<string>('SAFETY_TALK_JWT_SECRET');
+  }
 
   async safetyTalkChallenge(videoId: string, request: AuthenticatedRequest) {
     const collaboratorId = this.collaboratorId(request);
@@ -105,7 +92,7 @@ export class SubmissionsService {
     return {
       token: await this.jwt.signAsync(
         { sub: collaboratorId, jti: randomUUID(), purpose: 'SAFETY_TALK', videoId, videoSha256: video.sha256 },
-        { secret: this.config.getOrThrow<string>('JWT_REFRESH_SECRET'), expiresIn: 43_200 },
+        { secret: this.safetyTalkSecret, expiresIn: 43_200 },
       ),
       minimumSeconds: video.minimumSeconds,
     };
@@ -115,7 +102,7 @@ export class SubmissionsService {
     let payload: SafetyTalkPayload;
     try {
       payload = await this.jwt.verifyAsync<SafetyTalkPayload>(token, {
-        secret: this.config.getOrThrow<string>('JWT_REFRESH_SECRET'),
+        secret: this.safetyTalkSecret,
       });
     } catch {
       throw new ForbiddenException('La confirmación de la charla no es válida o expiró.');
@@ -208,6 +195,9 @@ export class SubmissionsService {
     if (!form?.currentVersion || form.status !== 'PUBLISHED' || !form.currentVersion.active) {
       throw new NotFoundException('No hay un formulario vigente.');
     }
+    const templateVersion = this.templateRegistry.defaultVersion(formCode);
+    if (!templateVersion) throw new NotFoundException('No hay una plantilla PDF vigente para este formulario.');
+    await this.templateRegistry.resolve(formCode, templateVersion);
     this.validateAnswers(form.currentVersion.schemaJson, dto.answers);
 
     const integrantes = this.normalizarCuadrilla(dto.members, oficialId);
@@ -225,7 +215,7 @@ export class SubmissionsService {
         `No puedes incluir a ${incumplen.length} ${incumplen.length === 1 ? 'integrante' : 'integrantes'} sin los requisitos al día.`,
       );
     }
-    await this.validarCargos(integrantes);
+    await this.validarCargos(integrantes, oficialId);
 
     // Las firmas se guardan antes de abrir la transacción: escribir archivos
     // dentro de ella alargaría el bloqueo y dejaría basura si algo falla.
@@ -251,6 +241,7 @@ export class SubmissionsService {
           data: {
             collaboratorId: oficialId,
             formVersionId: form.currentVersion!.id,
+            templateVersion,
             status: 'PENDING_APPROVAL',
             answersJson: this.completarAutomaticos(form.currentVersion!.schemaJson, dto.answers, {
               momento: ahora,
@@ -399,7 +390,7 @@ export class SubmissionsService {
       where: { id: submissionId },
       include: {
         members: { select: { collaboratorId: true } },
-        approval: { select: { decidedById: true } },
+        approval: { select: { id: true } },
         formVersion: { select: { schemaJson: true } },
       },
     });
@@ -421,6 +412,7 @@ export class SubmissionsService {
           status: 'CLOSED',
           closedAt: ahora,
           closedById: collaboratorId,
+          closureNotes: dto.notes?.trim() || null,
           // La hora de finalización solo existe ahora: se escribe en la
           // respuesta para que el documento final la muestre.
           answersJson: this.completarAutomaticos(submission.formVersion.schemaJson, submission.answersJson as object, {
@@ -452,7 +444,7 @@ export class SubmissionsService {
     // mantiene y el PDF queda pendiente de regenerar.
     let pdfFileId: string | null = null;
     try {
-      pdfFileId = await this.pdf.generateFinalPdf(submissionId, submission.approval!.decidedById);
+      pdfFileId = await this.pdf.generateFinalPdf(submissionId, { kind: 'COLLABORATOR', id: collaboratorId });
     } catch (error) {
       this.logger.error(`No fue posible generar el PDF de la jornada ${submissionId}`, error as Error);
     }
@@ -544,11 +536,18 @@ export class SubmissionsService {
     return unicos;
   }
 
-  private async validarCargos(members: CrewMemberDto[]): Promise<void> {
-    const ids = [...new Set(members.map((persona) => persona.jobPositionId).filter(Boolean))] as string[];
-    if (!ids.length) return;
-    const existentes = await this.prisma.jobPosition.count({ where: { id: { in: ids }, active: true } });
-    if (existentes !== ids.length) throw new BadRequestException('Uno o más cargos no existen o están inactivos.');
+  private async validarCargos(members: CrewMemberDto[], leadId: string): Promise<void> {
+    const ids = [...new Set(members.map((persona) => persona.jobPositionId))];
+    const positions = await this.prisma.jobPosition.findMany({
+      where: { id: { in: ids }, active: true },
+      select: { id: true, canLead: true },
+    });
+    if (positions.length !== ids.length)
+      throw new BadRequestException('Uno o más cargos no existen o están inactivos.');
+    const lead = members.find((persona) => persona.collaboratorId === leadId);
+    const leadPosition = positions.find((position) => position.id === lead?.jobPositionId);
+    if (!leadPosition?.canLead)
+      throw new BadRequestException('El cargo del oficial no está habilitado para liderar la cuadrilla.');
   }
 
   private async guardarFirmas(members: CrewMemberDto[]): Promise<FirmaGuardada[]> {
@@ -603,7 +602,7 @@ export class SubmissionsService {
         }
         continue;
       }
-      if (!EDITABLE_FIELD_TYPES.has(campo.type) || this.isReservedSystemFieldId(campo.id)) continue;
+      if (!EDITABLE_FIELD_TYPES.has(campo.type) || isReservedSystemFieldId(campo.id)) continue;
       if (Object.prototype.hasOwnProperty.call(entrada, campo.id)) {
         valores[campo.id] = entrada[campo.id];
       }
@@ -660,15 +659,6 @@ export class SubmissionsService {
     return content;
   }
 
-  private isReservedSystemFieldId(fieldId: string): boolean {
-    return (
-      RESERVED_AUTOMATIC_FIELD_IDS.has(fieldId) ||
-      RESERVED_SIGNATURE_FIELD_IDS.has(fieldId) ||
-      RESERVED_IDENTITY_FIELD_IDS.has(fieldId) ||
-      RESERVED_CREW_ROW_PATTERN.test(fieldId)
-    );
-  }
-
   private validateAnswers(schema: Prisma.JsonValue, answers: object): void {
     if (!schema || typeof schema !== 'object' || Array.isArray(schema))
       throw new BadRequestException('El formulario publicado tiene un esquema inválido.');
@@ -690,9 +680,12 @@ export class SubmissionsService {
         throw new BadRequestException('El formulario publicado tiene un esquema inválido.');
       }
       if (field.type === 'auto') {
+        if (!isAutoFieldSource(field.source)) {
+          throw new BadRequestException('El formulario publicado tiene un esquema inválido.');
+        }
         autoFieldIds.add(field.id);
       } else if (EDITABLE_FIELD_TYPES.has(field.type)) {
-        if (this.isReservedSystemFieldId(field.id)) {
+        if (isReservedSystemFieldId(field.id)) {
           throw new BadRequestException('El formulario publicado tiene un esquema inválido.');
         }
         editableFieldIds.add(field.id);

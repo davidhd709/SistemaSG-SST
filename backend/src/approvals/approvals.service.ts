@@ -3,10 +3,12 @@ import type { AuthenticatedRequest } from '../common/request-context';
 import { ArlService } from '../arl/arl.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { DecideSubmissionDto } from './dto/decide-submission.dto';
+import { AdminCloseWorkdayDto } from './dto/admin-close-workday.dto';
 import { PdfService } from '../pdf/pdf.service';
 import { Prisma } from '@prisma/client';
 import { businessDate } from '../common/business-date';
 import { SubmissionsService } from '../submissions/submissions.service';
+import { CustodyQueryDto } from './dto/custody-query.dto';
 
 @Injectable()
 export class ApprovalsService {
@@ -107,8 +109,9 @@ export class ApprovalsService {
   }
 
   /** Formularios custodiados: cada fila conserva su PDF final cuando ya existe. */
-  async custody(month?: string, date?: string) {
+  async custody(query: CustodyQueryDto) {
     await this.submissions.expireStalePermits();
+    const { month, date, page = 1, pageSize = 50 } = query;
     const where: Prisma.FormSubmissionWhereInput = { status: { not: 'DRAFT' } };
     const day = date && /^\d{4}-\d{2}-\d{2}$/.test(date) ? new Date(`${date}T00:00:00.000Z`) : undefined;
     if (day && !Number.isNaN(day.getTime())) {
@@ -121,38 +124,48 @@ export class ApprovalsService {
       end.setUTCMonth(end.getUTCMonth() + 1);
       where.workDate = { gte: start, lt: end };
     }
-    const submissions = await this.prisma.formSubmission.findMany({
-      where,
-      include: {
-        collaborator: { select: { firstName: true, lastName: true, documentNumber: true } },
-        members: {
-          include: {
-            collaborator: { select: { firstName: true, lastName: true, documentNumber: true } },
-            jobPosition: { select: { name: true } },
+    const [total, submissions] = await this.prisma.$transaction([
+      this.prisma.formSubmission.count({ where }),
+      this.prisma.formSubmission.findMany({
+        where,
+        include: {
+          collaborator: { select: { firstName: true, lastName: true, documentNumber: true } },
+          members: {
+            include: {
+              collaborator: { select: { firstName: true, lastName: true, documentNumber: true } },
+              jobPosition: { select: { name: true } },
+            },
           },
+          formVersion: { include: { form: { select: { code: true, name: true } } } },
+          finalPdfFile: { select: { id: true, originalName: true } },
         },
-        formVersion: { include: { form: { select: { code: true, name: true } } } },
-        finalPdfFile: { select: { id: true, originalName: true } },
-      },
-      orderBy: [{ workDate: 'desc' }, { submittedAt: 'desc' }],
-      take: 500,
-    });
-    return submissions.map((item) => ({
-      id: item.id,
-      status: item.status,
-      workDate: item.workDate,
-      submittedAt: item.submittedAt,
-      startedAt: item.startedAt,
-      closedAt: item.closedAt,
-      collaborator: item.collaborator,
-      members: item.members.map((member) => ({ collaborator: member.collaborator, jobPosition: member.jobPosition })),
-      form: {
-        code: item.formVersion.form.code,
-        name: item.formVersion.form.name,
-        version: item.formVersion.versionNumber,
-      },
-      finalPdfFile: item.finalPdfFile,
-    }));
+        orderBy: [{ workDate: 'desc' }, { submittedAt: 'desc' }, { id: 'desc' }],
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+      }),
+    ]);
+    return {
+      items: submissions.map((item) => ({
+        id: item.id,
+        status: item.status,
+        workDate: item.workDate,
+        submittedAt: item.submittedAt,
+        startedAt: item.startedAt,
+        closedAt: item.closedAt,
+        collaborator: item.collaborator,
+        members: item.members.map((member) => ({ collaborator: member.collaborator, jobPosition: member.jobPosition })),
+        form: {
+          code: item.formVersion.form.code,
+          name: item.formVersion.form.name,
+          version: item.formVersion.versionNumber,
+        },
+        finalPdfFile: item.finalPdfFile,
+      })),
+      page,
+      pageSize,
+      total,
+      totalPages: Math.ceil(total / pageSize),
+    };
   }
   async detail(id: string) {
     const submission = await this.prisma.formSubmission.findUnique({
@@ -221,7 +234,7 @@ export class ApprovalsService {
     // incompleto. Un rechazo sí cierra el proceso y se documenta de una vez.
     if (dto.decision === 'REJECTED') {
       try {
-        const pdfFileId = await this.pdf.generateFinalPdf(id, actorUserId);
+        const pdfFileId = await this.pdf.generateFinalPdf(id, { kind: 'USER', id: actorUserId });
         return { ...decision, pdfFileId };
       } catch (error) {
         this.logger.error(`No fue posible generar el PDF del envío rechazado ${id}`, error as Error);
@@ -229,5 +242,73 @@ export class ApprovalsService {
       }
     }
     return { ...decision, pdfFileId: null };
+  }
+
+  /** Genera un PDF pendiente sin volver a decidir ni modificar las horas del envío. */
+  async generateMissingPdf(id: string, request: AuthenticatedRequest) {
+    const actorUserId = request.principal?.kind === 'USER' ? request.principal.userId : undefined;
+    if (!actorUserId) throw new ForbiddenException();
+    const submission = await this.prisma.formSubmission.findUnique({
+      where: { id },
+      select: { status: true, approval: { select: { id: true } }, finalPdfFileId: true },
+    });
+    if (!submission) throw new NotFoundException('Envío no encontrado.');
+    if (!submission.approval || (submission.status !== 'CLOSED' && submission.status !== 'REJECTED')) {
+      throw new ConflictException('Solo se puede generar el PDF de un envío cerrado o rechazado.');
+    }
+    if (submission.finalPdfFileId) throw new ConflictException('Este envío ya tiene un PDF final.');
+
+    const pdfFileId = await this.pdf.generateFinalPdf(id, { kind: 'USER', id: actorUserId });
+    return { submissionId: id, pdfFileId };
+  }
+
+  /** Cierre excepcional por Coordinación; persiste autoría y motivo en el permiso y en auditoría. */
+  async adminCloseWorkday(id: string, dto: AdminCloseWorkdayDto, request: AuthenticatedRequest) {
+    const principal = request.principal;
+    if (principal?.kind !== 'USER' || !principal.permissions.includes('submissions:close-admin')) {
+      throw new ForbiddenException();
+    }
+    const actorUserId = principal.userId;
+    const reason = dto.reason?.trim();
+    if (!reason) throw new ConflictException('El cierre administrativo requiere un motivo.');
+    const closedAt = new Date();
+    const closed = await this.prisma.$transaction(async (tx) => {
+      const submission = await tx.formSubmission.findUnique({
+        where: { id },
+        select: { status: true, startedAt: true, approval: { select: { id: true } } },
+      });
+      if (!submission) throw new NotFoundException('Envío no encontrado.');
+      if (submission.status !== 'APPROVED' || !submission.startedAt || !submission.approval) {
+        throw new ConflictException('Solo se puede cerrar administrativamente una jornada iniciada y autorizada.');
+      }
+      const changed = await tx.formSubmission.updateMany({
+        where: { id, status: 'APPROVED', startedAt: { not: null } },
+        data: { status: 'CLOSED', closedAt, closedByUserId: actorUserId, closureNotes: reason },
+      });
+      if (changed.count !== 1) throw new ConflictException('La jornada fue cerrada por otra operación.');
+      await tx.auditEvent.create({
+        data: {
+          actorUserId,
+          action: 'ADMIN_CLOSE_WORKDAY',
+          entityType: 'FORM_SUBMISSION',
+          entityId: id,
+          beforeJson: { status: 'APPROVED' },
+          afterJson: { status: 'CLOSED', closedAt: closedAt.toISOString() },
+          reason,
+          ip: request.ip,
+          userAgent: request.header('user-agent'),
+          correlationId: request.correlationId ?? 'unknown',
+        },
+      });
+      return { id, status: 'CLOSED' as const, closedAt };
+    });
+
+    let pdfFileId: string | null = null;
+    try {
+      pdfFileId = await this.pdf.generateFinalPdf(id, { kind: 'USER', id: actorUserId });
+    } catch (error) {
+      this.logger.error(`No fue posible generar el PDF del cierre administrativo ${id}`, error as Error);
+    }
+    return { ...closed, pdfFileId };
   }
 }

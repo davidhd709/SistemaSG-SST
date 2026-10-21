@@ -6,6 +6,12 @@ import { TemplateRegistry } from './template-registry';
 import { TemplateLoader, type CheckboxField, type TemplateMapping } from './template-loader';
 import { FieldRenderer, ResolvedSignature } from './field-renderer';
 import { CrewMemberRow } from './renderers/crew-table.renderer';
+import { PDFDocument, type PDFFont, StandardFonts, rgb } from 'pdf-lib';
+
+export type PdfGenerationActor = { kind: 'USER' | 'COLLABORATOR'; id: string };
+
+/** Zona horaria operativa del permiso: la misma que usa `businessDay` para `workDate`. */
+const BUSINESS_TIME_ZONE = 'America/Bogota';
 
 const EDITABLE_SCHEMA_FIELD_TYPES = new Set(['text', 'textarea', 'yes_no', 'select', 'multi_select', 'number', 'date']);
 
@@ -69,7 +75,7 @@ export class PdfService {
     private readonly templateLoader: TemplateLoader,
     private readonly fieldRenderer: FieldRenderer,
   ) {}
-  async generateFinalPdf(submissionId: string, actorUserId: string): Promise<string> {
+  async generateFinalPdf(submissionId: string, generationActor: PdfGenerationActor): Promise<string> {
     const submission = await this.prisma.formSubmission.findUnique({
       where: { id: submissionId },
       include: {
@@ -83,7 +89,9 @@ export class PdfService {
           },
           orderBy: [{ isLead: 'desc' }, { createdAt: 'asc' }],
         },
-        approval: { include: { decidedBy: true } },
+        approval: true,
+        closedBy: true,
+        closedByUser: { select: { email: true } },
         finalPdfFile: true,
       },
     });
@@ -93,18 +101,15 @@ export class PdfService {
     if (!submission.members.length) throw new Error('El permiso no tiene integrantes registrados.');
 
     const formCode = submission.formVersion.form.code;
-    const defaultVer = this.templateRegistry.defaultVersion(formCode) ?? 'v00';
-    const templateVersion = (submission as { templateVersion?: string | null }).templateVersion || defaultVer;
+    const templateVersion = submission.templateVersion ?? this.templateRegistry.defaultVersion(formCode);
+    if (!templateVersion) throw new NotFoundException(`No hay plantilla PDF vigente para ${formCode}.`);
 
     // 1. Resolver y cargar la plantilla base inmutable
-    let templateLocations: { templatePath: string; mappingPath: string };
-    try {
-      templateLocations = await this.templateRegistry.resolve(formCode, templateVersion);
-    } catch {
-      templateLocations = await this.templateRegistry.resolve(formCode, defaultVer);
-    }
-    const { templatePath, mappingPath } = templateLocations;
+    const { templatePath, mappingPath } = await this.templateRegistry.resolve(formCode, templateVersion);
     const { pdfDoc, mapping } = await this.templateLoader.load(templatePath, mappingPath);
+    if (mapping.meta.formCode !== formCode || mapping.meta.templateVersion !== templateVersion) {
+      throw new Error(`El mapping no corresponde a la plantilla ${formCode}/${templateVersion}.`);
+    }
 
     // 2. Preparar respuestas base permitiendo únicamente campos editables verificados
     const rawAnswers =
@@ -125,35 +130,35 @@ export class PdfService {
       answers[key] = value;
     }
 
-    // Fechas y horas calculadas exclusivamente desde fuentes autorizadas de FormSubmission
-    const workOrSubmittedDate = submission.workDate ?? submission.submittedAt;
-    if (workOrSubmittedDate) {
-      const formattedDate = new Intl.DateTimeFormat('es-CO', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-      }).format(workOrSubmittedDate);
+    // Fechas y horas calculadas exclusivamente desde fuentes autorizadas de FormSubmission.
+    // AUD-003: nunca se usa la zona horaria del proceso. `workDate` es un DATE de
+    // PostgreSQL (medianoche UTC) y se lee en UTC; los instantes se muestran en Colombia.
+    const formattedDate = submission.workDate
+      ? this.formatDate(submission.workDate, 'UTC')
+      : submission.submittedAt
+        ? this.formatDate(submission.submittedAt, BUSINESS_TIME_ZONE)
+        : undefined;
+    if (formattedDate) {
       answers.fecha_trabajo = formattedDate;
       answers.vigencia_permiso = formattedDate;
     }
     if (submission.startedAt) {
-      answers.hora_inicio = new Intl.DateTimeFormat('es-CO', { hour: '2-digit', minute: '2-digit', hour12: true })
-        .format(submission.startedAt)
-        .replace(/\s*([ap])\.\s*m\./i, ' $1.m.');
+      answers.hora_inicio = this.formatTime(submission.startedAt);
     }
     if (submission.closedAt) {
-      const formattedCloseTime = new Intl.DateTimeFormat('es-CO', {
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: true,
-      })
-        .format(submission.closedAt)
-        .replace(/\s*([ap])\.\s*m\./i, ' $1.m.');
+      const formattedCloseTime = this.formatTime(submission.closedAt);
       answers.hora_fin = formattedCloseTime;
       answers.hora_finalizacion = formattedCloseTime;
     }
 
-    // 3. Procesar cuadrilla y firmas exclusivamente desde registros de base de datos
+    // 3. Procesar cuadrilla y firmas exclusivamente desde registros de base de datos.
+    // TEC-008: un integrante sin fila en la plantilla desaparecería del documento sin aviso.
+    const crewCapacity = this.crewCapacity(mapping);
+    if (submission.members.length > crewCapacity) {
+      throw new Error(
+        `El permiso ${submission.id} tiene ${submission.members.length} integrantes y la plantilla ${formCode}/${templateVersion} solo admite ${crewCapacity}.`,
+      );
+    }
     const signatures: ResolvedSignature[] = [];
     const crewMembers: CrewMemberRow[] = [];
 
@@ -163,11 +168,9 @@ export class PdfService {
       const nombre = `${member.collaborator.firstName} ${member.collaborator.lastName}`.trim();
       const cedula = member.collaborator.documentNumber;
       const cargo = member.jobPosition?.name ?? member.collaborator.jobTitle ?? '—';
-      // AUD-002: Los estados de cumplimiento (certificado_alturas y seguridad_social_verificada)
-      // requieren resolverse desde la evidencia histórica por integrante (member.complianceJson).
-      // No se confía en answersJson ni se sustituyen valores no verificados con "Vigente" o "Verificada".
-      const certificado = '';
-      const segSocial = '';
+      // AUD-002: los estados salen de la evidencia guardada al enviar el permiso
+      // (member.complianceJson), nunca de answersJson ni de valores por defecto.
+      const { certificado, segSocial } = this.complianceTexts(member.complianceJson);
 
       // Mapeo declarativo fila por fila (cuadrilla_01..05 y alias ejecutor_01..05)
       answers[`cuadrilla_${idx}_cedula`] = cedula;
@@ -182,19 +185,24 @@ export class PdfService {
       answers[`ejecutor_${idx}_cargo`] = cargo;
       answers[`ejecutor_${idx}_seg_social`] = segSocial;
 
-      // Recuperar firma de storage si existe
-      let signatureBytes: Buffer | undefined;
-      if (member.signature?.file?.objectKey) {
-        try {
-          signatureBytes = await this.storage.getObject(member.signature.file.objectKey);
-          signatures.push({
-            memberIndex: i,
-            imageBytes: signatureBytes,
-          });
-        } catch (error) {
-          this.logger.warn(`No se pudo cargar la firma del integrante ${nombre}: ${String(error)}`);
-        }
+      // Una firma ausente o ilegible invalida el documento completo.
+      const signatureKey = member.signature?.file?.objectKey;
+      if (!signatureKey) {
+        this.logger.error(`Falta la firma del integrante ${member.id} en el permiso ${submission.id}.`);
+        throw new Error(`Falta la firma del integrante ${member.id}.`);
       }
+      let signatureBytes: Buffer;
+      try {
+        signatureBytes = await this.storage.getObject(signatureKey);
+      } catch (error) {
+        this.logger.error(`No se pudo cargar la firma del integrante ${member.id}: ${String(error)}`);
+        throw new Error(`No se pudo cargar la firma del integrante ${member.id}.`, { cause: error });
+      }
+      if (!signatureBytes.length) {
+        this.logger.error(`La firma del integrante ${member.id} está vacía.`);
+        throw new Error(`La firma del integrante ${member.id} está vacía.`);
+      }
+      signatures.push({ memberIndex: i, imageBytes: signatureBytes });
 
       crewMembers.push({
         cedula,
@@ -212,6 +220,10 @@ export class PdfService {
       signatures,
       members: crewMembers,
     });
+
+    // La plantilla oficial no tiene un espacio para novedades de cierre. Se
+    // agrega un anexo al mismo documento para conservar actor, momento y notas.
+    await this.appendClosureRecord(pdfDoc, submission);
 
     // 5. Guardar documento resultante
     const pdfBytes = await pdfDoc.save();
@@ -233,17 +245,22 @@ export class PdfService {
             mimeType: 'application/pdf',
             sizeBytes: stored.sizeBytes,
             sha256: stored.sha256,
-            createdById: actorUserId,
+            createdById: generationActor.kind === 'USER' ? generationActor.id : null,
           },
         });
-        await tx.formSubmission.update({ where: { id: submission.id }, data: { finalPdfFileId: created.id } });
+        await tx.formSubmission.update({
+          where: { id: submission.id },
+          data: { finalPdfFileId: created.id, templateVersion },
+        });
         await tx.auditEvent.create({
           data: {
-            actorUserId,
+            ...(generationActor.kind === 'USER'
+              ? { actorUserId: generationActor.id }
+              : { actorCollaboratorId: generationActor.id }),
             action: 'GENERATE_FINAL_PDF',
             entityType: 'FORM_SUBMISSION',
             entityId: submission.id,
-            afterJson: { fileId: created.id, sha256: stored.sha256 },
+            afterJson: { fileId: created.id, sha256: stored.sha256, templateVersion },
             correlationId: `pdf-${submission.id}`,
           },
         });
@@ -254,6 +271,132 @@ export class PdfService {
       await this.storage.deleteObject(stored.objectKey);
       throw error;
     }
+  }
+
+  private async appendClosureRecord(
+    pdfDoc: PDFDocument,
+    submission: {
+      id: string;
+      closedAt: Date | null;
+      closureNotes?: string | null;
+      closedBy?: { firstName: string; lastName: string; documentNumber: string } | null;
+      closedByUser?: { email: string } | null;
+    },
+  ): Promise<void> {
+    if (!submission.closedAt || (!submission.closedBy && !submission.closedByUser && !submission.closureNotes)) return;
+
+    const page = pdfDoc.addPage([612, 792]);
+    const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+    const bold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+    const dark = rgb(0.12, 0.18, 0.17);
+    const muted = rgb(0.35, 0.4, 0.39);
+    const closer = submission.closedBy
+      ? `${submission.closedBy.firstName} ${submission.closedBy.lastName} - ${submission.closedBy.documentNumber}`
+      : (submission.closedByUser?.email ?? 'No registrado');
+    const closureType = submission.closedByUser ? 'Cierre administrativo' : 'Cierre por integrante de la cuadrilla';
+    const closedAt = `${this.formatDate(submission.closedAt, BUSINESS_TIME_ZONE)} ${this.formatTime(submission.closedAt)}`;
+    const notes = submission.closureNotes?.trim() || 'Sin novedades registradas.';
+
+    page.drawText('REGISTRO DE CIERRE DEL PERMISO', { x: 54, y: 720, size: 16, font: bold, color: dark });
+    page.drawText('Anexo de trazabilidad del documento final', { x: 54, y: 698, size: 9, font, color: muted });
+    page.drawLine({ start: { x: 54, y: 684 }, end: { x: 558, y: 684 }, thickness: 1, color: dark });
+
+    this.drawClosureDatum(page, bold, font, 'Tipo de cierre', closureType, 650);
+    this.drawClosureDatum(page, bold, font, 'Cerrado por', closer, 612);
+    this.drawClosureDatum(page, bold, font, 'Fecha y hora', closedAt, 574);
+
+    page.drawText('Novedades de la jornada', { x: 54, y: 520, size: 10, font: bold, color: dark });
+    let y = 498;
+    for (const line of this.wrapPdfText(notes, font, 10, 504)) {
+      page.drawText(line, { x: 54, y, size: 10, font, color: dark });
+      y -= 15;
+    }
+
+    page.drawLine({ start: { x: 54, y: 78 }, end: { x: 558, y: 78 }, thickness: 0.5, color: muted });
+    page.drawText(`Permiso: ${submission.id}`, { x: 54, y: 60, size: 8, font, color: muted });
+  }
+
+  private drawClosureDatum(
+    page: ReturnType<PDFDocument['addPage']>,
+    bold: PDFFont,
+    font: PDFFont,
+    label: string,
+    value: string,
+    y: number,
+  ): void {
+    page.drawText(label, { x: 54, y, size: 9, font: bold, color: rgb(0.12, 0.18, 0.17) });
+    page.drawText(value, { x: 170, y, size: 9, font, color: rgb(0.12, 0.18, 0.17) });
+  }
+
+  private wrapPdfText(text: string, font: PDFFont, size: number, maxWidth: number): string[] {
+    const lines: string[] = [];
+    for (const paragraph of text.replace(/\r\n?/g, '\n').split('\n')) {
+      let line = '';
+      for (const character of paragraph) {
+        const candidate = line + character;
+        if (line && font.widthOfTextAtSize(candidate, size) > maxWidth) {
+          lines.push(line.trimEnd());
+          line = character.trimStart();
+        } else {
+          line = candidate;
+        }
+      }
+      lines.push(line || ' ');
+    }
+    return lines;
+  }
+
+  /** Filas de integrante que la plantilla puede firmar: una por `memberIndex` distinto. */
+  private crewCapacity(mapping: TemplateMapping): number {
+    const indexes = new Set<number>();
+    for (const field of Object.values(mapping.fields ?? {})) {
+      if (field.type === 'SIGNATURE' && typeof field.memberIndex === 'number') indexes.add(field.memberIndex);
+    }
+    return indexes.size;
+  }
+
+  private complianceTexts(complianceJson: unknown): { certificado: string; segSocial: string } {
+    const evidence =
+      complianceJson && typeof complianceJson === 'object' && !Array.isArray(complianceJson)
+        ? (complianceJson as { alturas?: { estado?: unknown }; seguridadSocial?: { estado?: unknown } })
+        : {};
+    return {
+      certificado: this.complianceStatusText(evidence.alturas?.estado),
+      segSocial: this.complianceStatusText(evidence.seguridadSocial?.estado),
+    };
+  }
+
+  /** Texto corto para celdas de ~60 pt; un estado desconocido no se presenta como vigente. */
+  private complianceStatusText(estado: unknown): string {
+    switch (estado) {
+      case 'VIGENTE':
+        return 'Vigente';
+      case 'PROXIMA_A_VENCER':
+        return 'Vigente (por vencer)';
+      case 'VENCIDA':
+        return 'No vigente';
+      case 'NO_APLICA':
+        return 'No aplica';
+      default:
+        return 'Sin registro';
+    }
+  }
+
+  private formatDate(value: Date, timeZone: string): string {
+    return new Intl.DateTimeFormat('es-CO', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone }).format(
+      value,
+    );
+  }
+
+  private formatTime(value: Date): string {
+    return new Intl.DateTimeFormat('es-CO', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true,
+      timeZone: BUSINESS_TIME_ZONE,
+    })
+      .format(value)
+      .replace(/\s*([ap])\.\s*m\./i, ' $1.m.');
   }
 
   private resolveAllowedEditableFieldIds(schemaJson: unknown, mapping: TemplateMapping, formCode: string): Set<string> {

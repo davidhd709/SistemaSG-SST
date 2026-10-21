@@ -14,692 +14,37 @@ import { AuthSessionService } from '../../core/auth-session.service';
 import { fechaCalendario } from '../../core/fechas';
 import { LogoutButtonComponent } from '../../core/logout-button.component';
 
-type TipoCampo = 'text' | 'textarea' | 'yes_no' | 'select' | 'multi_select' | 'number' | 'date' | 'auto';
-
-type Campo = {
-  id: string;
-  type: TipoCampo;
-  label: string;
-  required: boolean;
-  options?: string[];
-  order: number;
-  section?: string;
-  /** Para los campos `auto`: de dónde toma el sistema el valor. */
-  source?: string;
-};
-
-type Definicion = { name: string; versionNumber: number; schemaJson: { fields: Campo[] } };
-
-type Flujo = {
-  collaborator: { firstName: string; lastName: string; documentNumber: string };
-  arl: { status: string; providerName?: string; endDate?: string };
-  cumplimiento?: {
-    apto: boolean;
-    faltantes: string[];
-    alturas?: { estado: string };
-    seguridadSocial?: { estado: string };
-  };
-  /** Permiso autorizado y aún sin cerrar, si lo hay. */
-  jornadaAbierta?: { id: string; workDate: string | null; startedAt: string | null } | false | null;
-  canContinue: boolean;
-};
-
-type Envio = {
-  id: string;
-  status: 'PENDING_APPROVAL' | 'APPROVED' | 'CLOSED' | 'REJECTED' | 'EXPIRED';
-  submittedAt?: string | null;
-  workDate?: string | null;
-  startedAt?: string | null;
-  closedAt?: string | null;
-  approval?: { reason?: string | null } | null;
-} | null;
-
-/** Un paso del formulario: una sección del esquema publicado. */
-type Bloque = { titulo: string; campos: Campo[] };
-
-type Etapa = 'arl' | 'charla' | 'cuadrilla' | 'formulario' | 'revision' | 'firma' | 'resultado';
-
-/** Colaborador que hoy cumple los requisitos y puede integrar la cuadrilla. */
-type Candidato = {
-  id: string;
-  firstName: string;
-  lastName: string;
-  documentNumber: string;
-  jobTitle: string | null;
-  team: string | null;
-};
-
-type Cargo = { id: string; code: string; name: string; canLead: boolean };
-
-/**
- * Videos disponibles para la charla previa al inicio de labores.
- * Agrega los archivos con estos nombres en `src/assets/videos/charlas-seguridad/`.
- */
-const CHARLAS_DE_SEGURIDAD = [
-  '/assets/videos/charlas-seguridad/charla-01.mp4',
-  '/assets/videos/charlas-seguridad/charla-02.mp4',
-  '/assets/videos/charlas-seguridad/charla-03.mp4',
-];
-
-/** Integrante elegido, con su cargo y su firma una vez capturada. */
-type Integrante = {
-  candidato: Candidato;
-  jobPositionId: string;
-  firmaDataUrl: string | null;
-};
-
-const BORRADOR = 'sg-sst.borrador';
+import {
+  BORRADOR,
+  CHARLAS_DE_SEGURIDAD,
+  MAX_INTEGRANTES,
+  agruparCamposEnBloques,
+  calcularPorcentajeAvance,
+  normalizarRespuestasFormulario,
+  obtenerExplicacionAuto,
+  obtenerValorAutomatico,
+  type Bloque,
+  type Campo,
+  type Candidato,
+  type Cargo,
+  type Definicion,
+  type Envio,
+  type Etapa,
+  type Flujo,
+  type Integrante,
+} from './work-at-height-form.models';
 
 /**
  * Flujo previo al inicio de labores.
  *
- * Se recorre de pie, en obra y desde un celular, así que cada pantalla plantea
- * una sola tarea, el avance está siempre a la vista y lo diligenciado se guarda
- * en el dispositivo por si la aplicación se cierra a media jornada.
+ * Se recorre de pie, en obra y desde un celular, as? que cada pantalla plantea
+ * una sola tarea, el avance est? siempre a la vista y lo diligenciado se guarda
+ * en el dispositivo por si la aplicaci?n se cierra a media jornada.
  */
 @Component({
   imports: [ReactiveFormsModule, LogoutButtonComponent],
-  template: `
-    <header class="paso-cabecera">
-      <div class="fila">
-        <span class="titulo">
-          Permiso de trabajo en altura
-          <span class="contador">{{ rotuloEtapa() }}</span>
-        </span>
-        <sg-logout-button />
-      </div>
-      <div
-        class="progreso"
-        role="progressbar"
-        [attr.aria-valuenow]="porcentaje()"
-        aria-valuemin="0"
-        aria-valuemax="100"
-      >
-        <div class="avance" [style.width.%]="porcentaje()"></div>
-      </div>
-    </header>
-
-    <main class="flujo">
-      @if (error()) {
-        <p class="mensaje error" role="alert">{{ error() }}</p>
-      }
-
-      <!-- ═══ 1. Estado de ARL ═══ -->
-      @if (etapa() === 'arl') {
-        @if (flujo(); as datos) {
-          <h1 class="paso-titulo">Hola, {{ datos.collaborator.firstName }}</h1>
-          <p class="paso-ayuda">Antes de iniciar labores verificamos que tus requisitos estén vigentes.</p>
-
-          <div class="bloque">
-            <div class="titulo-seccion">
-              <h2>Afiliación a la ARL</h2>
-              <span class="distintivo" [class]="claseArl()">{{ textoArl() }}</span>
-            </div>
-            <dl class="detalle-arl">
-              <div>
-                <dt>Administradora</dt>
-                <dd>{{ datos.arl.providerName || 'Sin afiliación registrada' }}</dd>
-              </div>
-              @if (datos.arl.endDate) {
-                <div>
-                  <dt>Vigente hasta</dt>
-                  <dd>{{ soloFecha(datos.arl.endDate) }}</dd>
-                </div>
-              }
-            </dl>
-
-            @if (!datos.canContinue) {
-              <p class="mensaje error">
-                No puedes continuar porque falta actualizar: {{ requisitosPendientes() }}. Comunícate con tu
-                coordinadora.
-              </p>
-            } @else if (datos.arl.status === 'PROXIMA_A_VENCER') {
-              <p class="mensaje alerta">
-                Tu afiliación vence pronto. Puedes continuar hoy, pero avisa a tu coordinadora.
-              </p>
-            }
-          </div>
-        } @else if (!error()) {
-          <p class="paso-ayuda">Consultando tu información…</p>
-        }
-      }
-
-      <!-- ═══ 2. Charla de seguridad ═══ -->
-      @if (etapa() === 'charla') {
-        <h1 class="paso-titulo">Charla de seguridad</h1>
-        <p class="paso-ayuda">Mira la charla completa antes de continuar con el permiso.</p>
-
-        <div class="bloque charla-video">
-          <video
-            #videoCharla
-            class="reproductor-charla"
-            [src]="charlaActual()"
-            playsinline
-            preload="metadata"
-            controlsList="nodownload noplaybackrate noremoteplayback"
-            disablePictureInPicture
-            (timeupdate)="registrarProgresoCharla()"
-            (seeking)="bloquearAdelanto()"
-            (ended)="finalizarCharla()"
-            (error)="reportarErrorVideo()"
-          ></video>
-
-          @if (!charlaTerminada()) {
-            <p class="estado-charla" aria-live="polite">
-              Debes reproducir el video completo. No es posible adelantarlo.
-            </p>
-          } @else {
-            <p class="estado-charla completada" role="status">Charla completada. Puedes repetirla o continuar.</p>
-          }
-
-          <div class="acciones charla-acciones">
-            <button class="boton" type="button" [disabled]="charlaPreparando()" (click)="reproducirCharla()">
-              {{ charlaPreparando() ? 'Preparando…' : charlaTerminada() ? 'Repetir charla' : 'Reproducir charla' }}
-            </button>
-          </div>
-
-          <label class="casilla declaracion-charla" [class.deshabilitada]="!charlaTerminada()">
-            <input
-              type="checkbox"
-              [checked]="charlaConfirmada()"
-              [disabled]="!charlaTerminada()"
-              (change)="charlaConfirmada.set($any($event.target).checked)"
-            />
-            <span>Declaro haber visto y entendido las indicaciones de seguridad de esta charla.</span>
-          </label>
-        </div>
-      }
-
-      <!-- ═══ 3. Cuadrilla ═══ -->
-      @if (etapa() === 'cuadrilla') {
-        <h1 class="paso-titulo">¿Quiénes trabajan hoy?</h1>
-        <p class="paso-ayuda">Elige a los integrantes de tu cuadrilla. Cada uno firmará su permiso antes de enviar.</p>
-
-        @if (excluidos() > 0) {
-          <p class="mensaje alerta">
-            {{ excluidos() }}
-            {{ excluidos() === 1 ? 'colaborador no aparece' : 'colaboradores no aparecen' }} en la lista porque tienen
-            vencida la ARL, la seguridad social o el certificado de alturas. Avisa a tu coordinadora.
-          </p>
-        }
-
-        <div class="bloque">
-          <div class="titulo-seccion">
-            <h2>
-              Integrantes <span class="conteo">({{ integrantes().length }})</span>
-            </h2>
-          </div>
-
-          @if (candidatos().length) {
-            <div class="casillas">
-              @for (persona of candidatos(); track persona.id) {
-                <label class="casilla">
-                  <input
-                    type="checkbox"
-                    [checked]="estaEnCuadrilla(persona.id)"
-                    [disabled]="persona.id === yoId()"
-                    (change)="alternarIntegrante(persona)"
-                  />
-                  <span>
-                    {{ persona.firstName }} {{ persona.lastName }}
-                    <span class="secundario">
-                      {{ persona.documentNumber }}
-                      @if (persona.id === yoId()) {
-                        · tú diligencias este permiso
-                      }
-                    </span>
-                  </span>
-                </label>
-              }
-            </div>
-          } @else {
-            <p class="secundario">No hay colaboradores disponibles hoy. Comunícate con tu coordinadora.</p>
-          }
-        </div>
-
-        @if (integrantes().length) {
-          <div class="bloque">
-            <div class="titulo-seccion">
-              <h2>Cargo de cada integrante</h2>
-            </div>
-            @for (integrante of integrantes(); track integrante.candidato.id) {
-              <label class="campo">
-                <span>{{ integrante.candidato.firstName }} {{ integrante.candidato.lastName }}</span>
-                @if (cargos().length) {
-                  <select
-                    [value]="integrante.jobPositionId"
-                    (change)="asignarCargo(integrante.candidato.id, $any($event.target).value)"
-                  >
-                    <!-- La marca va en la opción: el valor del select se aplica
-                         antes de que las opciones existan y no seleccionaría. -->
-                    @for (cargo of cargos(); track cargo.id) {
-                      <option [value]="cargo.id" [selected]="cargo.id === integrante.jobPositionId">
-                        {{ cargo.name }}
-                      </option>
-                    }
-                  </select>
-                } @else {
-                  <span class="error-campo">No hay cargos configurados. Comunícate con tu coordinadora.</span>
-                }
-              </label>
-            }
-          </div>
-        }
-      }
-
-      <!-- ═══ 3. Formulario por secciones ═══ -->
-      @if (etapa() === 'formulario' && bloqueActual(); as bloque) {
-        <h1 class="paso-titulo">{{ bloque.titulo }}</h1>
-        <p class="paso-ayuda">
-          Sección {{ indiceBloque() + 1 }} de {{ bloques().length }} · los campos con
-          <span aria-hidden="true">*</span> son obligatorios
-        </p>
-
-        @if (faltantes().length) {
-          <p class="mensaje error" role="alert">
-            Faltan {{ faltantes().length }}
-            {{ faltantes().length === 1 ? 'respuesta obligatoria' : 'respuestas obligatorias' }} en esta sección.
-          </p>
-        }
-
-        <form [formGroup]="respuestas" class="bloque">
-          @for (campo of bloque.campos; track campo.id; let i = $index) {
-            @if (debeMostrarCampo(campo.id)) {
-              @if (campo.type === 'auto') {
-                <div class="campo automatico">
-                  <span>{{ campo.label }}</span>
-                  <p class="valor-auto">
-                    {{ valorAutomatico(campo) }}
-                    <span class="secundario">{{ explicacionAuto(campo) }}</span>
-                  </p>
-                </div>
-              } @else if (esBotonera(campo)) {
-                <div class="pregunta" [class.invalido]="invalido(campo)">
-                  <span class="enunciado" [id]="campo.id + '-etiqueta'">
-                    @if (bloque.campos.length > 6) {
-                      <span class="numero">{{ i + 1 }}.</span>
-                    }
-                    {{ campo.label }}
-                    @if (campo.required) {
-                      <span aria-hidden="true">*</span>
-                    }
-                  </span>
-                  <div class="opciones" role="group" [attr.aria-labelledby]="campo.id + '-etiqueta'">
-                    @for (opcion of opcionesDe(campo); track opcion) {
-                      <button
-                        type="button"
-                        class="opcion"
-                        [class.negativa]="opcion === 'NO'"
-                        [class.neutra]="opcion === 'N/A'"
-                        [attr.aria-pressed]="valor(campo.id) === opcion"
-                        (click)="elegir(campo.id, opcion)"
-                      >
-                        {{ textoOpcion(opcion) }}
-                      </button>
-                    }
-                  </div>
-                  @if (invalido(campo)) {
-                    <span class="error-campo">Selecciona una opción.</span>
-                  }
-                </div>
-              } @else if (campo.type === 'multi_select') {
-                <div class="campo" [class.invalido]="invalido(campo)">
-                  <span [id]="campo.id + '-etiqueta'"
-                    >{{ campo.label }}
-                    @if (campo.required) {
-                      <span aria-hidden="true">*</span>
-                    }
-                  </span>
-                  <div class="casillas" role="group" [attr.aria-labelledby]="campo.id + '-etiqueta'">
-                    @for (opcion of campo.options; track opcion) {
-                      <label class="casilla">
-                        <input
-                          type="checkbox"
-                          [checked]="tieneOpcion(campo.id, opcion)"
-                          (change)="alternar(campo.id, opcion)"
-                        />
-                        {{ opcion }}
-                      </label>
-                    }
-                  </div>
-                  @if (invalido(campo)) {
-                    <span class="error-campo">Selecciona al menos una opción.</span>
-                  }
-                </div>
-              } @else if (campo.type === 'select') {
-                <label class="campo" [class.invalido]="invalido(campo)">
-                  <span
-                    >{{ campo.label }}
-                    @if (campo.required) {
-                      <span aria-hidden="true">*</span>
-                    }
-                  </span>
-                  <select [formControlName]="campo.id">
-                    <option value="">Selecciona una opción</option>
-                    @for (opcion of campo.options; track opcion) {
-                      <option [value]="opcion">{{ opcion }}</option>
-                    }
-                  </select>
-                  @if (invalido(campo)) {
-                    <span class="error-campo">Este campo es obligatorio.</span>
-                  }
-                </label>
-              } @else {
-                <label class="campo" [class.invalido]="invalido(campo)">
-                  <span
-                    >{{ campo.label }}
-                    @if (campo.required) {
-                      <span aria-hidden="true">*</span>
-                    }
-                  </span>
-                  @if (campo.type === 'textarea') {
-                    <textarea rows="3" [formControlName]="campo.id"></textarea>
-                  } @else {
-                    <input
-                      [type]="campo.type === 'number' ? 'number' : campo.type === 'date' ? 'date' : 'text'"
-                      [formControlName]="campo.id"
-                    />
-                  }
-                  @if (invalido(campo)) {
-                    <span class="error-campo">Este campo es obligatorio.</span>
-                  }
-                </label>
-              }
-            }
-          }
-        </form>
-      }
-
-      <!-- ═══ 4. Revisión ═══ -->
-      @if (etapa() === 'revision') {
-        <h1 class="paso-titulo">Revisa antes de firmar</h1>
-        <p class="paso-ayuda">Una vez firmes y envíes, el permiso no se puede modificar.</p>
-
-        @if (negativas().length) {
-          <p class="mensaje alerta">
-            Respondiste <strong>NO</strong> en {{ negativas().length }}
-            {{ negativas().length === 1 ? 'punto' : 'puntos' }} de la lista de verificación. Coordinación lo verá al
-            revisar.
-          </p>
-        }
-
-        @for (bloque of bloques(); track bloque.titulo) {
-          <section class="bloque">
-            <div class="titulo-seccion">
-              <h2>{{ bloque.titulo }}</h2>
-              <button class="boton secundario compacto" type="button" (click)="volverA(bloque)">Corregir</button>
-            </div>
-            <div class="tabla-scroll">
-              <table class="datos">
-                <tbody>
-                  @for (campo of bloque.campos; track campo.id) {
-                    <tr [class.fila-alerta]="valor(campo.id) === 'NO'">
-                      <th scope="row" class="campo-nombre">{{ campo.label }}</th>
-                      <td>{{ textoValor(campo.id) }}</td>
-                    </tr>
-                  }
-                </tbody>
-              </table>
-            </div>
-          </section>
-        }
-      }
-
-      <!-- ═══ 5. Firma ═══ -->
-      @if (etapa() === 'firma') {
-        @if (firmante(); as persona) {
-          <h1 class="paso-titulo">Firma {{ persona.candidato.firstName }} {{ persona.candidato.lastName }}</h1>
-          <p class="paso-ayuda">
-            Firmante {{ indiceFirma() + 1 }} de {{ integrantes().length }}. Pásale el dispositivo y que firme dentro del
-            recuadro: confirma que la información es verdadera.
-          </p>
-
-          <div class="bloque">
-            <p class="secundario documento-firmante">
-              {{ persona.candidato.documentNumber }} · {{ nombreCargo(persona.jobPositionId) }}
-            </p>
-            <canvas
-              #lienzo
-              class="lienzo"
-              [class.firmado]="hayFirma()"
-              (pointerdown)="iniciarTrazo($event)"
-              (pointermove)="trazar($event)"
-              (pointerup)="terminarTrazo($event)"
-              (pointercancel)="terminarTrazo($event)"
-            ></canvas>
-            <div class="acciones">
-              <button class="boton secundario compacto" type="button" (click)="limpiarFirma()" [disabled]="!hayFirma()">
-                Borrar y firmar de nuevo
-              </button>
-            </div>
-            @if (!hayFirma()) {
-              <p class="secundario">Aún no ha firmado.</p>
-            }
-          </div>
-
-          @if (firmadas() > 0) {
-            <p class="secundario centrado">
-              {{ firmadas() }} de {{ integrantes().length }}
-              {{ firmadas() === 1 ? 'firma capturada' : 'firmas capturadas' }}
-            </p>
-          }
-        }
-      }
-
-      <!-- ═══ 6. Resultado ═══ -->
-      @if (etapa() === 'resultado') {
-        @if (envio(); as resultado) {
-          @if (resultado.status === 'APPROVED') {
-            <div class="resultado aprobado">
-              <span class="simbolo" aria-hidden="true">✓</span>
-              <h2>{{ resultado.startedAt ? 'Jornada en curso' : 'Autorizado para iniciar labores' }}</h2>
-              <p>
-                {{
-                  resultado.startedAt
-                    ? 'Al terminar, cierra la jornada desde aquí.'
-                    : 'Coordinación aprobó el permiso. Registra el inicio real antes de comenzar.'
-                }}
-              </p>
-            </div>
-
-            <div class="bloque jornada">
-              <div class="titulo-seccion">
-                <h2>{{ resultado.startedAt ? 'Cerrar la jornada' : 'Iniciar la jornada' }}</h2>
-              </div>
-              @if (!resultado.startedAt) {
-                <p class="secundario">Al comenzar el trabajo, registra la hora real de inicio.</p>
-                <div class="acciones">
-                  <button class="boton" type="button" [disabled]="iniciando()" (click)="iniciarJornada(resultado.id)">
-                    {{ iniciando() ? 'Registrando…' : 'Iniciar jornada' }}
-                  </button>
-                </div>
-              } @else {
-                <p class="secundario">
-                  Inició a las {{ hora(resultado.startedAt) }}. La hora de finalización se registra al cerrar y el
-                  permiso queda completo con su documento final.
-                </p>
-                <label class="campo">
-                  <span>Novedades de la jornada</span>
-                  <textarea
-                    rows="2"
-                    [value]="novedades()"
-                    (input)="novedades.set($any($event.target).value)"
-                    placeholder="Opcional. Queda en el documento final."
-                  ></textarea>
-                </label>
-                <div class="acciones">
-                  <button class="boton" type="button" [disabled]="cerrando()" (click)="cerrarJornada(resultado.id)">
-                    {{ cerrando() ? 'Cerrando…' : 'Terminamos: cerrar jornada' }}
-                  </button>
-                </div>
-              }
-            </div>
-          } @else if (resultado.status === 'CLOSED') {
-            <div class="resultado aprobado">
-              <span class="simbolo" aria-hidden="true">✓</span>
-              <h2>Jornada cerrada</h2>
-              <p>
-                De {{ hora(resultado.startedAt) }} a {{ hora(resultado.closedAt) }}. El permiso quedó completo y
-                archivado.
-              </p>
-            </div>
-          } @else if (resultado.status === 'REJECTED') {
-            <div class="resultado rechazado">
-              <span class="simbolo" aria-hidden="true">✕</span>
-              <h2>Permiso rechazado</h2>
-              <p>{{ resultado.approval?.reason || 'Comunícate con tu coordinadora.' }}</p>
-            </div>
-          } @else if (resultado.status === 'EXPIRED') {
-            <div class="resultado rechazado">
-              <span class="simbolo" aria-hidden="true">✕</span>
-              <h2>Permiso vencido</h2>
-              <p>La jornada no comenzó en la fecha del permiso. Diligencia uno nuevo para trabajar hoy.</p>
-            </div>
-          } @else {
-            <div class="resultado pendiente">
-              <span class="simbolo" aria-hidden="true">•••</span>
-              <h2>Enviado. Espera la autorización</h2>
-              <p>Tu coordinadora debe revisarlo. No inicies labores hasta ver la luz verde.</p>
-            </div>
-          }
-
-          <div class="acciones centrado">
-            <button class="boton secundario" type="button" (click)="consultarEstado()" [disabled]="consultando()">
-              {{ consultando() ? 'Consultando…' : 'Actualizar estado' }}
-            </button>
-          </div>
-          @if (resultado.status === 'PENDING_APPROVAL') {
-            <p class="secundario centrado">El estado se actualiza solo cada 20 segundos.</p>
-          }
-        }
-      }
-    </main>
-
-    <!-- ═══ Barra de acción ═══ -->
-    @if (etapa() !== 'resultado') {
-      <div class="pie-accion">
-        <div class="fila">
-          @if (puedeRetroceder()) {
-            <button class="boton secundario" type="button" (click)="atras()">Atrás</button>
-          }
-          @switch (etapa()) {
-            @case ('firma') {
-              <button class="boton" type="button" [disabled]="!hayFirma() || enviando()" (click)="confirmarFirma()">
-                @if (enviando()) {
-                  Enviando…
-                } @else if (esUltimoFirmante()) {
-                  Firmar y enviar permiso
-                } @else {
-                  Guardar firma y continuar
-                }
-              </button>
-            }
-            @case ('revision') {
-              <button class="boton" type="button" (click)="etapa.set('firma')">Continuar a la firma</button>
-            }
-            @default {
-              <button class="boton" type="button" [disabled]="!puedeAvanzar()" (click)="siguiente()">Continuar</button>
-            }
-          }
-        </div>
-      </div>
-    }
-  `,
-  styles: [
-    `
-      .detalle-arl {
-        display: grid;
-        gap: 14px;
-        margin: 0;
-      }
-      .detalle-arl dt {
-        color: var(--tinta-suave);
-        font-size: 0.8125rem;
-        font-weight: 600;
-        letter-spacing: 0.03em;
-        text-transform: uppercase;
-      }
-      .detalle-arl dd {
-        margin: 2px 0 0;
-        font-size: 1.0625rem;
-      }
-      .pregunta-principal {
-        margin: 0 0 16px;
-        font-size: 1.125rem;
-        font-weight: 600;
-      }
-      .charla-video {
-        display: grid;
-        gap: 16px;
-      }
-      .reproductor-charla {
-        display: block;
-        width: 100%;
-        max-height: 58vh;
-        background: #101a1d;
-        border-radius: var(--radio);
-      }
-      .estado-charla {
-        margin: 0;
-        color: var(--tinta-media);
-        font-weight: 600;
-      }
-      .estado-charla.completada {
-        color: var(--ok);
-      }
-      .charla-acciones {
-        margin-top: -4px;
-      }
-      .declaracion-charla {
-        align-items: flex-start;
-      }
-      .declaracion-charla.deshabilitada {
-        cursor: not-allowed;
-        opacity: 0.62;
-      }
-      .campo-nombre {
-        width: 46%;
-        color: var(--tinta-media);
-        font-weight: 600;
-      }
-      .fila-alerta {
-        background: var(--error-fondo);
-      }
-      .fila-alerta .campo-nombre {
-        color: var(--error);
-      }
-      .secundario {
-        color: var(--tinta-suave);
-        font-size: 0.9375rem;
-      }
-      .automatico .valor-auto {
-        margin: 0;
-        padding: 12px 14px;
-        border: 1px dashed var(--borde-fuerte);
-        border-radius: var(--radio);
-        background: var(--fondo);
-        font-weight: 600;
-      }
-      .automatico .valor-auto .secundario {
-        display: block;
-        font-weight: 400;
-        font-size: 0.8125rem;
-      }
-      .centrado {
-        justify-content: center;
-        text-align: center;
-        margin-top: 18px;
-      }
-      .bloque .campo,
-      .bloque .pregunta {
-        margin-bottom: 4px;
-      }
-      form.bloque {
-        display: grid;
-        gap: 18px;
-      }
-    `,
-  ],
+  templateUrl: './work-at-height-form.component.html',
+  styleUrl: './work-at-height-form.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class WorkAtHeightFormComponent implements OnDestroy {
@@ -741,6 +86,8 @@ export class WorkAtHeightFormComponent implements OnDestroy {
   /** A quién le toca firmar ahora. */
   readonly firmante = computed<Integrante | null>(() => this.integrantes()[this.indiceFirma()] ?? null);
   readonly firmadas = computed(() => this.integrantes().filter((persona) => persona.firmaDataUrl).length);
+  readonly maxIntegrantes = MAX_INTEGRANTES;
+  readonly cuadrillaCompleta = computed(() => this.integrantes().length >= MAX_INTEGRANTES);
   readonly esUltimoFirmante = computed(() => this.indiceFirma() >= this.integrantes().length - 1);
 
   readonly respuestas = new FormGroup<Record<string, FormControl<unknown>>>({});
@@ -749,18 +96,7 @@ export class WorkAtHeightFormComponent implements OnDestroy {
   private sondeo?: ReturnType<typeof setInterval>;
 
   /** Cada sección del esquema publicado es un paso del formulario. */
-  readonly bloques = computed<Bloque[]>(() => {
-    const campos = (this.definicion()?.schemaJson.fields ?? []).slice().sort((a, b) => a.order - b.order);
-    const bloques: Bloque[] = [];
-    let titulo = 'Datos del permiso';
-    for (const campo of campos) {
-      if (campo.section) titulo = campo.section;
-      const bloque = bloques.find((candidato) => candidato.titulo === titulo);
-      if (bloque) bloque.campos.push(campo);
-      else bloques.push({ titulo, campos: [campo] });
-    }
-    return bloques;
-  });
+  readonly bloques = computed<Bloque[]>(() => agruparCamposEnBloques(this.definicion()?.schemaJson.fields));
 
   readonly bloqueActual = computed<Bloque | null>(() => this.bloques()[this.indiceBloque()] ?? null);
 
@@ -777,19 +113,9 @@ export class WorkAtHeightFormComponent implements OnDestroy {
     return etapa === 'revision' || etapa === 'firma';
   });
 
-  readonly porcentaje = computed(() => {
-    const total = 4 + this.bloques().length; // ARL, charla, cuadrilla, secciones, revisión y firma
-    const orden: Record<Etapa, number> = {
-      arl: 0,
-      charla: 1,
-      cuadrilla: 2,
-      formulario: 3 + this.indiceBloque(),
-      revision: 3 + this.bloques().length,
-      firma: 4 + this.bloques().length,
-      resultado: total + 1,
-    };
-    return Math.min(100, Math.round((orden[this.etapa()] / (total + 1)) * 100));
-  });
+  readonly porcentaje = computed(() =>
+    calcularPorcentajeAvance(this.etapa(), this.indiceBloque(), this.bloques().length),
+  );
 
   readonly rotuloEtapa = computed(() => {
     switch (this.etapa()) {
@@ -943,6 +269,7 @@ export class WorkAtHeightFormComponent implements OnDestroy {
   alternarIntegrante(candidato: Candidato): void {
     // El oficial no puede quitarse: es quien responde por el permiso.
     if (candidato.id === this.yoId()) return;
+    if (this.cuadrillaCompleta() && !this.estaEnCuadrilla(candidato.id)) return;
     this.integrantes.update((lista) =>
       lista.some((persona) => persona.candidato.id === candidato.id)
         ? lista.filter((persona) => persona.candidato.id !== candidato.id)
@@ -958,49 +285,11 @@ export class WorkAtHeightFormComponent implements OnDestroy {
 
   /** Lo que el sistema pondrá en un campo automático, mostrado por adelantado. */
   valorAutomatico(campo: Campo): string {
-    const ahora = new Date();
-    const cumplimiento = this.flujo()?.cumplimiento;
-    switch (campo.source) {
-      case 'workDate':
-        return ahora.toLocaleDateString('es-CO', {
-          day: '2-digit',
-          month: 'long',
-          year: 'numeric',
-          timeZone: 'America/Bogota',
-        });
-      case 'startedAt':
-        return 'Se registra al iniciar la jornada';
-      case 'closedAt':
-        return 'Se registra al cerrar la jornada';
-      case 'heightCertificate':
-        return this.textoRequisito(cumplimiento?.alturas?.estado);
-      case 'socialSecurity':
-        return this.textoRequisito(cumplimiento?.seguridadSocial?.estado);
-      default:
-        return '—';
-    }
+    return obtenerValorAutomatico(campo, this.flujo()?.cumplimiento);
   }
 
   explicacionAuto(campo: Campo): string {
-    switch (campo.source) {
-      case 'workDate':
-        return 'El permiso rige solo hoy.';
-      case 'startedAt':
-        return 'Se registra después de la aprobación, cuando comiencen las labores.';
-      case 'closedAt':
-        return 'Cuando terminen, cierra la jornada desde la app.';
-      case 'heightCertificate':
-      case 'socialSecurity':
-        return 'Verificado con lo que cargó Coordinación.';
-      default:
-        return '';
-    }
-  }
-
-  private textoRequisito(estado?: string): string {
-    if (estado === 'VIGENTE') return 'Vigente y verificado';
-    if (estado === 'PROXIMA_A_VENCER') return 'Vigente, próximo a vencer';
-    return 'No vigente';
+    return obtenerExplicacionAuto(campo);
   }
 
   nombreCargo(jobPositionId: string): string {
@@ -1384,13 +673,7 @@ export class WorkAtHeightFormComponent implements OnDestroy {
   }
 
   private respuestasNormalizadas(): Record<string, unknown> {
-    const valores = this.respuestas.getRawValue();
-    for (const campo of this.definicion()?.schemaJson.fields ?? []) {
-      if (campo.type === 'number' && typeof valores[campo.id] === 'string') {
-        valores[campo.id] = Number(valores[campo.id]);
-      }
-    }
-    return valores;
+    return normalizarRespuestasFormulario(this.respuestas.getRawValue(), this.definicion()?.schemaJson.fields);
   }
 
   /**

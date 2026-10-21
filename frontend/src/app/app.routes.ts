@@ -2,6 +2,7 @@ import { Routes } from '@angular/router';
 import { HomeComponent } from './features/home/home.component';
 import { AdminLoginComponent } from './features/auth/admin-login.component';
 import { AdminDashboardComponent } from './features/admin/admin-dashboard.component';
+import { ChangePasswordComponent } from './features/auth/change-password.component';
 import { CollaboratorLoginComponent } from './features/auth/collaborator-login.component';
 import { ArlListComponent } from './features/arl/arl-list.component';
 import { SocialSecurityComponent } from './features/compliance/social-security.component';
@@ -31,6 +32,12 @@ export const routes: Routes = [
     title: 'Administración SG-SST',
   },
   { path: 'coordinacion', component: CoordinationComponent, canActivate: interna, title: 'Coordinación' },
+  {
+    path: 'administracion/mi-contrasena',
+    component: ChangePasswordComponent,
+    canActivate: interna,
+    title: 'Cambiar contraseña',
+  },
   { path: 'arl', component: ArlListComponent, canActivate: interna, title: 'Estado ARL' },
   { path: 'gestor-arl', component: ArlListComponent, canActivate: interna, title: 'Gestor ARL' },
   { path: 'seguridad-social', component: SocialSecurityComponent, canActivate: interna, title: 'Seguridad social' },

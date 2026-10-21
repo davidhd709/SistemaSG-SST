@@ -7,6 +7,7 @@ import { LogoutButtonComponent } from '../../core/logout-button.component';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 
 type EstadoArl = 'VIGENTE' | 'PROXIMA_A_VENCER' | 'VENCIDA';
+type Cargo = { id: string; code: string; name: string; canLead: boolean };
 
 type Afiliacion = {
   id: string;
@@ -25,6 +26,8 @@ type Fila = {
     email: string | null;
     phone: string | null;
     jobTitle: string | null;
+    jobPositionId: string | null;
+    jobPosition: Cargo | null;
     team: string | null;
     status: string;
   };
@@ -40,7 +43,7 @@ type CrearColaborador = {
   documentNumber: string;
   firstName: string;
   lastName: string;
-  jobTitle: string;
+  jobPositionId: string;
   team: string;
   email: string;
   phone: string;
@@ -114,23 +117,30 @@ type CrearColaborador = {
             <label class="campo"><span>Apellidos</span><input formControlName="lastName" /></label>
             <label class="campo">
               <span>Cargo</span>
-              <select formControlName="jobTitle">
+              <select formControlName="jobPositionId">
                 <option value="">Selecciona un cargo</option>
-                <option value="Oficial eléctrico">Oficial eléctrico</option>
-                <option value="Auxiliar eléctrico">Auxiliar eléctrico</option>
-                <option value="Ayudante">Ayudante</option>
-                <option value="Supervisor">Supervisor</option>
+                @for (cargo of cargos(); track cargo.id) {
+                  <option [value]="cargo.id">{{ cargo.name }}</option>
+                }
               </select>
             </label>
             <label class="campo"><span>Equipo</span><input formControlName="team" placeholder="Opcional" /></label>
-            <label class="campo"><span>Correo</span><input formControlName="email" type="email" placeholder="Opcional" /></label>
-            <label class="campo"><span>Teléfono</span><input formControlName="phone" inputmode="tel" placeholder="Opcional" /></label>
+            <label class="campo"
+              ><span>Correo</span><input formControlName="email" type="email" placeholder="Opcional"
+            /></label>
+            <label class="campo"
+              ><span>Teléfono</span><input formControlName="phone" inputmode="tel" placeholder="Opcional"
+            /></label>
             @if (requierePinEdicion()) {
               <label class="campo ancho-total">
                 <span>PIN de acceso del Oficial eléctrico</span>
                 <input formControlName="pin" type="password" inputmode="numeric" autocomplete="new-password" />
                 <span class="ayuda">
-                  {{ pinObligatorioEdicion() ? 'Asigna un PIN de 4 a 12 caracteres para habilitar su acceso.' : 'Déjalo vacío para conservar el PIN actual.' }}
+                  {{
+                    pinObligatorioEdicion()
+                      ? 'Asigna un PIN de 4 a 12 caracteres para habilitar su acceso.'
+                      : 'Déjalo vacío para conservar el PIN actual.'
+                  }}
                 </span>
               </label>
             }
@@ -141,7 +151,7 @@ type CrearColaborador = {
             </div>
           </form>
 
-          <h3>{{ fila.affiliation ? 'Actualizar afiliación vigente' : 'Registrar primera afiliación' }}</h3>
+          <h3>{{ fila.affiliation ? 'Actualizar afiliación' : 'Registrar primera afiliación' }}</h3>
           <form [formGroup]="formulario" (ngSubmit)="guardar()" class="rejilla-campos dos">
             <label class="campo ancho-total">
               <span>Administradora de riesgos laborales</span>
@@ -266,12 +276,11 @@ type CrearColaborador = {
               <label class="campo"><span>Apellidos</span><input formControlName="lastName" /></label>
               <label class="campo"
                 ><span>Cargo</span
-                ><select formControlName="jobTitle">
+                ><select formControlName="jobPositionId">
                   <option value="">Selecciona un cargo</option>
-                  <option value="Oficial eléctrico">Oficial eléctrico</option>
-                  <option value="Auxiliar eléctrico">Auxiliar eléctrico</option>
-                  <option value="Ayudante">Ayudante</option>
-                  <option value="Supervisor">Supervisor</option>
+                  @for (cargo of cargos(); track cargo.id) {
+                    <option [value]="cargo.id">{{ cargo.name }}</option>
+                  }
                 </select></label
               >
               <label class="campo"><span>Equipo</span><input formControlName="team" placeholder="Opcional" /></label>
@@ -521,6 +530,7 @@ export class ArlListComponent {
   private readonly fb = inject(FormBuilder);
 
   readonly filas = signal<Fila[]>([]);
+  readonly cargos = signal<Cargo[]>([]);
   readonly historial = signal<AfiliacionHistorial[]>([]);
   readonly seleccionada = signal<Fila | null>(null);
   readonly filtro = signal<EstadoArl | null>(null);
@@ -531,7 +541,7 @@ export class ArlListComponent {
   readonly mostrandoRegistro = signal(false);
   readonly creandoColaborador = signal(false);
   readonly actualizandoColaborador = signal(false);
-  readonly cargoOriginalEdicion = signal('');
+  readonly cargoOriginalPuedeLiderar = signal(false);
   readonly error = signal('');
   readonly aviso = signal('');
 
@@ -552,7 +562,7 @@ export class ArlListComponent {
     documentNumber: '',
     firstName: '',
     lastName: '',
-    jobTitle: '',
+    jobPositionId: '',
     team: '',
     email: '',
     phone: '',
@@ -563,7 +573,7 @@ export class ArlListComponent {
     documentNumber: ['', [Validators.required, Validators.pattern(/^[0-9A-Za-z-]{5,30}$/)]],
     firstName: ['', [Validators.required, Validators.maxLength(100)]],
     lastName: ['', [Validators.required, Validators.maxLength(100)]],
-    jobTitle: ['', Validators.required],
+    jobPositionId: ['', Validators.required],
     team: ['', Validators.maxLength(100)],
     email: ['', Validators.email],
     phone: ['', Validators.maxLength(30)],
@@ -572,7 +582,7 @@ export class ArlListComponent {
   readonly formularioEdicion = this.fb.nonNullable.group({
     firstName: ['', [Validators.required, Validators.maxLength(100)]],
     lastName: ['', [Validators.required, Validators.maxLength(100)]],
-    jobTitle: ['', Validators.required],
+    jobPositionId: ['', Validators.required],
     team: ['', Validators.maxLength(100)],
     email: ['', Validators.email],
     phone: ['', Validators.maxLength(30)],
@@ -586,12 +596,14 @@ export class ArlListComponent {
 
   constructor() {
     this.cargar();
-    this.formularioColaborador.controls.jobTitle.valueChanges.subscribe(() => this.actualizarReglaPin());
-    this.formularioEdicion.controls.jobTitle.valueChanges.subscribe(() => this.actualizarReglaPinEdicion());
+    this.cargarCargos();
+    this.formularioColaborador.controls.jobPositionId.valueChanges.subscribe(() => this.actualizarReglaPin());
+    this.formularioEdicion.controls.jobPositionId.valueChanges.subscribe(() => this.actualizarReglaPinEdicion());
   }
 
   requierePin(): boolean {
-    return this.formularioColaborador.controls.jobTitle.value === 'Oficial eléctrico';
+    const id = this.formularioColaborador.controls.jobPositionId.value;
+    return Boolean(this.cargos().find((cargo) => cargo.id === id)?.canLead);
   }
 
   private actualizarReglaPin(): void {
@@ -605,11 +617,12 @@ export class ArlListComponent {
   }
 
   requierePinEdicion(): boolean {
-    return this.formularioEdicion.controls.jobTitle.value === 'Oficial eléctrico';
+    const id = this.formularioEdicion.controls.jobPositionId.value;
+    return Boolean(this.cargos().find((cargo) => cargo.id === id)?.canLead);
   }
 
   pinObligatorioEdicion(): boolean {
-    return this.requierePinEdicion() && this.cargoOriginalEdicion() !== 'Oficial eléctrico';
+    return this.requierePinEdicion() && !this.cargoOriginalPuedeLiderar();
   }
 
   private actualizarReglaPinEdicion(): void {
@@ -620,8 +633,7 @@ export class ArlListComponent {
         Validators.minLength(4),
         Validators.maxLength(12),
       ]);
-    }
-    else {
+    } else {
       pin.clearValidators();
       pin.setValue('', { emitEvent: false });
     }
@@ -640,6 +652,13 @@ export class ArlListComponent {
         this.error.set('No fue posible consultar las afiliaciones o no tienes permiso.');
         this.cargando.set(false);
       },
+    });
+  }
+
+  private cargarCargos(): void {
+    this.http.get<Cargo[]>('/api/collaborators/job-positions').subscribe({
+      next: (cargos) => this.cargos.set(cargos),
+      error: () => this.error.set('No fue posible consultar el catálogo de cargos.'),
     });
   }
 
@@ -687,11 +706,11 @@ export class ArlListComponent {
       startDate: fila.affiliation?.startDate?.slice(0, 10) ?? '',
       endDate: fila.affiliation?.endDate?.slice(0, 10) ?? '',
     });
-    this.cargoOriginalEdicion.set(fila.collaborator.jobTitle ?? '');
+    this.cargoOriginalPuedeLiderar.set(Boolean(fila.collaborator.jobPosition?.canLead));
     this.formularioEdicion.reset({
       firstName: fila.collaborator.firstName,
       lastName: fila.collaborator.lastName,
-      jobTitle: fila.collaborator.jobTitle ?? '',
+      jobPositionId: fila.collaborator.jobPositionId ?? '',
       team: fila.collaborator.team ?? '',
       email: fila.collaborator.email ?? '',
       phone: fila.collaborator.phone ?? '',
@@ -723,7 +742,9 @@ export class ArlListComponent {
         this.refrescarFicha(fila.collaborator.id);
       },
       error: () => {
-        this.error.set('No fue posible actualizar los datos del colaborador. Revisa la información e inténtalo de nuevo.');
+        this.error.set(
+          'No fue posible actualizar los datos del colaborador. Revisa la información e inténtalo de nuevo.',
+        );
         this.actualizandoColaborador.set(false);
       },
     });

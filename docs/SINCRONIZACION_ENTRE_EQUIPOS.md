@@ -73,12 +73,12 @@ recibir tus cambios con `git pull`.
 
 ## Rutina recomendada
 
-| Momento | Acción |
-| --- | --- |
-| Inicio en cualquiera de los equipos | `git status` y `git pull --ff-only origin main` |
-| Antes de pasar al otro equipo | `git add`, `git commit` y `git push origin main` |
-| Después de recibir cambios de dependencias | `pnpm install` |
-| Después de recibir migraciones | `pnpm db:generate` y `migrate deploy` |
+| Momento                                    | Acción                                           |
+| ------------------------------------------ | ------------------------------------------------ |
+| Inicio en cualquiera de los equipos        | `git status` y `git pull --ff-only origin main`  |
+| Antes de pasar al otro equipo              | `git add`, `git commit` y `git push origin main` |
+| Después de recibir cambios de dependencias | `pnpm install`                                   |
+| Después de recibir migraciones             | `pnpm db:generate` y `migrate deploy`            |
 
 > Nunca copies manualmente archivos del proyecto entre los dos equipos: el repositorio
 > remoto debe ser la fuente de sincronización.
