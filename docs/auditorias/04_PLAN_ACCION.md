@@ -136,3 +136,4 @@ AUD-030, AUD-031, AUD-032, AUD-008 + CSP, AUD-023, AUD-020 (retirar `charla-04..
 | TEC-005 | Hecho `b508330`     | La ruta local se ancla al módulo y apunta a `backend/storage` o `/app/backend/storage` según la imagen.                                            |
 | TEC-006 | Hecho (este commit) | La imagen API ya no instala Chromium ni define variables de Puppeteer; build y Prisma CLI verificados.                                             |
 | AUD-015 | Parcial             | API usa UID 1000, web UID 101 en puerto 8080; ambas imágenes construyen y web responde. Falta separar dependencias de desarrollo de la imagen API. |
+| AUD-021 | Hecho (este commit) | Redis se retira de Compose y de las instrucciones: la API no contiene cliente Redis ni usa `REDIS_URL`.                                            |

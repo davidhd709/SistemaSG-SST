@@ -15,7 +15,7 @@ El sistema implementa autenticación administrativa y de colaboradores, permisos
 
 1. Copie `.env.example` a `.env` y cambie `POSTGRES_PASSWORD`.
 2. Active pnpm e instale dependencias: `corepack enable` y `pnpm install`.
-3. Inicie infraestructura: `docker compose up -d postgres redis`.
+3. Inicie infraestructura: `docker compose up -d postgres`.
 4. Genere Prisma y aplique migraciones: `pnpm db:generate` y `pnpm db:migrate`.
 5. Cree los roles, permisos y administrador inicial: `pnpm --filter @sg-sst/api run seed`.
 6. En terminales separadas ejecute `pnpm dev:api` y `pnpm dev:web`.
@@ -32,7 +32,7 @@ Después de iniciar los contenedores por primera vez, cree los roles, permisos y
 
 ## Archivos y PDF
 
-En desarrollo, firmas y PDFs se almacenan en `storage/`, directorio que no se versiona. Si se definen `R2_ENDPOINT`, `R2_BUCKET`, `R2_ACCESS_KEY_ID` y `R2_SECRET_ACCESS_KEY`, la misma interfaz `StorageService` usa Cloudflare R2. El bucket debe ser privado. Las descargas pasan por la API y se auditan.
+En desarrollo, firmas y PDFs se almacenan en `backend/storage/`, directorio que no se versiona. Si se definen `R2_ENDPOINT`, `R2_BUCKET`, `R2_ACCESS_KEY_ID` y `R2_SECRET_ACCESS_KEY`, la misma interfaz `StorageService` usa Cloudflare R2. El bucket debe ser privado. Las descargas pasan por la API y se auditan.
 
 El PDF final se genera al cerrar una jornada autorizada o al rechazar un envío. La interfaz queda aislada para sustituir esa llamada síncrona por un trabajo BullMQ antes de producción.
 

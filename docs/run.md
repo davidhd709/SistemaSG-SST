@@ -4,7 +4,7 @@ Ejecute los comandos desde la raíz del repositorio, donde están `docker-compos
 
 ## Con Docker
 
-Levanta PostgreSQL, Redis, la API y la PWA en contenedores.
+Levanta PostgreSQL, la API y la PWA en contenedores.
 
 ```bash
 cd <ruta-del-proyecto>
@@ -19,7 +19,7 @@ Use este modo para editar con recarga en caliente. Necesita tres terminales desd
 
 ```bash
 # Terminal 1: infraestructura
-docker compose up -d postgres redis
+docker compose up -d postgres
 
 # Terminal 2: backend NestJS
 pnpm dev:api

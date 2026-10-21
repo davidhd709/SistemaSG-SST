@@ -9,7 +9,7 @@ Docker 29.7.2 y PostgreSQL 18.4. El flujo completo se ejecutó de punta a punta.
 | ---------------- | -------------- | ----------------------------------------------- |
 | Node.js          | 24.15.0        | El README pide 22 LTS; 24 funciona sin cambios. |
 | pnpm             | 11.23.0        | Vía `corepack enable`.                          |
-| Docker + Compose | 29.7.2 / 5.4.0 | Para PostgreSQL y Redis.                        |
+| Docker + Compose | 29.7.2 / 5.4.0 | Para PostgreSQL.                                |
 | Chrome/Chromium  | cualquiera     | Solo para `ng test`; Puppeteer trae el suyo.    |
 
 ## Arranque
@@ -19,7 +19,7 @@ corepack enable
 cp .env.example .env          # complete POSTGRES_PASSWORD, DATABASE_URL y los secretos JWT
 pnpm install
 
-docker compose up -d postgres redis
+docker compose up -d postgres
 
 pnpm db:generate
 cd backend && node --env-file=../.env ./node_modules/prisma/build/index.js migrate deploy && cd -
@@ -87,6 +87,5 @@ El script `pnpm --filter @sg-sst/web run test` no acepta argumentos adicionales
 | Swagger     | http://localhost:3000/api/docs   |
 | PWA         | http://localhost:4200            |
 | PostgreSQL  | localhost:5432                   |
-| Redis       | localhost:6379                   |
 
 El administrador inicial sale de `BOOTSTRAP_ADMIN_EMAIL` / `BOOTSTRAP_ADMIN_PASSWORD`.

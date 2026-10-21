@@ -16,19 +16,6 @@ services:
       retries: 10
     restart: unless-stopped
 
-  redis:
-    image: redis:8-alpine
-    ports:
-      - '127.0.0.1:6379:6379'
-    volumes:
-      - redis_data:/data
-    healthcheck:
-      test: ['CMD', 'redis-cli', 'ping']
-      interval: 10s
-      timeout: 5s
-      retries: 10
-    restart: unless-stopped
-
   api:
     build:
       context: .
@@ -38,7 +25,6 @@ services:
       API_PORT: 3000
       TRUST_PROXY_HOPS: 1
       DATABASE_URL: postgresql://${POSTGRES_USER:-sg_sst}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-sg_sst}?schema=public
-      REDIS_URL: redis://redis:6379
       API_CORS_ORIGIN: ${API_CORS_ORIGIN:-http://localhost:4200}
       JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?Set JWT_ACCESS_SECRET in .env}
       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?Set JWT_REFRESH_SECRET in .env}
@@ -57,8 +43,6 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      redis:
-        condition: service_healthy
     restart: unless-stopped
 
   web:
@@ -75,5 +59,4 @@ services:
 
 volumes:
   postgres_data:
-  redis_data:
   api_storage:
