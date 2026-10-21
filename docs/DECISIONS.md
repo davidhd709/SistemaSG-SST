@@ -4,10 +4,10 @@
 
 - Se usa un monorepo pnpm con dos workspaces para mantener frontend y backend independientes, sin introducir una herramienta de monorepo adicional.
 - Node.js 22 LTS es el requisito mínimo para las imágenes y herramientas de desarrollo.
-- PostgreSQL 18 y Redis 8 se ejecutan en Docker Compose para desarrollo.
-- La PWA es **online-first**: el Service Worker solo facilita instalación y caché de recursos; los envíos oficiales requerirán red en fases posteriores.
+- PostgreSQL 18 se ejecuta en Docker Compose para desarrollo. Redis no forma parte de la arquitectura actual.
+- La PWA es **online-first**: el Service Worker facilita instalación y caché de recursos, pero los envíos oficiales requieren conexión con la API.
 - La API se expone bajo el prefijo `/api`; Nginx enruta esa ruta al backend en el despliegue contenedorizado.
-- El modelo Prisma inicia con `SystemSetting`, suficiente para comprobar conectividad y preparar el valor configurable de ARL. Las entidades de negocio se incorporarán junto a sus módulos en fases posteriores.
+- El modelo Prisma comenzó con `SystemSetting`; las migraciones posteriores incorporaron usuarios, colaboradores, cargos, ARL, seguridad social, formularios, envíos, archivos, firmas, aprobaciones, sesiones y auditoría.
 
 ## 2026-08-24 — Cálculo de vigencia ARL
 
@@ -23,7 +23,7 @@
 ## 2026-08-24 — Firma del flujo inicial
 
 - La firma manuscrita se transmite como PNG para validación, pero se convierte inmediatamente en archivo local y se registra mediante `FileObject` y `Signature`; no se guarda base64 en PostgreSQL.
-- El adaptador local permite ejecutar desarrollo sin servicios externos. Se reemplazará detrás de `StorageService` por R2 en la Fase 6.
+- El adaptador local permite ejecutar desarrollo sin servicios externos. `StorageService` selecciona R2 cuando recibe todas sus credenciales y conserva el adaptador local como fallback.
 
 ## 2026-08-24 — Decisiones de Coordinación
 
@@ -33,4 +33,4 @@
 ## 2026-08-24 — Archivos y PDF
 
 - Los archivos se almacenan detrás de `StorageService`: local para desarrollo y R2 solo cuando se configuran sus credenciales.
-- El PDF se genera síncronamente solo en desarrollo tras la decisión. Antes de producción deberá pasar a BullMQ para aislar el proceso de Chromium.
+- El PDF se genera de forma síncrona con `pdf-lib`, superponiendo los datos autorizados sobre una plantilla oficial versionada. Un rechazo genera el documento de inmediato; una aprobación lo genera cuando la jornada se cierra. El proceso no usa Chromium, Redis ni BullMQ.

@@ -1,7 +1,8 @@
 # Entorno local — procedimiento verificado
 
-Validado el 24 de agosto de 2026 sobre Fedora 44, Node.js 24.15.0, pnpm 11.23.0,
-Docker 29.7.2 y PostgreSQL 18.4. El flujo completo se ejecutó de punta a punta.
+El procedimiento se verificó inicialmente el 24 de agosto de 2026 sobre Fedora 44,
+Node.js 24.15.0, pnpm 11.23.0, Docker 29.7.2 y PostgreSQL 18.4. Los comandos y
+el flujo se contrastaron con el repositorio actual el 21 de octubre de 2026.
 
 ## Requisitos
 
@@ -10,7 +11,7 @@ Docker 29.7.2 y PostgreSQL 18.4. El flujo completo se ejecutó de punta a punta.
 | Node.js          | 24.15.0        | El README pide 22 LTS; 24 funciona sin cambios. |
 | pnpm             | 11.23.0        | Vía `corepack enable`.                          |
 | Docker + Compose | 29.7.2 / 5.4.0 | Para PostgreSQL.                                |
-| Chrome/Chromium  | cualquiera     | Solo para `ng test`; Puppeteer trae el suyo.    |
+| Chrome/Chromium  | cualquiera     | Solo para las pruebas Karma del frontend.       |
 
 ## Arranque
 
@@ -32,14 +33,12 @@ pnpm dev:web    # http://localhost:4200
 `DATABASE_URL` debe apuntar al Postgres del compose (`localhost:5432`), no a una base
 gestionada remota: `migrate` y `seed` escriben en la base a la que apunte esa variable.
 
-## Diferencias frente al README
+## Migraciones locales
 
-- El README indica `pnpm db:migrate`, que ejecuta `migrate dev`. Ese comando puede pedir
-  confirmación y reiniciar la base si detecta desincronía. Para levantar el entorno se usa
-  `migrate deploy`, que solo aplica las migraciones existentes.
-- El README no menciona que el `.env` debe editarse antes de `docker compose up`: el
-  contenedor de PostgreSQL fija la contraseña al crear el volumen. Si cambia
-  `POSTGRES_PASSWORD` después, hay que recrearlo con `docker compose down -v`.
+`pnpm db:migrate` ejecuta `migrate dev` y se usa al desarrollar una migración. Para levantar
+un entorno desde las migraciones versionadas, use `migrate deploy`, como en el bloque anterior.
+Edite `.env` antes de crear el volumen de PostgreSQL: el contenedor fija su contraseña durante
+la primera inicialización. Cambiar `POSTGRES_PASSWORD` después no modifica el volumen existente.
 
 ## Pruebas del frontend
 
@@ -56,14 +55,14 @@ El script `pnpm --filter @sg-sst/web run test` no acepta argumentos adicionales
 
 ## Estado de la cadena de validación
 
-| Comando                              | Resultado           |
-| ------------------------------------ | ------------------- |
-| `pnpm lint`                          | pasa                |
-| `pnpm format:check`                  | pasa                |
-| `pnpm --filter @sg-sst/api run test` | 3 suites, 6 pruebas |
-| `ng test` (web)                      | 1 prueba            |
-| `pnpm build`                         | API y web compilan  |
-| `docker compose config`              | válido              |
+| Comando                              | Resultado               |
+| ------------------------------------ | ----------------------- |
+| `pnpm lint`                          | pasa                    |
+| `pnpm format:check`                  | pasa                    |
+| `pnpm --filter @sg-sst/api run test` | pasa                    |
+| `ng test` (web)                      | pasa con ChromeHeadless |
+| `pnpm build`                         | API y web compilan      |
+| `docker compose config`              | válido                  |
 
 ## Flujo verificado de punta a punta
 
@@ -73,10 +72,11 @@ El script `pnpm --filter @sg-sst/web run test` no acepta argumentos adicionales
 4. Login de colaborador con documento + PIN.
 5. Consulta de flujo → `canContinue: true`.
 6. Envío del formulario HSE-FO-016 con firma PNG → `PENDING_APPROVAL`.
-7. Aprobación desde Coordinación → PDF de 3 páginas generado con Puppeteer.
-8. Descarga auditada del PDF.
-9. Bloqueo confirmado: un colaborador con ARL vencida recibe 403 al intentar enviar.
-10. Inmutabilidad confirmada: un envío ya decidido devuelve 409.
+7. Aprobación desde Coordinación → permiso disponible para registrar inicio.
+8. Cierre por un integrante de la cuadrilla → PDF completado con `pdf-lib` sobre la plantilla oficial y anexo de cierre.
+9. Descarga auditada del PDF. Un rechazo genera su PDF al registrar la decisión.
+10. Bloqueo confirmado: un colaborador con ARL vencida recibe 403 al intentar enviar.
+11. Inmutabilidad confirmada: un envío ya decidido devuelve 409.
 
 ## Servicios y credenciales de desarrollo
 

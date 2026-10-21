@@ -1,23 +1,23 @@
 # Plan de implementación
 
-## Estado de validación — 24 de agosto de 2026
+## Estado de validación — 21 de octubre de 2026
 
-- [x] Instalar dependencias del monorepo y generar Prisma Client (validado inicialmente; pendiente regenerar el lockfile de pnpm).
-- [x] Ejecutar lint de API y frontend (validado inicialmente).
-- [x] Compilar la API (validado inicialmente).
-- [x] Ejecutar pruebas unitarias de la API: 3 suites y 6 pruebas aprobadas.
-- [ ] Compilar y ejecutar las pruebas del frontend con Node.js 22 LTS. El equipo tiene Node.js 24.19.0 y `ng test` presenta errores de resolución/acceso de Angular en ese entorno.
-- [ ] Ejecutar Docker Compose, migraciones contra PostgreSQL y pruebas de integración. Docker aún no está instalado o disponible en la consola.
+- [x] Instalar dependencias reproducibles con el lockfile y generar Prisma Client.
+- [x] Ejecutar formato y lint de API y frontend.
+- [x] Compilar API y frontend.
+- [x] Ejecutar las pruebas unitarias de la API.
+- [x] Configurar en CI las pruebas del frontend con ChromeHeadless.
+- [ ] Aplicar las migraciones contra PostgreSQL y repetir las pruebas operativas en el entorno de despliegue. El daemon de Docker no está disponible en la consola de validación actual.
 
 ## Fase 0 — Base técnica
 
 - [x] Crear monorepo pnpm con `backend`, `frontend` e `infra`.
 - [x] Configurar NestJS con validación global, Helmet, CORS, rate limiting, Swagger y healthcheck.
 - [x] Configurar Angular standalone, rutas iniciales y Service Worker/PWA.
-- [x] Configurar Prisma con PostgreSQL, Redis y Docker Compose.
+- [x] Configurar Prisma con PostgreSQL y Docker Compose.
 - [x] Agregar `.env.example`, Dockerfiles y documentación reproducible.
 - [x] Crear migración inicial de Prisma (`system_settings`).
-- [ ] Validar el build y las pruebas del frontend con Node.js 22 LTS.
+- [x] Validar el build del frontend con Node.js 22 LTS y ejecutar sus pruebas en CI.
 - [ ] Levantar y comprobar los servicios de Docker Compose.
 
 ## Fase 1 — Acceso y RBAC
@@ -62,17 +62,16 @@
 - [x] Bandeja, métricas y detalle de envíos pendientes para Coordinación.
 - [x] Aprobación/rechazo atómico, motivo obligatorio de rechazo y auditoría de decisión.
 - [x] Actualización de estado visible para el colaborador (`PENDING_APPROVAL`, `APPROVED`, `REJECTED`).
-- [x] Generación de PDF final tras la decisión, implementada en la Fase 6.
+- [x] Generación de PDF al rechazo o al cierre de una jornada aprobada, implementada en la Fase 6.
 - [ ] Validar en E2E la aprobación, el rechazo y la actualización visible para el colaborador.
 
 ## Fase 6 — Archivos y PDF
 
 - [x] `StorageService` con adaptadores local y R2, seleccionados por configuración.
 - [x] Firmas persistidas como archivos mediante el adaptador, con metadatos y SHA-256.
-- [x] Generación síncrona de PDF final al cerrar una decisión, con identificador verificable y hash almacenado.
+- [x] Generación síncrona con `pdf-lib` sobre una plantilla oficial versionada, con identificador verificable y hash almacenado.
 - [x] Descarga protegida y auditada de archivos.
-- [x] Imagen Docker de API preparada con Chromium para Puppeteer.
-- [ ] Mover la generación de PDF a BullMQ/Redis antes del despliegue productivo.
+- [x] Imagen Docker de API con las plantillas y mappings requeridos por el generador de PDF, sin dependencia de navegador.
 - [ ] Probar la generación y descarga de PDF en el contenedor Docker, incluida la configuración R2 si se utilizará en producción.
 
 ## Fase 7 — Legal, hardening y despliegue
@@ -84,12 +83,11 @@
 - [x] Prueba unitaria de permisos y documentación de despliegue, backups y restauración.
 - [ ] Implementar y ejecutar el conjunto de pruebas E2E para los roles de colaborador, coordinación y legal.
 - [ ] Ejecutar migraciones, pruebas de backup/restauración y validación de seguridad en un entorno similar a producción.
-- [ ] Configurar variables y credenciales productivas: PostgreSQL, Redis, almacenamiento R2, cookies seguras, CORS y secretos JWT.
+- [ ] Configurar variables y credenciales productivas: PostgreSQL, almacenamiento R2, CORS y secretos JWT; verificar las cookies seguras del override productivo.
 
 ## Pendientes prioritarios antes de despliegue
 
-1. Usar Node.js 22 LTS y completar build/pruebas del frontend.
-2. Instalar o habilitar Docker y validar Compose, PostgreSQL, Redis y migraciones.
-3. Implementar las pruebas E2E de los flujos críticos.
-4. Pasar la generación de PDF a BullMQ/Redis y probarla dentro de Docker.
-5. Realizar una prueba de despliegue, backup y restauración antes de producción.
+1. Habilitar Docker y validar PostgreSQL, migraciones y el arranque combinado de Compose.
+2. Implementar las pruebas E2E de los flujos críticos.
+3. Probar dentro de Docker la generación y descarga de PDF con el almacenamiento elegido para producción.
+4. Realizar una prueba de despliegue, backup y restauración con una copia representativa antes de producción.

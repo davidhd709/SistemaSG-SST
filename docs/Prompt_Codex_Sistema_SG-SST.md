@@ -1,5 +1,7 @@
 # Prompt maestro para Codex - Sistema SG-SST
 
+> **Documento histórico.** Conserva los requisitos iniciales que dieron origen al proyecto y no describe necesariamente la implementación vigente. Consulte `README.md`, `docs/IMPLEMENTATION_PLAN.md` y `docs/DEPLOYMENT_AND_BACKUPS.md` para operar o desplegar el sistema actual.
+
 Quiero que trabajes como arquitecto de software y desarrollador full stack senior sobre un proyecto nuevo llamado **Sistema SG-SST**. El objetivo es construir una PWA simple para el colaborador, pero con trazabilidad, control de acceso, versionado y auditoría fuertes en el backend.
 
 ## 1. Contexto del proyecto

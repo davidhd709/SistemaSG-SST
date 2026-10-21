@@ -34,11 +34,11 @@ Después de iniciar los contenedores por primera vez, cree los roles, permisos y
 
 En desarrollo, firmas y PDFs se almacenan en `backend/storage/`, directorio que no se versiona. Si se definen `R2_ENDPOINT`, `R2_BUCKET`, `R2_ACCESS_KEY_ID` y `R2_SECRET_ACCESS_KEY`, la misma interfaz `StorageService` usa Cloudflare R2. El bucket debe ser privado. Las descargas pasan por la API y se auditan.
 
-El PDF final se genera al cerrar una jornada autorizada o al rechazar un envío. La interfaz queda aislada para sustituir esa llamada síncrona por un trabajo BullMQ antes de producción.
+El PDF final se genera de forma síncrona al cerrar una jornada autorizada o al rechazar un envío. `pdf-lib` completa la plantilla oficial versionada y agrega el registro de cierre; el proceso no requiere navegador, Redis ni un worker externo.
 
-Si falla esa generación, Coordinación puede usar `POST /coordination/submissions/:id/generate-pdf` con el permiso `submissions:review`. Solo admite envíos `CLOSED` o `REJECTED` sin PDF; genera el archivo y registra `GENERATE_FINAL_PDF` en auditoría sin modificar las fechas del envío.
+Si falla esa generación, Coordinación puede usar `POST /api/coordination/submissions/:id/generate-pdf` con el permiso `submissions:review`. Solo admite envíos `CLOSED` o `REJECTED` sin PDF; genera el archivo y registra `GENERATE_FINAL_PDF` en auditoría sin modificar las fechas del envío.
 
-Para una jornada autorizada e iniciada que la cuadrilla no puede cerrar, `POST /coordination/submissions/:id/admin-close` exige `submissions:close-admin` y un `reason` obligatorio. Registra `ADMIN_CLOSE_WORKDAY` con el usuario y el motivo, libera a la cuadrilla y genera el PDF. Ejecuta el seed de roles después de desplegar para asignar el permiso a Administración y Coordinación.
+Para una jornada autorizada e iniciada que la cuadrilla no puede cerrar, `POST /api/coordination/submissions/:id/admin-close` exige `submissions:close-admin` y un `reason` obligatorio. Registra `ADMIN_CLOSE_WORKDAY` con el usuario y el motivo, libera a la cuadrilla y genera el PDF. Ejecuta el seed de roles después de desplegar para asignar el permiso a Administración y Coordinación.
 
 La charla de seguridad se confirma mediante una declaración del colaborador. La API vincula la declaración con el video y exige que transcurra su duración mínima antes de aceptar el permiso. Este control no certifica la atención de la persona al video.
 

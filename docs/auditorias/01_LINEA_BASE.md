@@ -1,5 +1,7 @@
 # SG-SST — Línea Base de Calidad y Entorno (Fase 0 / F0.1)
 
+> **Documento histórico.** Describe el estado observado el 15 y 16 de octubre de 2026. No representa el estado actual; consulte [`02_REGISTRO_HALLAZGOS.md`](./02_REGISTRO_HALLAZGOS.md) y [`04_PLAN_ACCION.md`](./04_PLAN_ACCION.md) para el seguimiento vigente.
+
 ## 1. Información General de Ejecución y Estado del Repositorio
 
 - **Fecha de ejecución original (Fase 0):** 15 de octubre de 2026.

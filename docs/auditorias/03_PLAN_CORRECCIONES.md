@@ -1,5 +1,7 @@
 # SG-SST — Plan de Correcciones Priorizado
 
+> **Documento histórico.** Conserva la secuencia propuesta al iniciar la auditoría. El estado ejecutado y los commits de evidencia se registran en [`04_PLAN_ACCION.md`](./04_PLAN_ACCION.md).
+
 ## 1. Visión General y Criterios de Priorización
 
 El presente plan organiza la resolución de los 23 hallazgos oficiales de auditoría (**AUD-001 a AUD-023**) y los 9 hallazgos técnicos complementarios (**TEC-001 a TEC-009**) en **6 fases secuenciales**, priorizando la integridad probatoria del documento legal HSE-FO-016, la viabilidad operativa del motor PDF en contenedores Docker y la seguridad del sistema antes de proceder con refactorizaciones o mejoras de estilo.

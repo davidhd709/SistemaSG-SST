@@ -149,4 +149,5 @@ AUD-030, AUD-031, AUD-032, AUD-008 + CSP, AUD-023, AUD-020 (retirar `charla-04..
 | AUD-031 | Hecho `3c30aec`     | El archivo devuelve páginas de hasta 100 registros, total y número de páginas; la interfaz permite recorrer el resultado completo.              |
 | AUD-032 | Hecho `3359808`     | El cierre persiste actor y notas; el PDF agrega un anexo de cierre y la auditoría atribuye la generación al usuario o colaborador real.         |
 | AUD-008 | Hecho `4d22821`     | Nginx conserva las cabeceras de seguridad en respuestas con caché y aplica una CSP compatible con la PWA, firmas y descargas locales.           |
-| TEC-009 | Hecho (este commit) | Compose transmite la configuración R2 al contenedor API en desarrollo y producción, conservando el fallback local si está vacía.                |
+| TEC-009 | Hecho `6c09d32`     | Compose transmite la configuración R2 al contenedor API en desarrollo y producción, conservando el fallback local si está vacía.                |
+| AUD-023 | Hecho (este commit) | La documentación operativa refleja el flujo, dependencias, almacenamiento, PDF, validaciones y despliegue que existen en el repositorio.        |
