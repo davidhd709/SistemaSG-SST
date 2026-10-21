@@ -7,7 +7,7 @@ COPY backend/package.json backend/package.json
 COPY frontend/package.json frontend/package.json
 RUN corepack enable && pnpm install --frozen-lockfile
 COPY backend backend
-RUN pnpm --filter @sg-sst/api run prisma:generate && pnpm --filter @sg-sst/api run build && pnpm --filter @sg-sst/api run build:seed
+RUN pnpm --filter @sg-sst/api run prisma:generate && pnpm --filter @sg-sst/api run build && pnpm --filter @sg-sst/api run build:seed && CI=true pnpm prune --prod && pnpm --filter @sg-sst/api run prisma:generate
 FROM node:22-alpine
 WORKDIR /app/backend
 ENV NODE_ENV=production
