@@ -1,0 +1,91 @@
+.detalle-arl {
+  display: grid;
+  gap: 14px;
+  margin: 0;
+}
+.detalle-arl dt {
+  color: var(--tinta-suave);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+.detalle-arl dd {
+  margin: 2px 0 0;
+  font-size: 1.0625rem;
+}
+.pregunta-principal {
+  margin: 0 0 16px;
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+.charla-video {
+  display: grid;
+  gap: 16px;
+}
+.reproductor-charla {
+  display: block;
+  width: 100%;
+  max-height: 58vh;
+  background: #101a1d;
+  border-radius: var(--radio);
+}
+.estado-charla {
+  margin: 0;
+  color: var(--tinta-media);
+  font-weight: 600;
+}
+.estado-charla.completada {
+  color: var(--ok);
+}
+.charla-acciones {
+  margin-top: -4px;
+}
+.declaracion-charla {
+  align-items: flex-start;
+}
+.declaracion-charla.deshabilitada {
+  cursor: not-allowed;
+  opacity: 0.62;
+}
+.campo-nombre {
+  width: 46%;
+  color: var(--tinta-media);
+  font-weight: 600;
+}
+.fila-alerta {
+  background: var(--error-fondo);
+}
+.fila-alerta .campo-nombre {
+  color: var(--error);
+}
+.secundario {
+  color: var(--tinta-suave);
+  font-size: 0.9375rem;
+}
+.automatico .valor-auto {
+  margin: 0;
+  padding: 12px 14px;
+  border: 1px dashed var(--borde-fuerte);
+  border-radius: var(--radio);
+  background: var(--fondo);
+  font-weight: 600;
+}
+.automatico .valor-auto .secundario {
+  display: block;
+  font-weight: 400;
+  font-size: 0.8125rem;
+}
+.centrado {
+  justify-content: center;
+  text-align: center;
+  margin-top: 18px;
+}
+.bloque .campo,
+.bloque .pregunta {
+  margin-bottom: 4px;
+}
+form.bloque {
+  display: grid;
+  gap: 18px;
+}
