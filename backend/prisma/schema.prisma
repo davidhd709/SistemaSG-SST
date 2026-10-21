@@ -406,7 +406,8 @@ model PayrollMembership {
 }
 
 /// Certificado de trabajo seguro en alturas, por colaborador. Lo carga
-/// Coordinación y su vigencia decide si la persona puede integrar una cuadrilla.
+/// Coordinación y se exige vigente al Oficial eléctrico (único rol expuesto a
+/// riesgo de alturas que diligencia el permiso); para ayudantes en piso no aplica.
 model HeightCertificate {
   id             String       @id @default(uuid()) @db.Uuid
   collaboratorId String       @db.Uuid

@@ -49,9 +49,9 @@ El resto de hallazgos AUD/TEC permanece abierto tal como está registrado.
 | AUD-032 | P3        | Backend             | Las notas de cierre no llegan al PDF y el PDF de cierre se atribuye al coordinador que aprobó.                                  |
 | AUD-033 | P3        | API / Formularios   | La API de formularios no admite campos `auto` ni rechaza IDs reservados.                                                        |
 
-### Ambigüedad de requerimiento
+### Ambigüedad de requerimiento (Resuelta)
 
-**REQ-001 — Certificado de alturas solo para "Oficial eléctrico".** `compliance.service.ts` marca `NO_APLICA` a los demás cargos. La regla no está documentada y contradice el comentario del modelo `HeightCertificate`. Requiere confirmación de SST/Legal frente a la normativa colombiana de trabajo en alturas (Res. 4272/2021). Si se confirma como incorrecta, pasa a P1. **No se modifica hasta tener la decisión.**
+**REQ-001 — Certificado de alturas solo para "Oficial eléctrico" (Confirmado / Cerrado).** Se confirmó con operación/SST que el Oficial eléctrico es quien diligencia el permiso y el único integrante que se expone a riesgo de alturas, mientras que los ayudantes apoyan desde piso (`NO_APLICA`). Regla documentada en [`docs/DECISIONS.md`](../DECISIONS.md) y comentario alineado en `schema.prisma`.
 
 ## 4. Plan por etapas
 
@@ -111,7 +111,7 @@ AUD-030, AUD-031, AUD-032, AUD-008 + CSP, AUD-023, AUD-020 (retirar `charla-04..
 | 6    | AUD-025         | Hecho `f39b469` | `POST /coordination/submissions/:id/admin-close` requiere `submissions:close-admin` y motivo. Cierra una jornada iniciada, audita al usuario y libera la cuadrilla. El control está en la pantalla de Coordinación.                     |
 | 7    | AUD-004         | Hecho `3380ef4` | `TRUST_PROXY_HOPS` configura 1 salto en desarrollo y 2 en producción (proxy HTTPS → web → API). Prueba de Express verifica `request.ip` con `X-Forwarded-For` y rechaza saltos inválidos.                                               |
 | 8    | AUD-007         | Hecho `c8c158d` | Scripts para respaldar PostgreSQL y archivos locales o R2, y verificar restauración aislada. Prueba del 20/10/2026: checksums correctos y 1 tabla restaurada con Compose temporal. Falta ensayo con datos reales de despliegue.         |
-| —    | REQ-001         | Pendiente       | Decisión SST                                                                                                                                                                                                                            |
+| —    | REQ-001         | Cerrado         | Confirmado que solo el Oficial eléctrico se expone a riesgo de alturas y diligencia el formato; los ayudantes operan en piso (`NO_APLICA`). Documentado en `docs/DECISIONS.md` y `schema.prisma`.                                       |
 
 ## 7. Seguimiento de la Etapa 2
 

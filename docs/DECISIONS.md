@@ -34,3 +34,9 @@
 
 - Los archivos se almacenan detrás de `StorageService`: local para desarrollo y R2 solo cuando se configuran sus credenciales.
 - El PDF se genera de forma síncrona con `pdf-lib`, superponiendo los datos autorizados sobre una plantilla oficial versionada. Un rechazo genera el documento de inmediato; una aprobación lo genera cuando la jornada se cierra. El proceso no usa Chromium, Redis ni BullMQ.
+
+## 2026-10-21 — Exigencia de certificado de alturas (REQ-001)
+
+- El **Oficial eléctrico** (`JobPosition.canLead = true`) es el único rol que asciende y se expone directamente al riesgo de trabajo en alturas; además es quien diligencia el formato `HSE-FO-016` y registra a los ayudantes/auxiliares de la cuadrilla.
+- Por lo tanto, el certificado vigente de trabajo seguro en alturas (`HeightCertificate`) se exige exclusivamente al cargo **Oficial eléctrico** (`VIGENTE` requerido para habilitar el envío).
+- Los demás integrantes de la cuadrilla (`Ayudante`, `Auxiliar eléctrico`, `Supervisor`) realizan labores de apoyo desde piso sin exposición a riesgo de altura, por lo que su estado de certificado de alturas se evalúa como `NO_APLICA`, manteniendo obligatorias la afiliación ARL y la seguridad social vigentes para todos los miembros.
