@@ -1,15 +1,88 @@
 # Despliegue y backups
 
-## Producción en Ubuntu
+## Flujo local → GitHub → VPS
 
-1. Instale Docker Engine y el plugin Docker Compose.
-2. Clone el repositorio, cree `.env` desde `.env.example` y asigne secretos largos y únicos para PostgreSQL, JWT y `SAFETY_TALK_JWT_SECRET`. La clave de la charla debe ser distinta de las claves JWT de acceso y renovación.
-3. Configure el dominio en DNS y defina `API_CORS_ORIGIN` con el origen HTTPS real.
-4. Para almacenamiento privado, defina todas las variables R2. Si no se definen, la API usa disco local, opción no recomendada para producción.
-5. Ejecute `docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build` y ejecute el seed en el primer despliegue mediante un procedimiento controlado. La API aplica las migraciones al iniciar; el seed sincroniza los permisos vigentes con los roles iniciales. El override de producción activa la auditoría y marca la cookie de refresco como `Secure`.
-6. Publique Nginx con TLS. Certbot/Let's Encrypt debe renovar el certificado automáticamente; pruebe la renovación con `certbot renew --dry-run`.
+```
+local ──push/merge──▶ main ──CI SG-SST (lint, build, tests)──▶ Deploy SG-SST
+                                                                  │ build + push a GHCR
+                                                                  │   ghcr.io/davidhd709/sistemasg-sst-{api,web}:<sha>
+                                                                  ▼ SSH al VPS
+                                                     scripts/deploy.sh <sha>
+                                                     pull → backup → up → healthcheck
+                                                                  └─ si falla: vuelve al tag anterior
+```
 
-Los puertos de PostgreSQL, API y web están ligados a `127.0.0.1`; publique la web mediante un proxy HTTPS en el host. No exponga PostgreSQL ni el bucket R2 a internet. Restringa puertos con firewall y cambie las credenciales de bootstrap después de crear los usuarios reales.
+- Solo se despliega `main` y solo si el CI pasó. Las ramas `fix/**`, `feat/**`, etc. corren el CI, pero no despliegan.
+- Cada versión es una imagen inmutable etiquetada con el SHA del commit. El VPS no compila y solo descarga.
+- El workflow copia al VPS `docker-compose.yml`, `docker-compose.prod.yml` y los scripts de esa misma versión. El VPS **no** necesita un clon del repositorio.
+- `.github/workflows/deploy.yml` solo se activa por `workflow_run` cuando el archivo existe en `main`.
+
+### Preparación del VPS (una sola vez)
+
+Requisitos: Docker Engine con Compose 2.24 o superior, `curl` y un proxy HTTPS en el host.
+
+1. Cree un usuario de despliegue sin contraseña, con acceso solo por clave y miembro del grupo `docker`. Pertenecer a `docker` equivale a tener root en el host, así que use este usuario solo para desplegar.
+   ```bash
+   sudo adduser --disabled-password deploy && sudo usermod -aG docker deploy
+   sudo mkdir -p /opt/sgsst && sudo chown deploy:deploy /opt/sgsst
+   ```
+2. En su máquina local genere un par de claves exclusivo para GitHub Actions: `ssh-keygen -t ed25519 -f sgsst_deploy -N ''`. Añada `sgsst_deploy.pub` a `/home/deploy/.ssh/authorized_keys`.
+3. Cree `/opt/sgsst/.env` desde `.env.example` con `chmod 600`. Asigne secretos largos y únicos a PostgreSQL, a JWT y a `SAFETY_TALK_JWT_SECRET`, que debe ser distinto de las dos claves JWT. Defina además:
+   ```
+   NODE_ENV=production
+   API_CORS_ORIGIN=https://su-dominio
+   COMPOSE_FILE=docker-compose.yml:docker-compose.prod.yml
+   ```
+   Si el paquete de GHCR queda privado, el workflow inicia sesión en el VPS con un token temporal del job y cierra la sesión al terminar. No hace falta guardar un PAT en el servidor.
+4. Configure su proxy HTTPS existente para enviar el dominio a `http://127.0.0.1:8080`. El proxy debe añadir `X-Forwarded-For` y `X-Forwarded-Proto` y aceptar cuerpos de hasta 12 MB. Ejemplo en Nginx:
+   ```nginx
+   location / {
+     proxy_pass http://127.0.0.1:8080;
+     proxy_set_header Host $host;
+     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+     proxy_set_header X-Forwarded-Proto $scheme;
+     client_max_body_size 12M;
+   }
+   ```
+   Si el proxy es un contenedor y no un proceso del host, `127.0.0.1` no lo alcanzará: ajuste el puerto o la red. Ajuste también `TRUST_PROXY_HOPS` si la cadena de proxies cambia.
+5. Firewall: deje abiertos únicamente 22 (o su puerto SSH), 80 y 443.
+
+### Configuración en GitHub (una sola vez)
+
+En _Settings → Environments_ cree el entorno `production`. Puede exigir aprobación manual con _Required reviewers_. Dentro de ese entorno añada:
+
+| Tipo     | Nombre            | Valor                                                                    |
+| -------- | ----------------- | ------------------------------------------------------------------------ |
+| Secret   | `VPS_HOST`        | IP o dominio del VPS                                                     |
+| Secret   | `VPS_USER`        | `deploy`                                                                 |
+| Secret   | `VPS_SSH_KEY`     | Contenido de la clave privada `sgsst_deploy`                             |
+| Secret   | `VPS_KNOWN_HOSTS` | Salida de `ssh-keyscan -p PUERTO HOST`, verificada contra la huella real |
+| Variable | `VPS_PORT`        | Opcional, por defecto `22`                                               |
+| Variable | `VPS_APP_DIR`     | Opcional, por defecto `/opt/sgsst`                                       |
+
+Después de copiarla a GitHub, borre la clave privada local.
+
+### Primer despliegue
+
+1. Haga merge a `main`. Al terminar el CI, _Deploy SG-SST_ construye, publica y despliega.
+2. Ejecute el seed una sola vez en el VPS, con credenciales de bootstrap temporales:
+   ```bash
+   cd /opt/sgsst
+   docker compose run --rm -e BOOTSTRAP_ADMIN_EMAIL=... -e BOOTSTRAP_ADMIN_PASSWORD=... api node dist-seed/seed.js
+   ```
+   La API aplica las migraciones al iniciar. El seed sincroniza los permisos vigentes con los roles iniciales. Cambie las credenciales de bootstrap después de crear los usuarios reales.
+3. Compruebe `https://su-dominio/api/health` y haga login.
+
+### Actualizaciones y rollback
+
+- **Actualizar:** haga merge a `main`. `scripts/deploy.sh` descarga las imágenes nuevas. Si ya había una versión corriendo, ejecuta `scripts/backup.sh` en `$BACKUP_DIR` (por defecto `~/sgsst-backups`). Luego levanta los servicios y espera a que `/api/health` responda en `127.0.0.1:8080`.
+- **Rollback automático:** si el healthcheck falla, el script vuelve al `IMAGE_TAG` anterior y el job termina en rojo.
+- **Rollback manual:** en _Actions → Deploy SG-SST → Run workflow_ indique en `image_tag` el SHA de una versión anterior. También puede ejecutar `bash scripts/deploy.sh <sha>` en `/opt/sgsst`.
+- **Migraciones:** el rollback cambia las imágenes, pero no revierte las migraciones aplicadas. Si la versión anterior no es compatible con el esquema nuevo, restaure el respaldo creado justo antes del despliegue (ver _Restauración operativa_). Prefiera migraciones aditivas.
+- **Logs:** use `docker compose logs -f api` desde `/opt/sgsst`. Los logs de los contenedores rotan a 5 × 10 MB por servicio.
+- **Imágenes antiguas:** las imágenes etiquetadas se acumulan en el VPS. Revise de vez en cuando `docker image ls ghcr.io/davidhd709/*` y borre las que ya no necesite para rollback.
+
+Los puertos de PostgreSQL, API y web están ligados a `127.0.0.1`. Publique la web mediante el proxy HTTPS del host. No exponga PostgreSQL ni el bucket R2 a internet. Por ahora los archivos se guardan en el volumen `api_storage` del VPS. Por eso los respaldos deben copiarse fuera del servidor.
 
 La API usa `TRUST_PROXY_HOPS=2` en producción para la cadena proxy HTTPS del host → Nginx web → API. El proxy del host debe añadir la IP real a `X-Forwarded-For` y no aceptar cabeceras del cliente como fuente confiable. Si cambia el número de proxies, ajuste la variable (0, 1 o 2) antes de desplegar. Mantenga la API sin exposición pública directa.
 

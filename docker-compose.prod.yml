@@ -1,6 +1,30 @@
+# Override de producción. En el VPS se activa desde `.env` con:
+#   COMPOSE_FILE=docker-compose.yml:docker-compose.prod.yml
+# así `docker compose`, `scripts/backup.sh` y `scripts/deploy.sh` usan siempre
+# esta combinación. Las imágenes las publica `.github/workflows/deploy.yml` en
+# GHCR etiquetadas con el SHA del commit: el VPS no compila nada.
+# `build: !reset` requiere Docker Compose 2.24 o superior.
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: 10m
+    max-file: '5'
+
 services:
+  postgres:
+    logging: *logging
+
   api:
+    image: ${IMAGE_PREFIX:-ghcr.io/davidhd709/sistemasg-sst}-api:${IMAGE_TAG:?Defina IMAGE_TAG; lo escribe scripts/deploy.sh}
+    build: !reset null
     environment:
       NODE_ENV: production
       TRUST_PROXY_HOPS: 2
       AUDIT_ENABLED: 'true'
+    logging: *logging
+
+  web:
+    image: ${IMAGE_PREFIX:-ghcr.io/davidhd709/sistemasg-sst}-web:${IMAGE_TAG:?Defina IMAGE_TAG; lo escribe scripts/deploy.sh}
+    build: !reset null
+    logging: *logging
