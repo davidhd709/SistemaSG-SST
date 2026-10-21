@@ -19,6 +19,13 @@ import { TemplateRegistry } from '../pdf/template-registry';
 import { SubmitFormDto, type CrewMemberDto } from './dto/submit-form.dto';
 import { CloseWorkdayDto } from './dto/close-workday.dto';
 import { businessDate, businessDay } from '../common/business-date';
+import {
+  EDITABLE_FIELD_TYPES,
+  RESERVED_AUTOMATIC_FIELD_IDS,
+  isAutoFieldSource,
+  isReservedSystemFieldId,
+  type AutoFieldSource,
+} from '../forms/form-schema-policy';
 
 type Field = {
   id?: unknown;
@@ -28,31 +35,6 @@ type Field = {
   source?: unknown;
   maxLength?: unknown;
 };
-
-const EDITABLE_FIELD_TYPES = new Set(['text', 'textarea', 'yes_no', 'select', 'multi_select', 'number', 'date']);
-
-const RESERVED_AUTOMATIC_FIELD_IDS = new Set([
-  'vigencia_permiso',
-  'fecha_trabajo',
-  'hora_inicio',
-  'hora_finalizacion',
-  'hora_fin',
-  'certificado_alturas',
-  'seguridad_social_verificada',
-]);
-
-const RESERVED_SIGNATURE_FIELD_IDS = new Set([
-  'autorizador_firma',
-  'firma_autorizador',
-  'responsable_emergencia_firma',
-  'firma_responsable_emergencia',
-  'coordinador_alturas_firma',
-  'firma_coordinador_alturas',
-]);
-
-const RESERVED_IDENTITY_FIELD_IDS = new Set(['cedula', 'documento', 'nombre', 'cargo']);
-
-const RESERVED_CREW_ROW_PATTERN = /^(cuadrilla|ejecutor)_\d+_/i;
 
 const DEFAULT_MAX_TEXT_LENGTH = 500;
 const DEFAULT_MAX_TEXTAREA_LENGTH = 2000;
@@ -73,7 +55,7 @@ type SafetyTalkPayload = {
 };
 
 /** De dónde sale el valor de un campo que el sistema resuelve por su cuenta. */
-type Origen = 'workDate' | 'startedAt' | 'closedAt' | 'heightCertificate' | 'socialSecurity';
+type Origen = AutoFieldSource;
 
 /** Firma ya guardada en el almacén, lista para asociarse a su integrante. */
 type FirmaGuardada = {
@@ -619,7 +601,7 @@ export class SubmissionsService {
         }
         continue;
       }
-      if (!EDITABLE_FIELD_TYPES.has(campo.type) || this.isReservedSystemFieldId(campo.id)) continue;
+      if (!EDITABLE_FIELD_TYPES.has(campo.type) || isReservedSystemFieldId(campo.id)) continue;
       if (Object.prototype.hasOwnProperty.call(entrada, campo.id)) {
         valores[campo.id] = entrada[campo.id];
       }
@@ -676,15 +658,6 @@ export class SubmissionsService {
     return content;
   }
 
-  private isReservedSystemFieldId(fieldId: string): boolean {
-    return (
-      RESERVED_AUTOMATIC_FIELD_IDS.has(fieldId) ||
-      RESERVED_SIGNATURE_FIELD_IDS.has(fieldId) ||
-      RESERVED_IDENTITY_FIELD_IDS.has(fieldId) ||
-      RESERVED_CREW_ROW_PATTERN.test(fieldId)
-    );
-  }
-
   private validateAnswers(schema: Prisma.JsonValue, answers: object): void {
     if (!schema || typeof schema !== 'object' || Array.isArray(schema))
       throw new BadRequestException('El formulario publicado tiene un esquema inválido.');
@@ -706,9 +679,12 @@ export class SubmissionsService {
         throw new BadRequestException('El formulario publicado tiene un esquema inválido.');
       }
       if (field.type === 'auto') {
+        if (!isAutoFieldSource(field.source)) {
+          throw new BadRequestException('El formulario publicado tiene un esquema inválido.');
+        }
         autoFieldIds.add(field.id);
       } else if (EDITABLE_FIELD_TYPES.has(field.type)) {
-        if (this.isReservedSystemFieldId(field.id)) {
+        if (isReservedSystemFieldId(field.id)) {
           throw new BadRequestException('El formulario publicado tiene un esquema inválido.');
         }
         editableFieldIds.add(field.id);

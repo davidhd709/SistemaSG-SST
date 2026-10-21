@@ -4,8 +4,13 @@ import type { AuthenticatedRequest } from '../common/request-context';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateFormDto } from './dto/create-form.dto';
 import { CreateFormVersionDto } from './dto/create-form-version.dto';
+import {
+  EDITABLE_FIELD_TYPES,
+  isAutoFieldSource,
+  isReservedNonAutomaticFieldId,
+  isReservedSystemFieldId,
+} from './form-schema-policy';
 
-const types = new Set(['text', 'textarea', 'yes_no', 'select', 'multi_select', 'number', 'date']);
 type FormSchema = {
   title?: string;
   fields?: Array<{
@@ -15,6 +20,7 @@ type FormSchema = {
     required?: unknown;
     options?: unknown;
     order?: unknown;
+    source?: unknown;
   }>;
 };
 
@@ -139,14 +145,21 @@ export class FormsService {
     for (const field of value.fields) {
       if (typeof field.id !== 'string' || !/^[a-z][a-z0-9_]{1,80}$/.test(field.id) || ids.has(field.id))
         throw new BadRequestException('Cada campo requiere un id estable y único.');
+      const isAuto = field.type === 'auto';
       if (
         typeof field.label !== 'string' ||
         !field.label.trim() ||
-        !types.has(String(field.type)) ||
+        (!isAuto && !EDITABLE_FIELD_TYPES.has(String(field.type))) ||
         typeof field.required !== 'boolean' ||
         !Number.isInteger(field.order)
       )
         throw new BadRequestException(`Definición inválida del campo ${field.id}.`);
+      if (isAuto && (!isAutoFieldSource(field.source) || isReservedNonAutomaticFieldId(field.id))) {
+        throw new BadRequestException(`El campo automático ${field.id} tiene una fuente o identificador inválido.`);
+      }
+      if (!isAuto && isReservedSystemFieldId(field.id)) {
+        throw new BadRequestException(`El identificador ${field.id} está reservado para datos del sistema.`);
+      }
       if (
         (field.type === 'select' || field.type === 'multi_select') &&
         (!Array.isArray(field.options) || field.options.length === 0)

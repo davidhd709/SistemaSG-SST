@@ -137,4 +137,5 @@ AUD-030, AUD-031, AUD-032, AUD-008 + CSP, AUD-023, AUD-020 (retirar `charla-04..
 | TEC-006 | Hecho `736040d`     | La imagen API ya no instala Chromium ni define variables de Puppeteer; build y Prisma CLI verificados.                                             |
 | AUD-015 | Parcial `736040d`   | API usa UID 1000, web UID 101 en puerto 8080; ambas imágenes construyen y web responde. Falta separar dependencias de desarrollo de la imagen API. |
 | AUD-021 | Hecho `5f17e63`     | Redis se retira de Compose y de las instrucciones: la API no contiene cliente Redis ni usa `REDIS_URL`.                                            |
-| AUD-017 | Hecho (este commit) | Colaboradores se vinculan con `JobPosition`; PIN, autenticación y liderazgo de cuadrilla usan `canLead`, con migración de cargos existentes.       |
+| AUD-017 | Hecho `b2dfb2a`     | Colaboradores se vinculan con `JobPosition`; PIN, autenticación y liderazgo de cuadrilla usan `canLead`, con migración de cargos existentes.       |
+| AUD-033 | Hecho (este commit) | La API acepta campos automáticos con origen soportado y rechaza identificadores reservados en campos editables o automáticos no permitidos.        |
