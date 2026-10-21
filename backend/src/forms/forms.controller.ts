@@ -2,6 +2,7 @@ import { Body, Controller, Get, Param, Post, Req } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { RequirePermissions } from '../auth/auth.decorators';
 import type { AuthenticatedRequest } from '../common/request-context';
+import { UUID_PARAM_PIPE } from '../common/uuid-param.pipe';
 import { CreateFormDto } from './dto/create-form.dto';
 import { CreateFormVersionDto } from './dto/create-form-version.dto';
 import { FormsService } from './forms.service';
@@ -16,15 +17,15 @@ export class FormsController {
     return this.forms.create(dto, request);
   }
   @Post(':id/versions') @RequirePermissions('forms:manage') version(
-    @Param('id') id: string,
+    @Param('id', UUID_PARAM_PIPE) id: string,
     @Body() dto: CreateFormVersionDto,
     @Req() request: AuthenticatedRequest,
   ) {
     return this.forms.createVersion(id, dto, request);
   }
   @Post(':id/versions/:versionId/publish') @RequirePermissions('forms:manage') publish(
-    @Param('id') id: string,
-    @Param('versionId') versionId: string,
+    @Param('id', UUID_PARAM_PIPE) id: string,
+    @Param('versionId', UUID_PARAM_PIPE) versionId: string,
     @Req() request: AuthenticatedRequest,
   ) {
     return this.forms.publish(id, versionId, request);

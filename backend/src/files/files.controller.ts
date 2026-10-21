@@ -3,6 +3,7 @@ import { ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import type { Response } from 'express';
 import type { AuthenticatedRequest } from '../common/request-context';
+import { UUID_PARAM_PIPE } from '../common/uuid-param.pipe';
 import { AuditService } from '../audit/audit.service';
 import { FilesService } from './files.service';
 
@@ -17,7 +18,7 @@ export class FilesController {
   @Throttle({ default: { limit: 30, ttl: 60_000 } })
   @Get(':id/download')
   async download(
-    @Param('id') id: string,
+    @Param('id', UUID_PARAM_PIPE) id: string,
     @Req() request: AuthenticatedRequest,
     @Res() response: Response,
   ): Promise<void> {

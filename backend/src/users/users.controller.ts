@@ -2,6 +2,7 @@ import { Body, Controller, Get, Param, Patch, Post, Req } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { RequirePermissions } from '../auth/auth.decorators';
 import type { AuthenticatedRequest } from '../common/request-context';
+import { UUID_PARAM_PIPE } from '../common/uuid-param.pipe';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { ChangeOwnPasswordDto } from './dto/change-own-password.dto';
@@ -27,7 +28,7 @@ export class UsersController {
     return this.users.create(dto, request);
   }
   @Patch(':id') @RequirePermissions('users:manage') update(
-    @Param('id') id: string,
+    @Param('id', UUID_PARAM_PIPE) id: string,
     @Body() dto: UpdateUserDto,
     @Req() request: AuthenticatedRequest,
   ) {

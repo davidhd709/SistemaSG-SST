@@ -2,6 +2,7 @@ import { Body, Controller, Get, Param, Patch, Post, Req } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import type { AuthenticatedRequest } from '../common/request-context';
 import { RequirePermissions } from '../auth/auth.decorators';
+import { UUID_PARAM_PIPE } from '../common/uuid-param.pipe';
 import { CollaboratorsService } from './collaborators.service';
 import { CreateCollaboratorDto } from './dto/create-collaborator.dto';
 import { UpdateCollaboratorDto } from './dto/update-collaborator.dto';
@@ -23,7 +24,7 @@ export class CollaboratorsController {
     return this.collaborators.create(dto, request);
   }
   @Patch(':id') @RequirePermissions('collaborators:manage') update(
-    @Param('id') id: string,
+    @Param('id', UUID_PARAM_PIPE) id: string,
     @Body() dto: UpdateCollaboratorDto,
     @Req() request: AuthenticatedRequest,
   ) {

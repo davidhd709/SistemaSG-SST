@@ -145,5 +145,6 @@ AUD-030, AUD-031, AUD-032, AUD-008 + CSP, AUD-023, AUD-020 (retirar `charla-04..
 | ID      | Estado              | Evidencia                                                                                                                                       |
 | ------- | ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
 | AUD-020 | Hecho `c5d25e5`     | Se retiraron `charla-04..08`: 19,35 MB sin referencias. El producto conserva los tres videos usados y reconocidos por el backend y el frontend. |
+| AUD-030 | Hecho (este commit) | Todos los UUID de ruta se validan antes del servicio; el filtro global traduce errores Prisma conocidos a respuestas 400, 404 o 409.            |
 | AUD-031 | Hecho `3c30aec`     | El archivo devuelve páginas de hasta 100 registros, total y número de páginas; la interfaz permite recorrer el resultado completo.              |
-| AUD-032 | Hecho (este commit) | El cierre persiste actor y notas; el PDF agrega un anexo de cierre y la auditoría atribuye la generación al usuario o colaborador real.         |
+| AUD-032 | Hecho `3359808`     | El cierre persiste actor y notas; el PDF agrega un anexo de cierre y la auditoría atribuye la generación al usuario o colaborador real.         |

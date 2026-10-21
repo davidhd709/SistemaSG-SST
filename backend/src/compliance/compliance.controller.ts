@@ -4,6 +4,7 @@ import { ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { RequirePermissions } from '../auth/auth.decorators';
 import type { AuthenticatedRequest } from '../common/request-context';
+import { UUID_PARAM_PIPE } from '../common/uuid-param.pipe';
 import { ComplianceAdminService } from './compliance-admin.service';
 import { CreatePayrollDto } from './dto/create-payroll.dto';
 import { UpdatePayrollDto } from './dto/update-payroll.dto';
@@ -34,7 +35,7 @@ export class ComplianceController {
   }
 
   @Patch('payrolls/:id') @RequirePermissions('compliance:manage') updatePayroll(
-    @Param('id') id: string,
+    @Param('id', UUID_PARAM_PIPE) id: string,
     @Body() dto: UpdatePayrollDto,
     @Req() request: AuthenticatedRequest,
   ) {
@@ -45,7 +46,11 @@ export class ComplianceController {
   @Post('payrolls/:id/file')
   @RequirePermissions('compliance:manage')
   @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 10 * 1024 * 1024 } }))
-  attachPayrollFile(@Param('id') id: string, @UploadedFile() file: Subida, @Req() request: AuthenticatedRequest) {
+  attachPayrollFile(
+    @Param('id', UUID_PARAM_PIPE) id: string,
+    @UploadedFile() file: Subida,
+    @Req() request: AuthenticatedRequest,
+  ) {
     return this.admin.attachPayrollFile(id, file, request);
   }
 
@@ -67,7 +72,11 @@ export class ComplianceController {
   @Post('height-certificates/:id/file')
   @RequirePermissions('compliance:manage')
   @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 10 * 1024 * 1024 } }))
-  attachCertificateFile(@Param('id') id: string, @UploadedFile() file: Subida, @Req() request: AuthenticatedRequest) {
+  attachCertificateFile(
+    @Param('id', UUID_PARAM_PIPE) id: string,
+    @UploadedFile() file: Subida,
+    @Req() request: AuthenticatedRequest,
+  ) {
     return this.admin.attachCertificateFile(id, file, request);
   }
 }
