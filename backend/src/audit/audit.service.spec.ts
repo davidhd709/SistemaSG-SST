@@ -21,4 +21,3 @@ describe('AuditService (AUD-010)', () => {
     expect(create).toHaveBeenCalledWith({ data: input });
   });
 });
-

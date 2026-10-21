@@ -115,19 +115,23 @@ AUD-030, AUD-031, AUD-032, AUD-008 + CSP, AUD-023, AUD-020 (retirar `charla-04..
 
 ## 7. Seguimiento de la Etapa 2
 
-| ID                | Estado          | Evidencia                                                                                                                                     |
-| ----------------- | --------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| AUD-014 / TEC-002 | Hecho `4cd9cf9` | `format:check`, lint de API y frontend, 120 pruebas de API y ambos builds aprobados.                                                          |
-| TEC-003           | Pendiente       | Protección de `main` en GitHub; la conexión disponible no expone esa configuración.                                                           |
-| AUD-006           | Hecho `05cd063` | Seed compilado dentro de la imagen Docker; migraciones y seed ejecutados contra PostgreSQL 18 temporal sin archivo `.env`. Rol ADMIN creado.  |
-| AUD-009           | Hecho `b9f0f9f` | Swagger solo se registra fuera de producción; pruebas verifican ambos entornos.                                                               |
-| AUD-011           | Hecho `81eb6e7` | Rotación usa `updateMany` condicional y crea el reemplazo en la misma transacción; prueba de dos renovaciones concurrentes acepta solo una.   |
-| AUD-012           | Hecho `5c24e15` | Cambio de contraseña propia con clave actual, auditoría, revocación de refresh y formulario para usuarios internos.                           |
-| AUD-022           | Hecho `e771b82` | La charla usa `SAFETY_TALK_JWT_SECRET` separado de refresh; configuración obligatoria y prueba de firma y validación.                         |
-| AUD-026           | Hecho `03b0c78` | El seed conserva el esquema de la versión 4 publicada y no cambia la versión vigente. Verificado con una versión 5 en PostgreSQL 18 temporal. |
-| AUD-027           | Hecho `06f7601` | Lista ARL y dashboard priorizan la afiliación que cubre hoy, igual que el control de acceso; prueba del caso con afiliación futura.           |
-| AUD-028           | Hecho `93b691b` | La versión PDF se fija al enviar, se guarda al generar documentos históricos y nunca se sustituye en silencio. Pruebas de versión faltante.   |
-| AUD-019           | Hecho `605eeba` | Cambio o retiro de PIN e inactivación revocan sesiones refresh en la misma transacción; la auditoría registra el hecho sin guardar el PIN.    |
+| ID                | Estado          | Evidencia                                                                                                                                      |
+| ----------------- | --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| AUD-014 / TEC-002 | Hecho `4cd9cf9` | `format:check`, lint de API y frontend, 120 pruebas de API y ambos builds aprobados.                                                           |
+| TEC-003           | Pendiente       | Protección de `main` en GitHub; la conexión disponible no expone esa configuración.                                                            |
+| AUD-006           | Hecho `05cd063` | Seed compilado dentro de la imagen Docker; migraciones y seed ejecutados contra PostgreSQL 18 temporal sin archivo `.env`. Rol ADMIN creado.   |
+| AUD-009           | Hecho `b9f0f9f` | Swagger solo se registra fuera de producción; pruebas verifican ambos entornos.                                                                |
+| AUD-011           | Hecho `81eb6e7` | Rotación usa `updateMany` condicional y crea el reemplazo en la misma transacción; prueba de dos renovaciones concurrentes acepta solo una.    |
+| AUD-012           | Hecho `5c24e15` | Cambio de contraseña propia con clave actual, auditoría, revocación de refresh y formulario para usuarios internos.                            |
+| AUD-022           | Hecho `e771b82` | La charla usa `SAFETY_TALK_JWT_SECRET` separado de refresh; configuración obligatoria y prueba de firma y validación.                          |
+| AUD-026           | Hecho `03b0c78` | El seed conserva el esquema de la versión 4 publicada y no cambia la versión vigente. Verificado con una versión 5 en PostgreSQL 18 temporal.  |
+| AUD-027           | Hecho `06f7601` | Lista ARL y dashboard priorizan la afiliación que cubre hoy, igual que el control de acceso; prueba del caso con afiliación futura.            |
+| AUD-028           | Hecho `93b691b` | La versión PDF se fija al enviar, se guarda al generar documentos históricos y nunca se sustituye en silencio. Pruebas de versión faltante.    |
+| AUD-019           | Hecho `605eeba` | Cambio o retiro de PIN e inactivación revocan sesiones refresh en la misma transacción; la auditoría registra el hecho sin guardar el PIN.     |
+| AUD-029           | Hecho `d343707` | Rechaza asignar PIN a cargos sin permiso de liderazgo (`canLead: false`), reinicia bloqueos al cambiar PIN y audita `hasPin`/`pinConfigured`.  |
+| AUD-010           | Hecho `ad6d537` | `AuditService.record` persiste siempre los eventos sin banderas que permitan omitirlos; `.env.example` queda alineado en `AUDIT_ENABLED=true`. |
+| AUD-018           | Hecho `fd21f52` | `UsersService.update` impide inactivar o retirar el rol `ADMIN` al último administrador activo dentro de la transacción.                       |
+| AUD-013 / TEC-007 | Hecho `f5ef04e` | 21 suites y 152 pruebas unitarias en backend (incluyendo `ComplianceService` y `AuditService`) y scripts `lint`/`format:check` depurados.      |
 
 ## 8. Seguimiento de la Etapa 3
 
@@ -142,12 +146,12 @@ AUD-030, AUD-031, AUD-032, AUD-008 + CSP, AUD-023, AUD-020 (retirar `charla-04..
 
 ## 9. Seguimiento de la Etapa 4
 
-| ID      | Estado              | Evidencia                                                                                                                                       |
-| ------- | ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| AUD-020 | Hecho `c5d25e5`     | Se retiraron `charla-04..08`: 19,35 MB sin referencias. El producto conserva los tres videos usados y reconocidos por el backend y el frontend. |
-| AUD-030 | Hecho `09c268f`     | Todos los UUID de ruta se validan antes del servicio; el filtro global traduce errores Prisma conocidos a respuestas 400, 404 o 409.            |
-| AUD-031 | Hecho `3c30aec`     | El archivo devuelve páginas de hasta 100 registros, total y número de páginas; la interfaz permite recorrer el resultado completo.              |
-| AUD-032 | Hecho `3359808`     | El cierre persiste actor y notas; el PDF agrega un anexo de cierre y la auditoría atribuye la generación al usuario o colaborador real.         |
-| AUD-008 | Hecho `4d22821`     | Nginx conserva las cabeceras de seguridad en respuestas con caché y aplica una CSP compatible con la PWA, firmas y descargas locales.           |
-| TEC-009 | Hecho `6c09d32`     | Compose transmite la configuración R2 al contenedor API en desarrollo y producción, conservando el fallback local si está vacía.                |
-| AUD-023 | Hecho (este commit) | La documentación operativa refleja el flujo, dependencias, almacenamiento, PDF, validaciones y despliegue que existen en el repositorio.        |
+| ID      | Estado          | Evidencia                                                                                                                                       |
+| ------- | --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| AUD-020 | Hecho `c5d25e5` | Se retiraron `charla-04..08`: 19,35 MB sin referencias. El producto conserva los tres videos usados y reconocidos por el backend y el frontend. |
+| AUD-030 | Hecho `09c268f` | Todos los UUID de ruta se validan antes del servicio; el filtro global traduce errores Prisma conocidos a respuestas 400, 404 o 409.            |
+| AUD-031 | Hecho `3c30aec` | El archivo devuelve páginas de hasta 100 registros, total y número de páginas; la interfaz permite recorrer el resultado completo.              |
+| AUD-032 | Hecho `3359808` | El cierre persiste actor y notas; el PDF agrega un anexo de cierre y la auditoría atribuye la generación al usuario o colaborador real.         |
+| AUD-008 | Hecho `4d22821` | Nginx conserva las cabeceras de seguridad en respuestas con caché y aplica una CSP compatible con la PWA, firmas y descargas locales.           |
+| TEC-009 | Hecho `6c09d32` | Compose transmite la configuración R2 al contenedor API en desarrollo y producción, conservando el fallback local si está vacía.                |
+| AUD-023 | Hecho `257f70a` | La documentación operativa refleja el flujo, dependencias, almacenamiento, PDF, validaciones y despliegue que existen en el repositorio.        |
