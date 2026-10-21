@@ -43,6 +43,14 @@ type DocumentoCustodia = {
   finalPdfFile: { id: string; originalName: string } | null;
 };
 
+type PaginaCustodia = {
+  items: DocumentoCustodia[];
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+};
+
 type Cumplimiento = {
   arl: { estado: string };
   seguridadSocial: { estado: string; reference?: string };
@@ -550,7 +558,9 @@ type Grupo = { seccion: string; respuestas: Respuesta[] };
         <section class="bloque">
           <div class="titulo-seccion">
             <h2>Formularios diligenciados</h2>
-            <button class="boton secundario compacto" type="button" (click)="cargarCustodia()">Actualizar</button>
+            <button class="boton secundario compacto" type="button" (click)="cargarCustodia(paginaCustodia())">
+              Actualizar
+            </button>
           </div>
           <p class="secundario introduccion">
             Consulta y descarga los permisos para su custodia física y digital. Filtra por un mes completo o por una
@@ -568,7 +578,7 @@ type Grupo = { seccion: string; respuestas: Respuesta[] };
                 [disabled]="!pdfsCustodia().length"
                 (click)="descargarCustodia()"
               >
-                Descargar PDFs disponibles ({{ pdfsCustodia().length }})
+                Descargar PDFs de esta página ({{ pdfsCustodia().length }})
               </button>
             </div>
           </form>
@@ -630,6 +640,31 @@ type Grupo = { seccion: string; respuestas: Respuesta[] };
                 </tbody>
               </table>
             </div>
+            <nav class="paginacion" aria-label="Páginas del archivo documental">
+              <span>
+                Registros {{ primerRegistroCustodia() }}–{{ ultimoRegistroCustodia() }} de
+                {{ totalDocumentosCustodia() }}
+              </span>
+              <div class="acciones">
+                <button
+                  class="boton secundario compacto"
+                  type="button"
+                  [disabled]="paginaCustodia() <= 1"
+                  (click)="cargarCustodia(paginaCustodia() - 1)"
+                >
+                  Anterior
+                </button>
+                <span>Página {{ paginaCustodia() }} de {{ totalPaginasCustodia() }}</span>
+                <button
+                  class="boton secundario compacto"
+                  type="button"
+                  [disabled]="paginaCustodia() >= totalPaginasCustodia()"
+                  (click)="cargarCustodia(paginaCustodia() + 1)"
+                >
+                  Siguiente
+                </button>
+              </div>
+            </nav>
           } @else {
             <p class="vacio">
               <strong>No hay formularios para este filtro</strong>Prueba con otro mes, fecha o sin filtros.
@@ -1023,6 +1058,15 @@ type Grupo = { seccion: string; respuestas: Respuesta[] };
       .introduccion {
         margin: -6px 0 20px;
       }
+      .paginacion {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        margin-top: 16px;
+        color: var(--tinta-media);
+        font-size: 0.875rem;
+      }
       textarea {
         resize: vertical;
         min-height: 84px;
@@ -1074,6 +1118,10 @@ type Grupo = { seccion: string; respuestas: Respuesta[] };
         .area-tabs button {
           white-space: nowrap;
         }
+        .paginacion {
+          align-items: stretch;
+          flex-direction: column;
+        }
       }
     `,
   ],
@@ -1109,6 +1157,10 @@ export class CoordinationComponent {
   readonly certificados = signal<Certificado[]>([]);
   readonly cubiertos = signal<string[]>([]);
   readonly documentosCustodia = signal<DocumentoCustodia[]>([]);
+  readonly paginaCustodia = signal(1);
+  readonly totalPaginasCustodia = signal(0);
+  readonly totalDocumentosCustodia = signal(0);
+  readonly tamanoPaginaCustodia = 50;
 
   readonly formPlanilla = this.fb.nonNullable.group({
     reference: ['', [Validators.required, Validators.maxLength(100)]],
@@ -1202,6 +1254,12 @@ export class CoordinationComponent {
   readonly pdfsCustodia = computed(() =>
     this.documentosCustodia().filter((documento) => documento.finalPdfFile !== null),
   );
+  readonly primerRegistroCustodia = computed(() =>
+    this.totalDocumentosCustodia() ? (this.paginaCustodia() - 1) * this.tamanoPaginaCustodia + 1 : 0,
+  );
+  readonly ultimoRegistroCustodia = computed(() =>
+    Math.min(this.paginaCustodia() * this.tamanoPaginaCustodia, this.totalDocumentosCustodia()),
+  );
 
   private agregar(grupos: Grupo[], seccion: string, respuesta: Respuesta): void {
     const grupo = grupos.find((candidato) => candidato.seccion === seccion);
@@ -1266,14 +1324,20 @@ export class CoordinationComponent {
     this.cargarCustodia();
   }
 
-  cargarCustodia(): void {
+  cargarCustodia(page = 1): void {
     const { month, date } = this.formCustodia.getRawValue();
     const parametros = new URLSearchParams();
     if (date) parametros.set('date', date);
     else if (month) parametros.set('month', month);
-    const consulta = parametros.size ? `?${parametros.toString()}` : '';
-    this.http.get<DocumentoCustodia[]>(`/api/coordination/submissions${consulta}`).subscribe({
-      next: (documentos) => this.documentosCustodia.set(documentos),
+    parametros.set('page', String(page));
+    parametros.set('pageSize', String(this.tamanoPaginaCustodia));
+    this.http.get<PaginaCustodia>(`/api/coordination/submissions?${parametros.toString()}`).subscribe({
+      next: (resultado) => {
+        this.documentosCustodia.set(resultado.items);
+        this.paginaCustodia.set(resultado.page);
+        this.totalPaginasCustodia.set(resultado.totalPages);
+        this.totalDocumentosCustodia.set(resultado.total);
+      },
       error: () => this.error.set('No fue posible consultar el archivo documental.'),
     });
   }
@@ -1286,7 +1350,7 @@ export class CoordinationComponent {
       next: () => {
         this.generandoPdf.set(false);
         this.aviso.set('PDF generado y registrado.');
-        this.cargarCustodia();
+        this.cargarCustodia(this.paginaCustodia());
       },
       error: () => {
         this.generandoPdf.set(false);

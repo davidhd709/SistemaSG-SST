@@ -1,6 +1,37 @@
 import { ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { ApprovalsService } from './approvals.service';
 
+describe('ApprovalsService.custody (AUD-031)', () => {
+  it('pagina el archivo completo y devuelve el total sin truncarlo en 500 registros', async () => {
+    const prisma = {
+      formSubmission: {
+        count: jest.fn().mockResolvedValue(501),
+        findMany: jest.fn().mockResolvedValue([]),
+      },
+      $transaction: jest.fn((operations: Promise<unknown>[]) => Promise.all(operations)),
+    };
+    const submissions = { expireStalePermits: jest.fn().mockResolvedValue(undefined) };
+    const service = new ApprovalsService(prisma as never, {} as never, {} as never, submissions as never);
+
+    await expect(service.custody({ page: 6, pageSize: 100 })).resolves.toEqual({
+      items: [],
+      page: 6,
+      pageSize: 100,
+      total: 501,
+      totalPages: 6,
+    });
+    expect(prisma.formSubmission.count).toHaveBeenCalledWith({ where: { status: { not: 'DRAFT' } } });
+    expect(prisma.formSubmission.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { status: { not: 'DRAFT' } },
+        orderBy: [{ workDate: 'desc' }, { submittedAt: 'desc' }, { id: 'desc' }],
+        skip: 500,
+        take: 100,
+      }),
+    );
+  });
+});
+
 describe('ApprovalsService.generateMissingPdf (AUD-005)', () => {
   const userRequest = { principal: { kind: 'USER', userId: 'coord-1' } };
 

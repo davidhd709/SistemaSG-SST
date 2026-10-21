@@ -8,6 +8,7 @@ import { PdfService } from '../pdf/pdf.service';
 import { Prisma } from '@prisma/client';
 import { businessDate } from '../common/business-date';
 import { SubmissionsService } from '../submissions/submissions.service';
+import { CustodyQueryDto } from './dto/custody-query.dto';
 
 @Injectable()
 export class ApprovalsService {
@@ -108,8 +109,9 @@ export class ApprovalsService {
   }
 
   /** Formularios custodiados: cada fila conserva su PDF final cuando ya existe. */
-  async custody(month?: string, date?: string) {
+  async custody(query: CustodyQueryDto) {
     await this.submissions.expireStalePermits();
+    const { month, date, page = 1, pageSize = 50 } = query;
     const where: Prisma.FormSubmissionWhereInput = { status: { not: 'DRAFT' } };
     const day = date && /^\d{4}-\d{2}-\d{2}$/.test(date) ? new Date(`${date}T00:00:00.000Z`) : undefined;
     if (day && !Number.isNaN(day.getTime())) {
@@ -122,38 +124,48 @@ export class ApprovalsService {
       end.setUTCMonth(end.getUTCMonth() + 1);
       where.workDate = { gte: start, lt: end };
     }
-    const submissions = await this.prisma.formSubmission.findMany({
-      where,
-      include: {
-        collaborator: { select: { firstName: true, lastName: true, documentNumber: true } },
-        members: {
-          include: {
-            collaborator: { select: { firstName: true, lastName: true, documentNumber: true } },
-            jobPosition: { select: { name: true } },
+    const [total, submissions] = await this.prisma.$transaction([
+      this.prisma.formSubmission.count({ where }),
+      this.prisma.formSubmission.findMany({
+        where,
+        include: {
+          collaborator: { select: { firstName: true, lastName: true, documentNumber: true } },
+          members: {
+            include: {
+              collaborator: { select: { firstName: true, lastName: true, documentNumber: true } },
+              jobPosition: { select: { name: true } },
+            },
           },
+          formVersion: { include: { form: { select: { code: true, name: true } } } },
+          finalPdfFile: { select: { id: true, originalName: true } },
         },
-        formVersion: { include: { form: { select: { code: true, name: true } } } },
-        finalPdfFile: { select: { id: true, originalName: true } },
-      },
-      orderBy: [{ workDate: 'desc' }, { submittedAt: 'desc' }],
-      take: 500,
-    });
-    return submissions.map((item) => ({
-      id: item.id,
-      status: item.status,
-      workDate: item.workDate,
-      submittedAt: item.submittedAt,
-      startedAt: item.startedAt,
-      closedAt: item.closedAt,
-      collaborator: item.collaborator,
-      members: item.members.map((member) => ({ collaborator: member.collaborator, jobPosition: member.jobPosition })),
-      form: {
-        code: item.formVersion.form.code,
-        name: item.formVersion.form.name,
-        version: item.formVersion.versionNumber,
-      },
-      finalPdfFile: item.finalPdfFile,
-    }));
+        orderBy: [{ workDate: 'desc' }, { submittedAt: 'desc' }, { id: 'desc' }],
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+      }),
+    ]);
+    return {
+      items: submissions.map((item) => ({
+        id: item.id,
+        status: item.status,
+        workDate: item.workDate,
+        submittedAt: item.submittedAt,
+        startedAt: item.startedAt,
+        closedAt: item.closedAt,
+        collaborator: item.collaborator,
+        members: item.members.map((member) => ({ collaborator: member.collaborator, jobPosition: member.jobPosition })),
+        form: {
+          code: item.formVersion.form.code,
+          name: item.formVersion.form.name,
+          version: item.formVersion.versionNumber,
+        },
+        finalPdfFile: item.finalPdfFile,
+      })),
+      page,
+      pageSize,
+      total,
+      totalPages: Math.ceil(total / pageSize),
+    };
   }
   async detail(id: string) {
     const submission = await this.prisma.formSubmission.findUnique({
