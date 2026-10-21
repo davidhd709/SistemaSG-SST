@@ -65,6 +65,7 @@ model User {
   createdArlAffiliations ArlAffiliation[]        @relation("ArlCreatedBy")
   updatedArlAffiliations ArlAffiliation[]        @relation("ArlUpdatedBy")
   approvals              Approval[]              @relation("ApprovalDecidedBy")
+  closedSubmissions      FormSubmission[]        @relation("SubmissionClosedByUser")
   createdPayrolls        SocialSecurityPayroll[] @relation("PayrollCreatedBy")
   createdHeightCerts     HeightCertificate[]     @relation("HeightCertificateCreatedBy")
 
@@ -275,10 +276,13 @@ model FormSubmission {
   startedAt             DateTime?
   closedAt              DateTime?
   closedById            String?            @db.Uuid
+  closedByUserId        String?            @db.Uuid
+  closureNotes          String?
   previousSubmissionId  String?            @db.Uuid
   createdAt             DateTime           @default(now())
   collaborator          Collaborator       @relation(fields: [collaboratorId], references: [id], onDelete: Restrict)
   closedBy              Collaborator?      @relation("SubmissionClosedBy", fields: [closedById], references: [id], onDelete: Restrict)
+  closedByUser          User?              @relation("SubmissionClosedByUser", fields: [closedByUserId], references: [id], onDelete: Restrict)
   formVersion           FormVersion        @relation(fields: [formVersionId], references: [id], onDelete: Restrict)
   previousSubmission    FormSubmission?    @relation("SubmissionCorrections", fields: [previousSubmissionId], references: [id], onDelete: Restrict)
   correctionAttempts    FormSubmission[]   @relation("SubmissionCorrections")
@@ -293,6 +297,7 @@ model FormSubmission {
   @@index([collaboratorId, createdAt])
   @@index([status, createdAt])
   @@index([status, workDate])
+  @@index([closedByUserId])
   @@map("form_submissions")
 }
 

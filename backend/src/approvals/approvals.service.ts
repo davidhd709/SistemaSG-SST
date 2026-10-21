@@ -234,7 +234,7 @@ export class ApprovalsService {
     // incompleto. Un rechazo sí cierra el proceso y se documenta de una vez.
     if (dto.decision === 'REJECTED') {
       try {
-        const pdfFileId = await this.pdf.generateFinalPdf(id, actorUserId);
+        const pdfFileId = await this.pdf.generateFinalPdf(id, { kind: 'USER', id: actorUserId });
         return { ...decision, pdfFileId };
       } catch (error) {
         this.logger.error(`No fue posible generar el PDF del envío rechazado ${id}`, error as Error);
@@ -258,11 +258,11 @@ export class ApprovalsService {
     }
     if (submission.finalPdfFileId) throw new ConflictException('Este envío ya tiene un PDF final.');
 
-    const pdfFileId = await this.pdf.generateFinalPdf(id, actorUserId);
+    const pdfFileId = await this.pdf.generateFinalPdf(id, { kind: 'USER', id: actorUserId });
     return { submissionId: id, pdfFileId };
   }
 
-  /** Cierre excepcional por Coordinación; la autoría y el motivo viven en AuditEvent. */
+  /** Cierre excepcional por Coordinación; persiste autoría y motivo en el permiso y en auditoría. */
   async adminCloseWorkday(id: string, dto: AdminCloseWorkdayDto, request: AuthenticatedRequest) {
     const principal = request.principal;
     if (principal?.kind !== 'USER' || !principal.permissions.includes('submissions:close-admin')) {
@@ -283,7 +283,7 @@ export class ApprovalsService {
       }
       const changed = await tx.formSubmission.updateMany({
         where: { id, status: 'APPROVED', startedAt: { not: null } },
-        data: { status: 'CLOSED', closedAt },
+        data: { status: 'CLOSED', closedAt, closedByUserId: actorUserId, closureNotes: reason },
       });
       if (changed.count !== 1) throw new ConflictException('La jornada fue cerrada por otra operación.');
       await tx.auditEvent.create({
@@ -305,7 +305,7 @@ export class ApprovalsService {
 
     let pdfFileId: string | null = null;
     try {
-      pdfFileId = await this.pdf.generateFinalPdf(id, actorUserId);
+      pdfFileId = await this.pdf.generateFinalPdf(id, { kind: 'USER', id: actorUserId });
     } catch (error) {
       this.logger.error(`No fue posible generar el PDF del cierre administrativo ${id}`, error as Error);
     }

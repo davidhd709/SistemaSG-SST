@@ -6,6 +6,9 @@ import { TemplateRegistry } from './template-registry';
 import { TemplateLoader, type CheckboxField, type TemplateMapping } from './template-loader';
 import { FieldRenderer, ResolvedSignature } from './field-renderer';
 import { CrewMemberRow } from './renderers/crew-table.renderer';
+import { PDFDocument, type PDFFont, StandardFonts, rgb } from 'pdf-lib';
+
+export type PdfGenerationActor = { kind: 'USER' | 'COLLABORATOR'; id: string };
 
 /** Zona horaria operativa del permiso: la misma que usa `businessDay` para `workDate`. */
 const BUSINESS_TIME_ZONE = 'America/Bogota';
@@ -72,7 +75,7 @@ export class PdfService {
     private readonly templateLoader: TemplateLoader,
     private readonly fieldRenderer: FieldRenderer,
   ) {}
-  async generateFinalPdf(submissionId: string, actorUserId: string): Promise<string> {
+  async generateFinalPdf(submissionId: string, generationActor: PdfGenerationActor): Promise<string> {
     const submission = await this.prisma.formSubmission.findUnique({
       where: { id: submissionId },
       include: {
@@ -86,7 +89,9 @@ export class PdfService {
           },
           orderBy: [{ isLead: 'desc' }, { createdAt: 'asc' }],
         },
-        approval: { include: { decidedBy: true } },
+        approval: true,
+        closedBy: true,
+        closedByUser: { select: { email: true } },
         finalPdfFile: true,
       },
     });
@@ -216,6 +221,10 @@ export class PdfService {
       members: crewMembers,
     });
 
+    // La plantilla oficial no tiene un espacio para novedades de cierre. Se
+    // agrega un anexo al mismo documento para conservar actor, momento y notas.
+    await this.appendClosureRecord(pdfDoc, submission);
+
     // 5. Guardar documento resultante
     const pdfBytes = await pdfDoc.save();
     const stored = await this.storage.putObject({
@@ -236,7 +245,7 @@ export class PdfService {
             mimeType: 'application/pdf',
             sizeBytes: stored.sizeBytes,
             sha256: stored.sha256,
-            createdById: actorUserId,
+            createdById: generationActor.kind === 'USER' ? generationActor.id : null,
           },
         });
         await tx.formSubmission.update({
@@ -245,7 +254,9 @@ export class PdfService {
         });
         await tx.auditEvent.create({
           data: {
-            actorUserId,
+            ...(generationActor.kind === 'USER'
+              ? { actorUserId: generationActor.id }
+              : { actorCollaboratorId: generationActor.id }),
             action: 'GENERATE_FINAL_PDF',
             entityType: 'FORM_SUBMISSION',
             entityId: submission.id,
@@ -260,6 +271,79 @@ export class PdfService {
       await this.storage.deleteObject(stored.objectKey);
       throw error;
     }
+  }
+
+  private async appendClosureRecord(
+    pdfDoc: PDFDocument,
+    submission: {
+      id: string;
+      closedAt: Date | null;
+      closureNotes?: string | null;
+      closedBy?: { firstName: string; lastName: string; documentNumber: string } | null;
+      closedByUser?: { email: string } | null;
+    },
+  ): Promise<void> {
+    if (!submission.closedAt || (!submission.closedBy && !submission.closedByUser && !submission.closureNotes)) return;
+
+    const page = pdfDoc.addPage([612, 792]);
+    const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+    const bold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+    const dark = rgb(0.12, 0.18, 0.17);
+    const muted = rgb(0.35, 0.4, 0.39);
+    const closer = submission.closedBy
+      ? `${submission.closedBy.firstName} ${submission.closedBy.lastName} - ${submission.closedBy.documentNumber}`
+      : (submission.closedByUser?.email ?? 'No registrado');
+    const closureType = submission.closedByUser ? 'Cierre administrativo' : 'Cierre por integrante de la cuadrilla';
+    const closedAt = `${this.formatDate(submission.closedAt, BUSINESS_TIME_ZONE)} ${this.formatTime(submission.closedAt)}`;
+    const notes = submission.closureNotes?.trim() || 'Sin novedades registradas.';
+
+    page.drawText('REGISTRO DE CIERRE DEL PERMISO', { x: 54, y: 720, size: 16, font: bold, color: dark });
+    page.drawText('Anexo de trazabilidad del documento final', { x: 54, y: 698, size: 9, font, color: muted });
+    page.drawLine({ start: { x: 54, y: 684 }, end: { x: 558, y: 684 }, thickness: 1, color: dark });
+
+    this.drawClosureDatum(page, bold, font, 'Tipo de cierre', closureType, 650);
+    this.drawClosureDatum(page, bold, font, 'Cerrado por', closer, 612);
+    this.drawClosureDatum(page, bold, font, 'Fecha y hora', closedAt, 574);
+
+    page.drawText('Novedades de la jornada', { x: 54, y: 520, size: 10, font: bold, color: dark });
+    let y = 498;
+    for (const line of this.wrapPdfText(notes, font, 10, 504)) {
+      page.drawText(line, { x: 54, y, size: 10, font, color: dark });
+      y -= 15;
+    }
+
+    page.drawLine({ start: { x: 54, y: 78 }, end: { x: 558, y: 78 }, thickness: 0.5, color: muted });
+    page.drawText(`Permiso: ${submission.id}`, { x: 54, y: 60, size: 8, font, color: muted });
+  }
+
+  private drawClosureDatum(
+    page: ReturnType<PDFDocument['addPage']>,
+    bold: PDFFont,
+    font: PDFFont,
+    label: string,
+    value: string,
+    y: number,
+  ): void {
+    page.drawText(label, { x: 54, y, size: 9, font: bold, color: rgb(0.12, 0.18, 0.17) });
+    page.drawText(value, { x: 170, y, size: 9, font, color: rgb(0.12, 0.18, 0.17) });
+  }
+
+  private wrapPdfText(text: string, font: PDFFont, size: number, maxWidth: number): string[] {
+    const lines: string[] = [];
+    for (const paragraph of text.replace(/\r\n?/g, '\n').split('\n')) {
+      let line = '';
+      for (const character of paragraph) {
+        const candidate = line + character;
+        if (line && font.widthOfTextAtSize(candidate, size) > maxWidth) {
+          lines.push(line.trimEnd());
+          line = character.trimStart();
+        } else {
+          line = candidate;
+        }
+      }
+      lines.push(line || ' ');
+    }
+    return lines;
   }
 
   /** Filas de integrante que la plantilla puede firmar: una por `memberIndex` distinto. */

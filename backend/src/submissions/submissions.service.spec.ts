@@ -19,6 +19,12 @@ function setup() {
       findFirst: jest.fn().mockResolvedValue(null),
       updateMany: jest.fn().mockResolvedValue({ count: 1 }),
       create: jest.fn().mockResolvedValue({ id: 'submission-1', status: 'PENDING_APPROVAL', submittedAt: new Date() }),
+      findUniqueOrThrow: jest.fn().mockResolvedValue({
+        id: 'submission-1',
+        status: 'CLOSED',
+        startedAt: new Date('2026-10-21T13:00:00Z'),
+        closedAt: new Date('2026-10-21T14:00:00Z'),
+      }),
     },
     submissionMember: {
       create: jest.fn().mockResolvedValue({ id: 'member-1' }),
@@ -79,16 +85,17 @@ function setup() {
     defaultVersion: jest.fn().mockReturnValue('v00'),
     resolve: jest.fn().mockResolvedValue({ templatePath: '/template.pdf', mappingPath: '/mapping.json' }),
   };
+  const pdf = { generateFinalPdf: jest.fn().mockResolvedValue('pdf-file-1') };
   const service = new SubmissionsService(
     prisma as never,
     storage as never,
     compliance as never,
-    {} as never,
+    pdf as never,
     templateRegistry as never,
     jwt as never,
     config as never,
   );
-  return { service, prisma, tx, storage, jwt, templateRegistry };
+  return { service, prisma, tx, storage, jwt, templateRegistry, pdf };
 }
 
 describe('Secreto dedicado de charla de seguridad (AUD-022)', () => {
@@ -192,6 +199,33 @@ describe('SubmissionsService permit safeguards', () => {
     );
     prisma.formSubmission.findUnique.mockResolvedValue({ ...current, startedAt: new Date() });
     await expect(service.startWorkday('permit', request as never)).rejects.toThrow(ConflictException);
+  });
+
+  it('persiste notas y atribuye el PDF al integrante que cierra la jornada (AUD-032)', async () => {
+    const { service, prisma, tx, pdf } = setup();
+    prisma.formSubmission.findUnique.mockResolvedValue({
+      status: 'APPROVED',
+      startedAt: new Date('2026-10-21T13:00:00Z'),
+      answersJson: {},
+      members: [{ collaboratorId }],
+      approval: { id: 'approval-1' },
+      formVersion: { schemaJson: { fields: [{ id: 'hora_fin', type: 'auto', source: 'closedAt' }] } },
+    });
+
+    await service.closeWorkday('submission-1', { notes: ' Sin novedades de seguridad ' }, request as never);
+
+    const update = tx.formSubmission.updateMany.mock.calls[0][0] as {
+      data: { status: string; closedById: string; closureNotes: string };
+    };
+    expect(update.data).toMatchObject({
+      status: 'CLOSED',
+      closedById: collaboratorId,
+      closureNotes: 'Sin novedades de seguridad',
+    });
+    expect(pdf.generateFinalPdf).toHaveBeenCalledWith('submission-1', {
+      kind: 'COLLABORATOR',
+      id: collaboratorId,
+    });
   });
 
   it('expires an unused permit and records why the crew was released', async () => {

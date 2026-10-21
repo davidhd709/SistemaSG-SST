@@ -390,7 +390,7 @@ export class SubmissionsService {
       where: { id: submissionId },
       include: {
         members: { select: { collaboratorId: true } },
-        approval: { select: { decidedById: true } },
+        approval: { select: { id: true } },
         formVersion: { select: { schemaJson: true } },
       },
     });
@@ -412,6 +412,7 @@ export class SubmissionsService {
           status: 'CLOSED',
           closedAt: ahora,
           closedById: collaboratorId,
+          closureNotes: dto.notes?.trim() || null,
           // La hora de finalización solo existe ahora: se escribe en la
           // respuesta para que el documento final la muestre.
           answersJson: this.completarAutomaticos(submission.formVersion.schemaJson, submission.answersJson as object, {
@@ -443,7 +444,7 @@ export class SubmissionsService {
     // mantiene y el PDF queda pendiente de regenerar.
     let pdfFileId: string | null = null;
     try {
-      pdfFileId = await this.pdf.generateFinalPdf(submissionId, submission.approval!.decidedById);
+      pdfFileId = await this.pdf.generateFinalPdf(submissionId, { kind: 'COLLABORATOR', id: collaboratorId });
     } catch (error) {
       this.logger.error(`No fue posible generar el PDF de la jornada ${submissionId}`, error as Error);
     }

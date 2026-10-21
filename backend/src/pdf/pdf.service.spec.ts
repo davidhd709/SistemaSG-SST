@@ -18,7 +18,7 @@ jest.mock('node:fs/promises', () => ({
 
 import { TemplateRegistry } from './template-registry';
 import { TemplateLoader } from './template-loader';
-import { PDFDocument, StandardFonts } from 'pdf-lib';
+import { PDFDocument, PDFPage, StandardFonts } from 'pdf-lib';
 import { PNG } from 'pngjs';
 import { TextRenderer } from './renderers/text.renderer';
 import { CheckboxRenderer } from './renderers/checkbox.renderer';
@@ -728,7 +728,9 @@ describe('PdfService — AUD-001 integridad de datos y firmas', () => {
     accessFailsOnCall(1);
     const { pdfService, storage } = createPdfServiceContext({ templateVersion: 'v99' });
 
-    await expect(pdfService.generateFinalPdf('sub-aud001', 'user-coord-1')).rejects.toThrow(NotFoundException);
+    await expect(pdfService.generateFinalPdf('sub-aud001', { kind: 'USER', id: 'user-coord-1' })).rejects.toThrow(
+      NotFoundException,
+    );
     expect(storage.putObject).not.toHaveBeenCalled();
   });
 
@@ -765,7 +767,7 @@ describe('PdfService — AUD-001 integridad de datos y firmas', () => {
 
     const renderSpy = jest.spyOn(fieldRenderer, 'render');
 
-    const fileId = await pdfService.generateFinalPdf('sub-aud001', 'user-coord-1');
+    const fileId = await pdfService.generateFinalPdf('sub-aud001', { kind: 'USER', id: 'user-coord-1' });
     expect(fileId).toBe('pdf-file-id-1');
     expect(renderSpy).toHaveBeenCalledTimes(1);
 
@@ -797,7 +799,7 @@ describe('PdfService — AUD-001 integridad de datos y firmas', () => {
     const { pdfService, storage, tx, fieldRenderer } = createPdfServiceContext();
     const renderSpy = jest.spyOn(fieldRenderer, 'render');
 
-    const fileId = await pdfService.generateFinalPdf('sub-aud001', 'user-coord-1');
+    const fileId = await pdfService.generateFinalPdf('sub-aud001', { kind: 'USER', id: 'user-coord-1' });
 
     expect(fileId).toBe('pdf-file-id-1');
     expect(storage.getObject).toHaveBeenCalledWith('signatures/member-1.png');
@@ -820,13 +822,48 @@ describe('PdfService — AUD-001 integridad de datos y firmas', () => {
       where: { id: 'sub-aud001' },
       data: { finalPdfFileId: 'pdf-file-id-1', templateVersion: 'v00' },
     });
+    const fileCall = tx.fileObject.create.mock.calls[0][0] as { data: { createdById: string | null } };
+    expect(fileCall.data.createdById).toBe('user-coord-1');
     const auditCall = tx.auditEvent.create.mock.calls[0][0] as {
-      data: { action: string; entityId: string };
+      data: { action: string; entityId: string; actorUserId?: string };
     };
     expect(auditCall.data).toMatchObject({
       action: 'GENERATE_FINAL_PDF',
       entityId: 'sub-aud001',
+      actorUserId: 'user-coord-1',
     });
+  });
+
+  it('anexa las notas de cierre y audita al integrante que generó el documento (AUD-032)', async () => {
+    const pdfBytes = await minimalPdf(1);
+    setupReadFile(pdfBytes, crewMapping);
+    const { pdfService, storage, tx } = createPdfServiceContext({
+      closureNotes: 'Se entregó el área limpia y sin incidentes.',
+      closedBy: {
+        firstName: 'Laura',
+        lastName: 'Gómez',
+        documentNumber: '1098765432',
+      },
+      closedByUser: null,
+    });
+    const drawText = jest.spyOn(PDFPage.prototype, 'drawText');
+
+    await pdfService.generateFinalPdf('sub-aud001', { kind: 'COLLABORATOR', id: 'collab-closer' });
+
+    const renderedText = drawText.mock.calls.map(([value]) => value);
+    expect(renderedText).toContain('REGISTRO DE CIERRE DEL PERMISO');
+    expect(renderedText).toContain('Se entregó el área limpia y sin incidentes.');
+    expect(renderedText).toContain('Laura Gómez - 1098765432');
+    const storedPdf = storage.putObject.mock.calls[0][0] as { body: Buffer };
+    await expect(PDFDocument.load(storedPdf.body).then((document) => document.getPageCount())).resolves.toBe(2);
+    const fileCreate = tx.fileObject.create.mock.calls[0][0] as { data: { createdById: string | null } };
+    expect(fileCreate.data.createdById).toBeNull();
+    const auditCreate = tx.auditEvent.create.mock.calls[0][0] as {
+      data: { actorUserId?: string; actorCollaboratorId?: string };
+    };
+    expect(auditCreate.data).toMatchObject({ actorCollaboratorId: 'collab-closer' });
+    expect(auditCreate.data.actorUserId).toBeUndefined();
+    drawText.mockRestore();
   });
 
   it('ignora fecha_trabajo y vigencia_permiso manipuladas en registros históricos y usa la fecha autorizada del servidor', async () => {
@@ -847,7 +884,7 @@ describe('PdfService — AUD-001 integridad de datos y firmas', () => {
     });
     const renderSpy = jest.spyOn(fieldRenderer, 'render');
 
-    await pdfService.generateFinalPdf('sub-aud001', 'user-coord-1');
+    await pdfService.generateFinalPdf('sub-aud001', { kind: 'USER', id: 'user-coord-1' });
 
     const renderData = renderSpy.mock.calls[0][2];
     expect(renderData.answers.fecha_trabajo).toBe(expectedFormattedDate);
@@ -871,7 +908,7 @@ describe('PdfService — AUD-001 integridad de datos y firmas', () => {
         });
         const renderSpy = jest.spyOn(fieldRenderer, 'render');
 
-        await pdfService.generateFinalPdf('sub-aud001', 'user-coord-1');
+        await pdfService.generateFinalPdf('sub-aud001', { kind: 'USER', id: 'user-coord-1' });
 
         const { answers } = renderSpy.mock.calls[0][2];
         expect(answers.fecha_trabajo).toBe('16/04/2026');
@@ -896,7 +933,7 @@ describe('PdfService — AUD-001 integridad de datos y firmas', () => {
     });
     const renderSpy = jest.spyOn(fieldRenderer, 'render');
 
-    await pdfService.generateFinalPdf('sub-aud001', 'user-coord-1');
+    await pdfService.generateFinalPdf('sub-aud001', { kind: 'USER', id: 'user-coord-1' });
 
     expect(renderSpy.mock.calls[0][2].answers.fecha_trabajo).toBe('16/04/2026');
   });
@@ -918,7 +955,7 @@ describe('PdfService — AUD-001 integridad de datos y firmas', () => {
     });
     const renderSpy = jest.spyOn(fieldRenderer, 'render');
 
-    await pdfService.generateFinalPdf('sub-aud001', 'user-coord-1');
+    await pdfService.generateFinalPdf('sub-aud001', { kind: 'USER', id: 'user-coord-1' });
     expect(renderSpy.mock.calls[0][2].answers.hora_inicio).toBe(expectedStart);
     expect(renderSpy.mock.calls[0][2].answers.hora_inicio).not.toBe('01:00 a.m.');
 
@@ -934,7 +971,7 @@ describe('PdfService — AUD-001 integridad de datos y firmas', () => {
       },
     });
     const spyNoStart = jest.spyOn(rendererNoStart, 'render');
-    await pdfServiceNoStart.generateFinalPdf('sub-aud001', 'user-coord-1');
+    await pdfServiceNoStart.generateFinalPdf('sub-aud001', { kind: 'USER', id: 'user-coord-1' });
     expect(spyNoStart.mock.calls[0][2].answers.hora_inicio).toBeUndefined();
     expect(spyNoStart.mock.calls[0][2].answers.hora_finalizacion).toBeUndefined();
     expect(spyNoStart.mock.calls[0][2].answers.hora_fin).toBeUndefined();
@@ -962,7 +999,7 @@ describe('PdfService — AUD-001 integridad de datos y firmas', () => {
     });
     const renderSpy = jest.spyOn(fieldRenderer, 'render');
 
-    await pdfService.generateFinalPdf('sub-aud001', 'user-coord-1');
+    await pdfService.generateFinalPdf('sub-aud001', { kind: 'USER', id: 'user-coord-1' });
 
     const { answers } = renderSpy.mock.calls[0][2];
     expect(answers.fecha_trabajo).toBeUndefined();
@@ -1005,7 +1042,7 @@ describe('PdfService — AUD-001 integridad de datos y firmas', () => {
     });
     const renderSpy = jest.spyOn(fieldRenderer, 'render');
 
-    await pdfService.generateFinalPdf('sub-aud001', 'user-coord-1');
+    await pdfService.generateFinalPdf('sub-aud001', { kind: 'USER', id: 'user-coord-1' });
 
     const { answers } = renderSpy.mock.calls[0][2];
     expect(answers.cuadrilla_01_certificado).toBe('Vigente');
@@ -1035,7 +1072,7 @@ describe('PdfService — AUD-001 integridad de datos y firmas', () => {
     }));
     const { pdfService, storage } = createPdfServiceContext({ members });
 
-    await expect(pdfService.generateFinalPdf('sub-aud001', 'user-coord-1')).rejects.toThrow(
+    await expect(pdfService.generateFinalPdf('sub-aud001', { kind: 'USER', id: 'user-coord-1' })).rejects.toThrow(
       /6 integrantes.*solo admite 5/,
     );
     expect(storage.putObject).not.toHaveBeenCalled();
@@ -1056,7 +1093,9 @@ describe('PdfService — AUD-001 integridad de datos y firmas', () => {
       ],
     });
 
-    await expect(pdfService.generateFinalPdf('sub-aud001', 'user-coord-1')).rejects.toThrow(/Falta la firma/);
+    await expect(pdfService.generateFinalPdf('sub-aud001', { kind: 'USER', id: 'user-coord-1' })).rejects.toThrow(
+      /Falta la firma/,
+    );
     expect(storage.putObject).not.toHaveBeenCalled();
     expect(prisma.$transaction).not.toHaveBeenCalled();
   });
@@ -1066,7 +1105,7 @@ describe('PdfService — AUD-001 integridad de datos y firmas', () => {
     const { pdfService, storage, prisma } = createPdfServiceContext();
     storage.getObject.mockRejectedValueOnce(new Error('storage unavailable'));
 
-    await expect(pdfService.generateFinalPdf('sub-aud001', 'user-coord-1')).rejects.toThrow(
+    await expect(pdfService.generateFinalPdf('sub-aud001', { kind: 'USER', id: 'user-coord-1' })).rejects.toThrow(
       /No se pudo cargar la firma/,
     );
     expect(storage.putObject).not.toHaveBeenCalled();
@@ -1078,7 +1117,7 @@ describe('PdfService — AUD-001 integridad de datos y firmas', () => {
     const { pdfService, storage, prisma } = createPdfServiceContext();
     storage.getObject.mockResolvedValueOnce(Buffer.from('not-an-image'));
 
-    await expect(pdfService.generateFinalPdf('sub-aud001', 'user-coord-1')).rejects.toThrow(
+    await expect(pdfService.generateFinalPdf('sub-aud001', { kind: 'USER', id: 'user-coord-1' })).rejects.toThrow(
       /Formato de imagen no reconocido/,
     );
     expect(storage.putObject).not.toHaveBeenCalled();
@@ -1090,7 +1129,9 @@ describe('PdfService — AUD-001 integridad de datos y firmas', () => {
     const { pdfService, fieldRenderer, storage, prisma } = createPdfServiceContext();
     jest.spyOn(fieldRenderer, 'render').mockRejectedValueOnce(new Error('campo ilegible'));
 
-    await expect(pdfService.generateFinalPdf('sub-aud001', 'user-coord-1')).rejects.toThrow('campo ilegible');
+    await expect(pdfService.generateFinalPdf('sub-aud001', { kind: 'USER', id: 'user-coord-1' })).rejects.toThrow(
+      'campo ilegible',
+    );
     expect(storage.putObject).not.toHaveBeenCalled();
     expect(prisma.$transaction).not.toHaveBeenCalled();
   });
@@ -1118,7 +1159,7 @@ describe('PdfService — AUD-001 integridad de datos y firmas', () => {
     });
     const renderSpy = jest.spyOn(fieldRenderer, 'render');
 
-    await pdfService.generateFinalPdf('sub-aud001', 'user-coord-1');
+    await pdfService.generateFinalPdf('sub-aud001', { kind: 'USER', id: 'user-coord-1' });
 
     const { answers } = renderSpy.mock.calls[0][2];
     expect(answers.empresa).toBe('OPAINN ESP SAS');
@@ -1183,7 +1224,7 @@ describe('PdfService — AUD-001 integridad de datos y firmas', () => {
 
     const embedPngSpy = jest.spyOn(PDFDocument.prototype, 'embedPng');
 
-    const fileId = await pdfService.generateFinalPdf('sub-aud001', 'user-coord-1');
+    const fileId = await pdfService.generateFinalPdf('sub-aud001', { kind: 'USER', id: 'user-coord-1' });
     expect(fileId).toBe('pdf-file-id-1');
 
     // Solo debe embeber la firma legítima del integrante (memberIndex: 0) y no las firmas falsas de answersJson

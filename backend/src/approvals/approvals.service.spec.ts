@@ -57,7 +57,7 @@ describe('ApprovalsService.generateMissingPdf (AUD-005)', () => {
       where: { id: 'submission-1' },
       select: { status: true, approval: { select: { id: true } }, finalPdfFileId: true },
     });
-    expect(pdf.generateFinalPdf).toHaveBeenCalledWith('submission-1', 'coord-1');
+    expect(pdf.generateFinalPdf).toHaveBeenCalledWith('submission-1', { kind: 'USER', id: 'coord-1' });
   });
 
   it('permite recuperar el PDF de un envío rechazado', async () => {
@@ -141,7 +141,12 @@ describe('ApprovalsService.adminCloseWorkday (AUD-025)', () => {
     });
     expect(tx.formSubmission.updateMany).toHaveBeenCalledWith({
       where: { id: 'submission-1', status: 'APPROVED', startedAt: { not: null } },
-      data: { status: 'CLOSED', closedAt: result.closedAt },
+      data: {
+        status: 'CLOSED',
+        closedAt: result.closedAt,
+        closedByUserId: 'coord-1',
+        closureNotes: 'Oficial sin acceso',
+      },
     });
     const audit = tx.auditEvent.create.mock.calls[0][0] as { data: Record<string, unknown> };
     expect(audit.data).toMatchObject({
@@ -151,7 +156,7 @@ describe('ApprovalsService.adminCloseWorkday (AUD-025)', () => {
       reason: 'Oficial sin acceso',
       correlationId: 'request-1',
     });
-    expect(pdf.generateFinalPdf).toHaveBeenCalledWith('submission-1', 'coord-1');
+    expect(pdf.generateFinalPdf).toHaveBeenCalledWith('submission-1', { kind: 'USER', id: 'coord-1' });
   });
 
   it('rechaza actor sin permiso y motivo vacío', async () => {
