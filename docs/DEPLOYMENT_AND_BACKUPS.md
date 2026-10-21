@@ -13,52 +13,73 @@ local ──push/merge──▶ main ──CI SG-SST (lint, build, tests)──�
 ```
 
 - Solo se despliega `main` y solo si el CI pasó. Las ramas `fix/**`, `feat/**`, etc. corren el CI, pero no despliegan.
-- Cada versión es una imagen inmutable etiquetada con el SHA del commit. El VPS no compila y solo descarga.
-- El workflow copia al VPS `docker-compose.yml`, `docker-compose.prod.yml` y los scripts de esa misma versión. El VPS **no** necesita un clon del repositorio.
+- Cada versión es una imagen inmutable etiquetada con el SHA completo del commit. El VPS no compila y solo descarga.
+- La llave de GitHub Actions está limitada en el VPS a [`infra/vps/ssh-despliegue.sh`](../infra/vps/ssh-despliegue.sh). Solo acepta `login-ghcr`, `logout-ghcr` y `desplegar <sha>`: no abre terminal ni copia archivos. Por eso los Compose y los scripts del VPS los actualiza un administrador (ver _Actualizar archivos del VPS_).
 - `.github/workflows/deploy.yml` solo se activa por `workflow_run` cuando el archivo existe en `main`.
+
+### Servidor de producción
+
+| Dato        | Valor                                                               |
+| ----------- | ------------------------------------------------------------------- |
+| VPS         | `opainn-vps` (167.86.110.8), Ubuntu 24.04, compartido con SIVUP     |
+| Dominio     | `sst.opainn.com` → registro A hacia 167.86.110.8                    |
+| Usuario     | `henry` (grupo `docker`)                                            |
+| Directorio  | `/opt/sgsst` (Compose project `sgsst`)                              |
+| Proxy HTTPS | Nginx del host + Certbot → `127.0.0.1:8080`                         |
+| Sitio Nginx | [`infra/vps/sst.opainn.com.conf`](../infra/vps/sst.opainn.com.conf) |
+| Firewall    | UFW: solo 22, 80 y 443                                              |
+
+SIVUP usa `127.0.0.1:8081` y su propio proyecto Compose. Los dos sistemas no comparten base de datos, volúmenes ni puertos.
 
 ### Preparación del VPS (una sola vez)
 
-Requisitos: Docker Engine con Compose 2.24 o superior, `curl` y un proxy HTTPS en el host.
+Requisitos: Docker Engine con Compose 2.24 o superior y `curl`.
 
-1. Cree un usuario de despliegue sin contraseña, con acceso solo por clave y miembro del grupo `docker`. Pertenecer a `docker` equivale a tener root en el host, así que use este usuario solo para desplegar.
+1. Con `sudo`, cree el directorio y el sitio Nginx. Emita el certificado cuando el DNS ya resuelva:
    ```bash
-   sudo adduser --disabled-password deploy && sudo usermod -aG docker deploy
-   sudo mkdir -p /opt/sgsst && sudo chown deploy:deploy /opt/sgsst
+   sudo install -d -o henry -g henry -m 750 /opt/sgsst
+   sudo cp sst.opainn.com.conf /etc/nginx/sites-available/sst.opainn.com
+   sudo ln -s /etc/nginx/sites-available/sst.opainn.com /etc/nginx/sites-enabled/
+   sudo nginx -t && sudo systemctl reload nginx
+   sudo certbot --nginx -d sst.opainn.com
    ```
-2. En su máquina local genere un par de claves exclusivo para GitHub Actions: `ssh-keygen -t ed25519 -f sgsst_deploy -N ''`. Añada `sgsst_deploy.pub` a `/home/deploy/.ssh/authorized_keys`.
-3. Cree `/opt/sgsst/.env` desde `.env.example` con `chmod 600`. Asigne secretos largos y únicos a PostgreSQL, a JWT y a `SAFETY_TALK_JWT_SECRET`, que debe ser distinto de las dos claves JWT. Defina además:
+2. Copie los archivos de despliegue (ver _Actualizar archivos del VPS_).
+3. Cree `/opt/sgsst/.env` desde `.env.example` con `chmod 600`. Genere los secretos en el propio VPS con `openssl rand -base64 48`. `SAFETY_TALK_JWT_SECRET` debe ser distinto de las dos claves JWT. Defina además:
    ```
    NODE_ENV=production
-   API_CORS_ORIGIN=https://su-dominio
+   API_CORS_ORIGIN=https://sst.opainn.com
    COMPOSE_FILE=docker-compose.yml:docker-compose.prod.yml
    ```
-   Si el paquete de GHCR queda privado, el workflow inicia sesión en el VPS con un token temporal del job y cierra la sesión al terminar. No hace falta guardar un PAT en el servidor.
-4. Configure su proxy HTTPS existente para enviar el dominio a `http://127.0.0.1:8080`. El proxy debe añadir `X-Forwarded-For` y `X-Forwarded-Proto` y aceptar cuerpos de hasta 12 MB. Ejemplo en Nginx:
-   ```nginx
-   location / {
-     proxy_pass http://127.0.0.1:8080;
-     proxy_set_header Host $host;
-     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-     proxy_set_header X-Forwarded-Proto $scheme;
-     client_max_body_size 12M;
-   }
+4. Genere una llave exclusiva para GitHub Actions: `ssh-keygen -t ed25519 -C github-actions-sgsst -N '' -f sgsst_deploy`. Añádala a `~henry/.ssh/authorized_keys` limitada al comando forzado:
    ```
-   Si el proxy es un contenedor y no un proceso del host, `127.0.0.1` no lo alcanzará: ajuste el puerto o la red. Ajuste también `TRUST_PROXY_HOPS` si la cadena de proxies cambia.
-5. Firewall: deje abiertos únicamente 22 (o su puerto SSH), 80 y 443.
+   command="/opt/sgsst/bin/ssh-despliegue.sh",restrict ssh-ed25519 AAAA... github-actions-sgsst
+   ```
+
+GHCR es privado. El workflow inicia sesión en el VPS con el token temporal del job y la cierra al terminar, así que no queda ningún PAT en el servidor.
+
+### Actualizar archivos del VPS
+
+Cuando cambien `docker-compose*.yml`, `scripts/*.sh` o `infra/vps/ssh-despliegue.sh`, un administrador los copia antes de desplegar desde un equipo con acceso de administrador:
+
+```bash
+scp docker-compose.yml docker-compose.prod.yml opainn:/opt/sgsst/
+ssh opainn 'mkdir -p /opt/sgsst/scripts /opt/sgsst/bin'
+scp scripts/deploy.sh scripts/backup.sh scripts/verify-restore.sh opainn:/opt/sgsst/scripts/
+scp infra/vps/ssh-despliegue.sh opainn:/opt/sgsst/bin/
+ssh opainn 'chmod 750 /opt/sgsst/bin/ssh-despliegue.sh /opt/sgsst/scripts/*.sh'
+```
 
 ### Configuración en GitHub (una sola vez)
 
 En _Settings → Environments_ cree el entorno `production`. Puede exigir aprobación manual con _Required reviewers_. Dentro de ese entorno añada:
 
-| Tipo     | Nombre            | Valor                                                                    |
-| -------- | ----------------- | ------------------------------------------------------------------------ |
-| Secret   | `VPS_HOST`        | IP o dominio del VPS                                                     |
-| Secret   | `VPS_USER`        | `deploy`                                                                 |
-| Secret   | `VPS_SSH_KEY`     | Contenido de la clave privada `sgsst_deploy`                             |
-| Secret   | `VPS_KNOWN_HOSTS` | Salida de `ssh-keyscan -p PUERTO HOST`, verificada contra la huella real |
-| Variable | `VPS_PORT`        | Opcional, por defecto `22`                                               |
-| Variable | `VPS_APP_DIR`     | Opcional, por defecto `/opt/sgsst`                                       |
+| Tipo     | Nombre            | Valor                                                                  |
+| -------- | ----------------- | ---------------------------------------------------------------------- |
+| Secret   | `VPS_HOST`        | `167.86.110.8`                                                         |
+| Secret   | `VPS_USER`        | `henry`                                                                |
+| Secret   | `VPS_SSH_KEY`     | Contenido de la clave privada `sgsst_deploy`                           |
+| Secret   | `VPS_KNOWN_HOSTS` | Salida de `ssh-keyscan 167.86.110.8`, verificada contra la huella real |
+| Variable | `VPS_PORT`        | Opcional, por defecto `22`                                             |
 
 Después de copiarla a GitHub, borre la clave privada local.
 
@@ -71,13 +92,13 @@ Después de copiarla a GitHub, borre la clave privada local.
    docker compose run --rm -e BOOTSTRAP_ADMIN_EMAIL=... -e BOOTSTRAP_ADMIN_PASSWORD=... api node dist-seed/seed.js
    ```
    La API aplica las migraciones al iniciar. El seed sincroniza los permisos vigentes con los roles iniciales. Cambie las credenciales de bootstrap después de crear los usuarios reales.
-3. Compruebe `https://su-dominio/api/health` y haga login.
+3. Compruebe `https://sst.opainn.com/api/health` y haga login.
 
 ### Actualizaciones y rollback
 
 - **Actualizar:** haga merge a `main`. `scripts/deploy.sh` descarga las imágenes nuevas. Si ya había una versión corriendo, ejecuta `scripts/backup.sh` en `$BACKUP_DIR` (por defecto `~/sgsst-backups`). Luego levanta los servicios y espera a que `/api/health` responda en `127.0.0.1:8080`.
 - **Rollback automático:** si el healthcheck falla, el script vuelve al `IMAGE_TAG` anterior y el job termina en rojo.
-- **Rollback manual:** en _Actions → Deploy SG-SST → Run workflow_ indique en `image_tag` el SHA de una versión anterior. También puede ejecutar `bash scripts/deploy.sh <sha>` en `/opt/sgsst`.
+- **Rollback manual:** en _Actions → Deploy SG-SST → Run workflow_ indique en `image_tag` el SHA completo de una versión anterior (`cat /opt/sgsst/.env | grep IMAGE_TAG` muestra la actual). También puede ejecutar `bash scripts/deploy.sh <sha>` en `/opt/sgsst`.
 - **Migraciones:** el rollback cambia las imágenes, pero no revierte las migraciones aplicadas. Si la versión anterior no es compatible con el esquema nuevo, restaure el respaldo creado justo antes del despliegue (ver _Restauración operativa_). Prefiera migraciones aditivas.
 - **Logs:** use `docker compose logs -f api` desde `/opt/sgsst`. Los logs de los contenedores rotan a 5 × 10 MB por servicio.
 - **Imágenes antiguas:** las imágenes etiquetadas se acumulan en el VPS. Revise de vez en cuando `docker image ls ghcr.io/davidhd709/*` y borre las que ya no necesite para rollback.
