@@ -19,6 +19,9 @@ export class CollaboratorsService {
     if (position?.canLead && !dto.pin) {
       throw new BadRequestException('Los cargos habilitados para liderar deben tener un PIN de acceso.');
     }
+    if (!position?.canLead && dto.pin) {
+      throw new BadRequestException('Solo los cargos habilitados para liderar pueden tener un PIN de acceso.');
+    }
     const actorUserId = request.principal?.kind === 'USER' ? request.principal.userId : undefined;
     const collaborator = await this.prisma.$transaction(async (tx) => {
       const created = await tx.collaborator.create({
@@ -44,11 +47,9 @@ export class CollaboratorsService {
           entityType: 'COLLABORATOR',
           entityId: created.id,
           afterJson: {
+            ...this.auditData(created),
             documentType: created.documentType,
-            documentNumber: created.documentNumber,
-            firstName: created.firstName,
-            lastName: created.lastName,
-            status: created.status,
+            pinConfigured: Boolean(created.pinHash),
           },
           ip: request.ip,
           userAgent: request.header('user-agent'),
@@ -86,6 +87,9 @@ export class CollaboratorsService {
     if (position?.canLead && !previous.pinHash && !dto.pin) {
       throw new BadRequestException('Los cargos habilitados para liderar deben tener un PIN de acceso.');
     }
+    if (!position?.canLead && dto.pin) {
+      throw new BadRequestException('Solo los cargos habilitados para liderar pueden tener un PIN de acceso.');
+    }
     const pinRemoved = positionChanged && !position?.canLead && !!previous.pinHash;
     const pinChanged = (position?.canLead && !!dto.pin) || pinRemoved;
     const inactivated = dto.status === 'INACTIVE' && previous.status !== 'INACTIVE';
@@ -102,9 +106,13 @@ export class CollaboratorsService {
           ...(dto.team !== undefined ? { team: dto.team.trim() || null } : {}),
           ...(dto.status ? { status: dto.status } : {}),
           ...(positionChanged && !position?.canLead
-            ? { pinHash: null }
+            ? { pinHash: null, failedLoginAttempts: 0, lockedUntil: null }
             : dto.pin
-              ? { pinHash: await argon2.hash(dto.pin, { type: argon2.argon2id }) }
+              ? {
+                  pinHash: await argon2.hash(dto.pin, { type: argon2.argon2id }),
+                  failedLoginAttempts: 0,
+                  lockedUntil: null,
+                }
               : {}),
         },
         include: { jobPosition: true },
@@ -122,7 +130,12 @@ export class CollaboratorsService {
           entityType: 'COLLABORATOR',
           entityId: id,
           beforeJson: this.auditData(previous),
-          afterJson: { ...this.auditData(updated), pinChanged, sessionsRevoked: pinChanged || inactivated },
+          afterJson: {
+            ...this.auditData(updated),
+            pinChanged,
+            pinRemoved,
+            sessionsRevoked: pinChanged || inactivated,
+          },
           ip: request.ip,
           userAgent: request.header('user-agent'),
           correlationId: request.correlationId ?? 'unknown',
@@ -141,6 +154,8 @@ export class CollaboratorsService {
       email: collaborator.email,
       phone: collaborator.phone,
       jobTitle: collaborator.jobTitle,
+      jobPositionId: collaborator.jobPositionId,
+      hasPin: Boolean(collaborator.pinHash),
       team: collaborator.team,
       status: collaborator.status,
     };

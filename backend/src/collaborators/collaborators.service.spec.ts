@@ -82,4 +82,12 @@ describe('CollaboratorsService.update sessions (AUD-019)', () => {
     await service.update(id, { team: 'Norte' }, request as never);
     expect(tx.refreshSession.updateMany).not.toHaveBeenCalled();
   });
+
+  it('rejects assigning a PIN to a job position without leadership permission (AUD-029)', async () => {
+    const { service, tx } = setup();
+    await expect(service.update(id, { jobTitle: 'Auxiliar', pin: '1234' }, request as never)).rejects.toThrow(
+      'Solo los cargos habilitados para liderar pueden tener un PIN de acceso.',
+    );
+    expect(tx.collaborator.update).not.toHaveBeenCalled();
+  });
 });
