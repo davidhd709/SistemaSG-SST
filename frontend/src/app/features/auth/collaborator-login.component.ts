@@ -76,7 +76,7 @@ import { AuthSessionService } from '../../core/auth-session.service';
               inputmode="numeric"
               enterkeyhint="go"
             />
-            <span class="ayuda">Si olvidaste tu PIN, solicítalo a tu coordinadora.</span>
+            <span class="ayuda">¿Olvidaste tu PIN? El administrador del sistema puede restablecerlo.</span>
           </label>
 
           @if (error()) {

@@ -3,8 +3,7 @@ import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { ReactiveFormsModule, Validators, FormBuilder } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { AuthSessionService } from '../../core/auth-session.service';
-
-type AdminProfile = { roles: { code: string }[] };
+import { destinoPorRoles, type PerfilInterno } from '../../core/destino';
 
 /**
  * Acceso interno, común a Coordinación, Gestor de ARL, Legal y Administración.
@@ -73,6 +72,7 @@ type AdminProfile = { roles: { code: string }[] };
           <label class="campo">
             <span>Contraseña</span>
             <input formControlName="password" autocomplete="current-password" type="password" enterkeyhint="go" />
+            <span class="ayuda">¿Olvidaste tu contraseña? El administrador del sistema puede restablecerla.</span>
           </label>
 
           @if (error()) {
@@ -148,10 +148,14 @@ export class AdminLoginComponent {
         next: (result) => {
           this.session.setSession(result.accessToken, 'ADMIN');
           const headers = new HttpHeaders({ Authorization: `Bearer ${result.accessToken}` });
-          this.http.get<AdminProfile>('/api/users/me', { headers }).subscribe({
+          this.http.get<PerfilInterno>('/api/users/me', { headers }).subscribe({
             next: (profile) => {
               this.loading.set(false);
-              void this.router.navigateByUrl(this.destination(profile));
+              // Una contraseña temporal (cuenta nueva o restablecida por
+              // Administración) se reemplaza antes de trabajar.
+              void this.router.navigateByUrl(
+                profile.forcePasswordChange ? '/administracion/mi-contrasena' : destinoPorRoles(profile),
+              );
             },
             error: () => {
               this.session.clear();
@@ -165,13 +169,5 @@ export class AdminLoginComponent {
           this.loading.set(false);
         },
       });
-  }
-  private destination(profile: AdminProfile): string {
-    const roles = profile.roles.map((role) => role.code);
-    if (roles.includes('ADMIN')) return '/administracion/panel';
-    if (roles.includes('COORDINATOR')) return '/coordinacion';
-    if (roles.includes('ARL_MANAGER')) return '/gestor-arl';
-    if (roles.includes('LEGAL')) return '/legal';
-    return '/';
   }
 }

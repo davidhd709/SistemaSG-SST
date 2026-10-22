@@ -182,7 +182,11 @@ export class UsersService {
         data: {
           ...(email ? { email } : {}),
           ...(dto.status ? { status: dto.status } : {}),
-          ...(dto.password ? { passwordHash: await argon2.hash(dto.password, { type: argon2.argon2id }) } : {}),
+          // Una contraseña asignada por Administración es temporal: la persona
+          // debe reemplazarla en su siguiente ingreso.
+          ...(dto.password
+            ? { passwordHash: await argon2.hash(dto.password, { type: argon2.argon2id }), forcePasswordChange: true }
+            : {}),
         },
       });
       if (roles) {
@@ -210,6 +214,7 @@ export class UsersService {
             email: user.email,
             status: user.status,
             roleCodes: roles?.map((role) => role.code) ?? undefined,
+            ...(dto.password ? { passwordReset: true } : {}),
           },
           ip: request.ip,
           userAgent: request.header('user-agent'),
