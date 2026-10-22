@@ -32,6 +32,7 @@ const roles: Record<string, { name: string; permissions: string[] }> = {
       'compliance:manage',
       'settings:manage',
       'audit:read',
+      'reports:read',
     ],
   },
   COORDINATOR: {
@@ -45,11 +46,12 @@ const roles: Record<string, { name: string; permissions: string[] }> = {
       'arl:read',
       'compliance:read',
       'compliance:manage',
+      'reports:read',
     ],
   },
   LEGAL: {
     name: 'Legal',
-    permissions: ['collaborators:read', 'arl:read', 'files:read', 'legal:read', 'compliance:read'],
+    permissions: ['collaborators:read', 'arl:read', 'files:read', 'legal:read', 'compliance:read', 'reports:read'],
   },
   ARL_MANAGER: {
     name: 'Gestor de ARL',

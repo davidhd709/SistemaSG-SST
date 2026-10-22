@@ -54,6 +54,14 @@
       <button role="tab" [attr.aria-selected]="pestana() === 'custodia'" (click)="verCustodia()" type="button">
         Custodia documental
       </button>
+      <button
+        role="tab"
+        [attr.aria-selected]="pestana() === 'reportes'"
+        (click)="pestana.set('reportes')"
+        type="button"
+      >
+        Reportes
+      </button>
     </div>
   </section>
   @if (error()) {
@@ -517,6 +525,11 @@
         </p>
       }
     </section>
+  }
+
+  <!-- ══════════════ REPORTES ══════════════ -->
+  @if (pestana() === 'reportes') {
+    <sg-reports-panel />
   }
 
   <!-- ══════════════ VENCIMIENTOS ══════════════ -->

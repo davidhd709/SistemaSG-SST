@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { AuthSessionService } from '../../core/auth-session.service';
 import { LogoutButtonComponent } from '../../core/logout-button.component';
+import { ReportsPanelComponent } from '../reports/reports-panel.component';
 import { diasHasta, fechaCalendario, fechaHora } from '../../core/fechas';
 
 type Resultado = {
@@ -66,7 +67,7 @@ const ESTADOS: Record<string, string> = {
  * las evidencias que respaldan cada permiso.
  */
 @Component({
-  imports: [FormsModule, LogoutButtonComponent],
+  imports: [FormsModule, LogoutButtonComponent, ReportsPanelComponent],
   template: `
     <header class="app-cabecera">
       <div class="fila">
@@ -350,6 +351,8 @@ const ESTADOS: Record<string, string> = {
           </p>
         }
       }
+
+      <sg-reports-panel />
     </main>
   `,
   styles: [

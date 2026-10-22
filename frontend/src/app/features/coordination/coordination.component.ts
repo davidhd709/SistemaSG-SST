@@ -5,6 +5,7 @@ import { AuthSessionService } from '../../core/auth-session.service';
 import { fechaCalendario, fechaHora } from '../../core/fechas';
 import { LogoutButtonComponent } from '../../core/logout-button.component';
 import { ExpirationsPanelComponent } from './expirations-panel.component';
+import { ReportsPanelComponent } from '../reports/reports-panel.component';
 
 import {
   agruparRespuestasDetalle,
@@ -30,7 +31,7 @@ import {
  * responsabilidad: revisar y autorizar el inicio de labores.
  */
 @Component({
-  imports: [ReactiveFormsModule, LogoutButtonComponent, ExpirationsPanelComponent],
+  imports: [ReactiveFormsModule, LogoutButtonComponent, ExpirationsPanelComponent, ReportsPanelComponent],
   templateUrl: './coordination.component.html',
   styleUrl: './coordination.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -40,9 +41,9 @@ export class CoordinationComponent {
   private readonly session = inject(AuthSessionService);
   private readonly fb = inject(FormBuilder);
 
-  readonly pestana = signal<'bandeja' | 'jornadas' | 'vencimientos' | 'cumplimiento' | 'colaboradores' | 'custodia'>(
-    'bandeja',
-  );
+  readonly pestana = signal<
+    'bandeja' | 'jornadas' | 'vencimientos' | 'cumplimiento' | 'colaboradores' | 'custodia' | 'reportes'
+  >('bandeja');
   /** Requisitos vencidos o que vencen en 15 días; se muestra en la pestaña. */
   readonly vencimientosProximos = signal(0);
   readonly dashboard = signal<Dashboard | null>(null);
