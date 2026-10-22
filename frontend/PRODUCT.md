@@ -39,7 +39,7 @@ Los colaboradores acceden con documento y PIN desde su teléfono antes de comenz
 - Especificación del formulario: `docs/FORM_HSE-FO-016.md`.
 - Decisiones técnicas y de negocio: `docs/DECISIONS.md`.
 - Flujos y funcionalidades implementados en `frontend/src/app/features/`.
-- Marca vinculante: logo "Gestión SST — Sistema de formatos, salud y seguridad en el trabajo" (originales en `images/Logos-SST`, derivados web en `frontend/src/assets/marca`). Colores de marca: azul marino (~#0c2c4c) y verde azulado (~#1a8c78); tipografía geométrica Montserrat.
+- Marca vinculante: logo "Gestión SST — Sistema de formatos, salud y seguridad en el trabajo" (originales en `images/Logos-SST`, derivados web en `frontend/src/assets/marca`). Colores de marca: azul marino (~~#0c2c4c) y verde azulado (~~#1a8c78); tipografía geométrica Montserrat.
 - Compromiso visual (oct. 2026): el usuario eligió la consola operativa estándar de la categoría (identidad marina, tarjetas blancas, acentos verde azulado) ejecutada con alto nivel de acabado, en lugar de una dirección temática.
 
 ## Product Principles

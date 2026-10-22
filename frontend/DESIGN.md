@@ -2,160 +2,160 @@
 name: Gestión SST
 description: Consola operativa de formatos SG-SST con identidad marina y acción en verde azulado.
 colors:
-  marino-950: "#061a2e"
-  marino-900: "#08213a"
-  marino: "#0c2c4c"
-  marino-700: "#12385f"
-  marino-600: "#1a4775"
-  teal: "#1a8c78"
-  teal-claro: "#5fd0b8"
-  teal-tenue: "#e2f3ef"
-  azul: "#12705f"
-  azul-oscuro: "#0d5a4c"
-  tinta: "#0c2340"
-  tinta-media: "#3f5468"
-  tinta-suave: "#55687c"
-  fondo: "#edf1f5"
-  fondo-hundido: "#e4eaf0"
-  superficie: "#ffffff"
-  borde: "#d8e0e8"
-  borde-fuerte: "#a7b5c4"
-  filete: "#e6ebf0"
-  ok: "#12694f"
-  ok-fondo: "#e2f4ec"
-  ok-borde: "#b5dcc9"
-  alerta: "#8a5200"
-  alerta-fondo: "#fdf1dc"
-  alerta-borde: "#ecd09c"
-  error: "#b42318"
-  error-fondo: "#fdecea"
-  error-borde: "#f1c2bd"
+  marino-950: '#061a2e'
+  marino-900: '#08213a'
+  marino: '#0c2c4c'
+  marino-700: '#12385f'
+  marino-600: '#1a4775'
+  teal: '#1a8c78'
+  teal-claro: '#5fd0b8'
+  teal-tenue: '#e2f3ef'
+  azul: '#12705f'
+  azul-oscuro: '#0d5a4c'
+  tinta: '#0c2340'
+  tinta-media: '#3f5468'
+  tinta-suave: '#55687c'
+  fondo: '#edf1f5'
+  fondo-hundido: '#e4eaf0'
+  superficie: '#ffffff'
+  borde: '#d8e0e8'
+  borde-fuerte: '#a7b5c4'
+  filete: '#e6ebf0'
+  ok: '#12694f'
+  ok-fondo: '#e2f4ec'
+  ok-borde: '#b5dcc9'
+  alerta: '#8a5200'
+  alerta-fondo: '#fdf1dc'
+  alerta-borde: '#ecd09c'
+  error: '#b42318'
+  error-fondo: '#fdecea'
+  error-borde: '#f1c2bd'
 typography:
   display:
-    fontFamily: "Montserrat, system-ui, sans-serif"
-    fontSize: "clamp(2.25rem, 7vw, 3.75rem)"
+    fontFamily: 'Montserrat, system-ui, sans-serif'
+    fontSize: 'clamp(2.25rem, 7vw, 3.75rem)'
     fontWeight: 800
     lineHeight: 1.04
-    letterSpacing: "-0.035em"
+    letterSpacing: '-0.035em'
   headline:
-    fontFamily: "Montserrat, system-ui, sans-serif"
-    fontSize: "clamp(1.6rem, 3vw, 2.25rem)"
+    fontFamily: 'Montserrat, system-ui, sans-serif'
+    fontSize: 'clamp(1.6rem, 3vw, 2.25rem)'
     fontWeight: 700
     lineHeight: 1.2
-    letterSpacing: "-0.03em"
+    letterSpacing: '-0.03em'
   title:
-    fontFamily: "Montserrat, system-ui, sans-serif"
-    fontSize: "1.25rem"
+    fontFamily: 'Montserrat, system-ui, sans-serif'
+    fontSize: '1.25rem'
     fontWeight: 700
     lineHeight: 1.2
-    letterSpacing: "-0.02em"
+    letterSpacing: '-0.02em'
   body:
-    fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif"
-    fontSize: "1rem"
+    fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif'
+    fontSize: '1rem'
     fontWeight: 400
     lineHeight: 1.55
   label:
-    fontFamily: "Montserrat, system-ui, sans-serif"
-    fontSize: "0.875rem"
+    fontFamily: 'Montserrat, system-ui, sans-serif'
+    fontSize: '0.875rem'
     fontWeight: 700
     lineHeight: 1.2
-    letterSpacing: "0.01em"
+    letterSpacing: '0.01em'
   cifra:
-    fontFamily: "Montserrat, system-ui, sans-serif"
-    fontSize: "1.875rem"
+    fontFamily: 'Montserrat, system-ui, sans-serif'
+    fontSize: '1.875rem'
     fontWeight: 700
     lineHeight: 1.1
-    letterSpacing: "-0.03em"
-    fontFeature: "tnum"
+    letterSpacing: '-0.03em'
+    fontFeature: 'tnum'
 rounded:
-  chico: "10px"
-  radio: "12px"
-  bloque: "16px"
-  radio-grande: "18px"
-  grande: "22px"
-  acceso: "24px"
-  pastilla: "999px"
+  chico: '10px'
+  radio: '12px'
+  bloque: '16px'
+  radio-grande: '18px'
+  grande: '22px'
+  acceso: '24px'
+  pastilla: '999px'
 spacing:
-  xs: "4px"
-  sm: "8px"
-  md: "16px"
-  lg: "24px"
-  xl: "32px"
+  xs: '4px'
+  sm: '8px'
+  md: '16px'
+  lg: '24px'
+  xl: '32px'
 components:
   boton-primario:
-    backgroundColor: "{colors.azul}"
-    textColor: "{colors.superficie}"
-    typography: "{typography.label}"
-    rounded: "{rounded.radio}"
-    padding: "12px 22px"
-    height: "52px"
+    backgroundColor: '{colors.azul}'
+    textColor: '{colors.superficie}'
+    typography: '{typography.label}'
+    rounded: '{rounded.radio}'
+    padding: '12px 22px'
+    height: '52px'
   boton-primario-hover:
-    backgroundColor: "{colors.azul-oscuro}"
-    textColor: "{colors.superficie}"
+    backgroundColor: '{colors.azul-oscuro}'
+    textColor: '{colors.superficie}'
   boton-secundario:
-    backgroundColor: "{colors.superficie}"
-    textColor: "{colors.tinta}"
-    rounded: "{rounded.radio}"
-    padding: "12px 22px"
-    height: "52px"
+    backgroundColor: '{colors.superficie}'
+    textColor: '{colors.tinta}'
+    rounded: '{rounded.radio}'
+    padding: '12px 22px'
+    height: '52px'
   boton-secundario-hover:
-    backgroundColor: "#f5f8fb"
-    textColor: "{colors.marino}"
+    backgroundColor: '#f5f8fb'
+    textColor: '{colors.marino}'
   boton-peligro:
-    backgroundColor: "{colors.error}"
-    textColor: "{colors.superficie}"
-    rounded: "{rounded.radio}"
-    padding: "12px 22px"
+    backgroundColor: '{colors.error}'
+    textColor: '{colors.superficie}'
+    rounded: '{rounded.radio}'
+    padding: '12px 22px'
   boton-compacto:
-    rounded: "{rounded.chico}"
-    padding: "7px 15px"
-    height: "40px"
+    rounded: '{rounded.chico}'
+    padding: '7px 15px'
+    height: '40px'
   campo:
-    backgroundColor: "#fbfcfd"
-    textColor: "{colors.tinta}"
-    rounded: "{rounded.radio}"
-    padding: "11px 14px"
-    height: "50px"
+    backgroundColor: '#fbfcfd'
+    textColor: '{colors.tinta}'
+    rounded: '{rounded.radio}'
+    padding: '11px 14px'
+    height: '50px'
   bloque:
-    backgroundColor: "{colors.superficie}"
-    rounded: "{rounded.radio-grande}"
-    padding: "26px"
+    backgroundColor: '{colors.superficie}'
+    rounded: '{rounded.radio-grande}'
+    padding: '26px'
   tarjeta:
-    backgroundColor: "{colors.superficie}"
-    rounded: "{rounded.radio-grande}"
-    padding: "32px 28px"
+    backgroundColor: '{colors.superficie}'
+    rounded: '{rounded.radio-grande}'
+    padding: '32px 28px'
   pestana-activa:
-    backgroundColor: "{colors.superficie}"
-    textColor: "{colors.marino}"
-    typography: "{typography.label}"
-    rounded: "{rounded.chico}"
-    padding: "8px 16px"
-    height: "40px"
+    backgroundColor: '{colors.superficie}'
+    textColor: '{colors.marino}'
+    typography: '{typography.label}'
+    rounded: '{rounded.chico}'
+    padding: '8px 16px'
+    height: '40px'
   distintivo-vigente:
-    backgroundColor: "{colors.ok-fondo}"
-    textColor: "{colors.ok}"
-    rounded: "{rounded.pastilla}"
-    padding: "3px 10px 3px 8px"
+    backgroundColor: '{colors.ok-fondo}'
+    textColor: '{colors.ok}'
+    rounded: '{rounded.pastilla}'
+    padding: '3px 10px 3px 8px'
   distintivo-por-vencer:
-    backgroundColor: "{colors.alerta-fondo}"
-    textColor: "{colors.alerta}"
-    rounded: "{rounded.pastilla}"
-    padding: "3px 10px 3px 8px"
+    backgroundColor: '{colors.alerta-fondo}'
+    textColor: '{colors.alerta}'
+    rounded: '{rounded.pastilla}'
+    padding: '3px 10px 3px 8px'
   distintivo-vencida:
-    backgroundColor: "{colors.error-fondo}"
-    textColor: "{colors.error}"
-    rounded: "{rounded.pastilla}"
-    padding: "3px 10px 3px 8px"
+    backgroundColor: '{colors.error-fondo}'
+    textColor: '{colors.error}'
+    rounded: '{rounded.pastilla}'
+    padding: '3px 10px 3px 8px'
   opcion-marcada:
-    backgroundColor: "{colors.azul}"
-    textColor: "{colors.superficie}"
-    rounded: "{rounded.radio}"
-    padding: "12px 18px"
-    height: "54px"
+    backgroundColor: '{colors.azul}'
+    textColor: '{colors.superficie}'
+    rounded: '{rounded.radio}'
+    padding: '12px 18px'
+    height: '54px'
   cabecera-app:
-    backgroundColor: "{colors.marino-900}"
-    textColor: "{colors.superficie}"
-    padding: "12px 24px"
+    backgroundColor: '{colors.marino-900}'
+    textColor: '{colors.superficie}'
+    padding: '12px 24px'
 ---
 
 # Design System: Gestión SST
@@ -171,6 +171,7 @@ Hay dos densidades. El colaborador recorre un flujo de una tarea por pantalla, d
 Rechazo confirmado: el aspecto plano crema y verde que no cargaba identidad. La marca se reconoce al instante por el marino y el escudo, no por colores pastel.
 
 **Key Characteristics:**
+
 - Bandas marinas de identidad (`--banda-marina`: degradado marino con luz verde azulada en una esquina) con el escudo al 6–7 % de opacidad.
 - Suelo frío claro (`fondo`) y tarjetas blancas elevadas con sombras marinas desplazadas.
 - Montserrat autoalojada para títulos, controles y cifras; la letra del sistema para el cuerpo.
@@ -182,15 +183,18 @@ Rechazo confirmado: el aspecto plano crema y verde que no cargaba identidad. La 
 Paleta de marca de dos voces: marino institucional para identidad, verde azulado para acción, sobre neutros fríos con matiz azul.
 
 ### Primary
+
 - **Marino institucional** (`marino`): fondo de la banda de área, pestaña de módulo activa, cifras de indicadores, chapa de código de formato. Su escala (`marino-950` a `marino-600`) arma el degradado de banda; `marino-900` es la cabecera de la app y del flujo, y el `theme-color` de la PWA.
 - **Verde azulado de acción** (`azul`): botón primario, opción marcada, casilla marcada, foco (`:focus-visible` 3px), enlaces y `caret-color`. Es el teal del logo oscurecido para que el texto blanco cumpla AA. Hover y bordes: `azul-oscuro`.
 
 ### Secondary
+
 - **Teal de logo** (`teal`): solo en el progreso del flujo (degradado `teal` → `teal-claro`) y en puntos de estado vivo; también tiñe los anillos de foco de campos (`rgb(26 140 120 / 0.18)`).
 - **Teal claro** (`teal-claro`): acentos sobre marino: contorno de foco dentro de bandas, globos de conteo en pestañas de la banda, iconos del panel de acceso, pastilla de contexto de área.
 - **Teal tenue** (`teal-tenue`): fondo de casilla marcada y de globos de conteo sobre suelo claro.
 
 ### Neutral
+
 - **Tinta marina** (`tinta`): texto principal y títulos.
 - **Tinta media** (`tinta-media`): párrafos de apoyo, encabezados de tabla, rótulos de indicador.
 - **Tinta suave** (`tinta-suave`): texto secundario, ayudas, términos de fichas.
@@ -201,9 +205,11 @@ Paleta de marca de dos voces: marino institucional para identidad, verde azulado
 - **Filete** (`filete`): divisores internos de tabla, preguntas y segmentos de indicadores.
 
 ### Estados
+
 Tres familias de tres tonos (texto, fondo, borde): `ok`, `alerta`, `error`. Se usan siempre juntas en mensajes, distintivos, fichas de expediente y pantallas de resultado.
 
 ### Named Rules
+
 **La Regla del Teal Que Actúa.** El verde azulado solo marca lo que se puede pulsar, lo que está seleccionado, el foco o el progreso. Como superficie solo llena acciones (la puerta destacada de la portada) y como luz solo tiñe la esquina del degradado de las bandas marinas; nunca es fondo decorativo de contenido ni color de título.
 
 **La Regla del Marino Como Bandera.** El marino lleno se reserva a bloques de identidad (cabecera, banda de área, panel de acceso, portada) y a la selección activa de módulo. El contenido de trabajo vive siempre sobre suelo claro.
@@ -218,6 +224,7 @@ Tres familias de tres tonos (texto, fondo, borde): `ok`, `alerta`, `error`. Se u
 **Character:** Montserrat geométrica pone la voz de marca en títulos, botones, pestañas y cifras; la letra del sistema mantiene el cuerpo ligero y nativo en equipos limitados.
 
 ### Hierarchy
+
 - **Display** (800, clamp(2.25rem, 7vw, 3.75rem), 1.04, −0.035em): solo el titular de la portada, máximo 14ch.
 - **Headline** (700, clamp(1.6rem, 3vw, 2.25rem), −0.03em): h1 de la banda de área, en blanco. Variante del panel de acceso: clamp(1.5rem, 2.4vw, 2rem), 18ch.
 - **Título de paso / pantalla** (700, 1.625rem, −0.025em): h1 del flujo del colaborador y de encabezados de formulario.
@@ -228,6 +235,7 @@ Tres familias de tres tonos (texto, fondo, borde): `ok`, `alerta`, `error`. Se u
 - **Rótulo de dato** (600, 0.75–0.8125rem, +0.03em, mayúsculas): términos `dt` de fichas y encabezados de tabla (Montserrat 700, 0.71875rem, +0.06em). Rotula datos; nunca encabeza una sección.
 
 ### Named Rules
+
 **La Regla del Titular Sin Antetítulo.** Ningún título lleva una etiqueta pequeña encima. El nombre del área vive en el h1 de la banda; el contexto va en la pastilla `area-contexto` al lado, en mayúscula inicial.
 
 **La Regla de la Cifra Tabular.** Toda cifra comparable (indicadores, tablas, conteos, documento y PIN) usa `font-variant-numeric: tabular-nums`.
@@ -247,6 +255,7 @@ Tres familias de tres tonos (texto, fondo, borde): `ok`, `alerta`, `error`. Se u
 Sistema elevado: el suelo es plano y frío, y toda superficie de trabajo flota sobre él con sombras teñidas de marino (`rgb(8 33 58 / α)`), siempre con desplazamiento vertical y una capa de contacto más una difusa con spread negativo. Los controles interactivos llevan sombra de color propio (verde azulado o rojo) bajo el botón.
 
 ### Shadow Vocabulary
+
 - **Sombra 1** (`--sombra-1`: `0 1px 2px rgb(8 33 58 / 0.06), 0 2px 6px rgb(8 33 58 / 0.05)`): tablas, mensajes, carril de módulos, pestaña activa, expedientes.
 - **Sombra** (`--sombra`: `0 1px 3px rgb(8 33 58 / 0.06), 0 10px 26px -8px rgb(8 33 58 / 0.18)`): bloques de contenido, franja de indicadores, resultado del envío.
 - **Sombra alta** (`--sombra-alta`: `0 2px 6px rgb(8 33 58 / 0.08), 0 28px 56px -14px rgb(8 33 58 / 0.34)`): tarjeta de acceso, puertas de portada, tarjeta móvil que monta la banda.
@@ -255,6 +264,7 @@ Sistema elevado: el suelo es plano y frío, y toda superficie de trabajo flota s
 - **Barra al pie** (`0 -10px 30px -12px rgb(8 33 58 / 0.25)` con `backdrop-filter: blur(14px)` sobre blanco al 92 %).
 
 ### Named Rules
+
 **La Regla de la Sombra Desplazada.** Toda sombra tiene desplazamiento vertical y tinte marino. No hay resplandores difuminados centrados (`0 0 Npx`). Los anillos sólidos sin desenfoque (`0 0 0 4px`) sí existen, solo para foco de campo, firma completada y halo de estado.
 
 ## Shapes
@@ -264,7 +274,9 @@ Esquinas suavemente redondeadas y consistentes: 12px (`--radio`) en controles y 
 ## Components
 
 ### Buttons
+
 Sólidos, táctiles y con peso: Montserrat 700, sombra de color propio.
+
 - **Shape:** 12px (`rounded.radio`), alto mínimo 52px.
 - **Primario:** verde azulado de acción con borde `azul-oscuro`, texto blanco, 12px 22px.
 - **Hover / Focus:** fondo `azul-oscuro`, sube 1px y la sombra crece; `:active` baja 1px con sombra interior. Foco: contorno 3px `azul` a 2px (sobre marino, `teal-claro`).
@@ -274,11 +286,13 @@ Sólidos, táctiles y con peso: Montserrat 700, sombra de color propio.
 - **Bloque:** ancho completo (acción primaria en móvil y en barra al pie).
 
 ### Chips
+
 - **Distintivo de estado:** pastilla con punto de 7px en `currentColor`, fondo/borde/texto de la familia de estado (vigente, por vencer, vencida, neutro). El punto y el texto hacen que el estado no dependa solo del color.
 - **Contexto de área:** pastilla sobre la banda, teal claro al 12 % con contorno interior al 32 %, texto `#bff0e4`, Montserrat 600, mayúscula inicial.
 - **Globo de conteo:** pastilla de 22px en pestañas (`teal-tenue`/`azul-oscuro` en claro; `teal-claro`/`marino-950` sobre banda).
 
 ### Cards / Containers
+
 - **Corner Style:** 18px (bloque, tarjeta), 16px (franja de indicadores, expedientes), 14px (marco de tabla).
 - **Background:** `superficie`; expedientes y resultados con degradado vertical tenue de su familia de estado.
 - **Shadow Strategy:** sombra 1 / sombra / sombra alta según el papel (ver Elevation & Depth).
@@ -286,6 +300,7 @@ Sólidos, táctiles y con peso: Montserrat 700, sombra de color propio.
 - **Internal Padding:** 26px en bloques (20px 16px en celular), 32px 28px en tarjetas.
 
 ### Inputs / Fields
+
 - **Style:** 50px de alto, 11px 14px, borde 1px `borde-fuerte`, radio 12px, fondo `#fbfcfd` hundido.
 - **Focus:** borde `azul`, fondo blanco, anillo sólido `0 0 0 4px rgb(26 140 120 / 0.18)`.
 - **Error / Disabled:** campo inválido con borde `error` y anillo rojo al 12 %, mensaje 600 bajo el campo; deshabilitado sobre `fondo` con `tinta-suave`.
@@ -293,6 +308,7 @@ Sólidos, táctiles y con peso: Montserrat 700, sombra de color propio.
 - **Rótulo:** 600, 0.9375rem, encima del control con 6px; ayuda a 0.8125rem.
 
 ### Navigation
+
 - **Cabecera de app:** `marino-900`, solo marca (sigla 40px + sello en mayúsculas + lema); el nombre del área no se repite aquí, vive en el h1 de la banda. Salida como botón secundario vidrio.
 - **Banda de área:** degradado `--banda-marina` a sangre, escudo al 6 %, h1 blanco + párrafo `#c3d3e3`, pastilla de contexto y pestañas.
 - **Pestañas:** carril de 4px de relleno, botones de 40px en Montserrat 700; activa en blanco con texto marino y sombra 1. Sobre la banda el carril es negro al 22 %.
@@ -300,26 +316,33 @@ Sólidos, táctiles y con peso: Montserrat 700, sombra de color propio.
 - **Cabecera de paso (colaborador):** pegajosa, `marino-900`, sigla 36px (30px en celular), título y contador "paso X de Y", barra de progreso de 5px en degradado teal.
 
 ### Franja de indicadores
+
 Una sola franja blanca dividida en segmentos con filete de 1px, no tarjetas sueltas. Cada segmento: cifra marina y rótulo `tinta-media`. El segmento que pide atención se pinta con la familia `alerta`. En celular, 2 columnas y el último impar ocupa toda la fila.
 
 ### Tabla de datos
+
 Encabezado `#f5f8fb` en mayúsculas pequeñas Montserrat, celdas de 13px 16px, filete entre filas, hover `#f4f8fb`, fila de alerta en `error-fondo`. Bajo 640px se reflujo a fichas apiladas con la acción de fila a todo el ancho.
 
 ### Opciones grandes (Sí / No / N.A.)
+
 Botones de 54px con borde 2px; marcada en verde azulado; el "No" marcado pasa a `error` (es una alerta, no una preferencia) y "N.A." a `tinta-media`.
 
 ### Barra de acción al pie
+
 Fija, blanca al 92 % con desenfoque, respeta `safe-area-inset-bottom`; la acción primaria crece y la secundaria se ajusta a su contenido.
 
 ### Pantalla de resultado
+
 Tarjeta centrada de 22px con símbolo circular de 76px en la familia de estado (aprobado, rechazado, pendiente) y halo sólido de 8px.
 
 ### Movimiento
+
 Un solo momento: la animación `subir` (translateY 14px → 0, 600–700ms, `cubic-bezier(0.16, 1, 0.3, 1)`) en la entrada de la tarjeta de acceso, las puertas, el texto de la banda de área y el resultado. Microtransiciones de 140–260ms en color, sombra y desplazamiento de 1–4px en hover. Con `prefers-reduced-motion: reduce` se anulan todas las animaciones y transiciones.
 
 ## Do's and Don'ts
 
 ### Do:
+
 - **Do** usar el marino solo en bandas de identidad (cabecera `marino-900`, banda de área y panel de acceso con `--banda-marina`) y llevar el escudo como marca de agua al 6–7 %.
 - **Do** reservar el verde azulado (`azul`) a acciones, selección, foco y progreso.
 - **Do** poner el contenido en tarjetas blancas sobre `fondo` con la sombra del papel correspondiente (sombra 1, sombra, sombra alta).
@@ -330,6 +353,7 @@ Un solo momento: la animación `subir` (translateY 14px → 0, 600–700ms, `cub
 - **Do** escribir la pastilla de contexto de área en mayúscula inicial.
 
 ### Don't:
+
 - **Don't** volver al aspecto plano crema y verde sin identidad.
 - **Don't** poner una etiqueta pequeña (antetítulo) encima de un título.
 - **Don't** repetir el nombre del área en la cabecera; la cabecera muestra solo la marca.
