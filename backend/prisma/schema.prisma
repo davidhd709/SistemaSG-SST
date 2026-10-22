@@ -278,14 +278,15 @@ model FormSubmission {
   closedById            String?            @db.Uuid
   closedByUserId        String?            @db.Uuid
   closureNotes          String?
-  previousSubmissionId  String?            @db.Uuid
+  // Permiso rechazado que este envío corrige. Cada rechazo admite una sola corrección.
+  previousSubmissionId  String?            @unique @db.Uuid
   createdAt             DateTime           @default(now())
   collaborator          Collaborator       @relation(fields: [collaboratorId], references: [id], onDelete: Restrict)
   closedBy              Collaborator?      @relation("SubmissionClosedBy", fields: [closedById], references: [id], onDelete: Restrict)
   closedByUser          User?              @relation("SubmissionClosedByUser", fields: [closedByUserId], references: [id], onDelete: Restrict)
   formVersion           FormVersion        @relation(fields: [formVersionId], references: [id], onDelete: Restrict)
   previousSubmission    FormSubmission?    @relation("SubmissionCorrections", fields: [previousSubmissionId], references: [id], onDelete: Restrict)
-  correctionAttempts    FormSubmission[]   @relation("SubmissionCorrections")
+  correction            FormSubmission?    @relation("SubmissionCorrections")
   members               SubmissionMember[]
   signatures            Signature[]
   finalPdfFileId        String?            @unique @db.Uuid

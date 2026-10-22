@@ -10,6 +10,7 @@ import {
 } from '@angular/core';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { AuthSessionService } from '../../core/auth-session.service';
 import { fechaCalendario } from '../../core/fechas';
 import { LogoutButtonComponent } from '../../core/logout-button.component';
@@ -27,6 +28,7 @@ import {
   type Campo,
   type Candidato,
   type Cargo,
+  type Correccion,
   type Definicion,
   type Envio,
   type Etapa,
@@ -42,7 +44,7 @@ import {
  * en el dispositivo por si la aplicaci?n se cierra a media jornada.
  */
 @Component({
-  imports: [ReactiveFormsModule, LogoutButtonComponent],
+  imports: [ReactiveFormsModule, RouterLink, LogoutButtonComponent],
   templateUrl: './work-at-height-form.component.html',
   styleUrl: './work-at-height-form.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -50,6 +52,7 @@ import {
 export class WorkAtHeightFormComponent implements OnDestroy {
   private readonly http = inject(HttpClient);
   private readonly session = inject(AuthSessionService);
+  private readonly ruta = inject(ActivatedRoute);
   @ViewChild('lienzo') lienzo?: ElementRef<HTMLCanvasElement>;
   @ViewChild('videoCharla') videoCharla?: ElementRef<HTMLVideoElement>;
 
@@ -82,6 +85,15 @@ export class WorkAtHeightFormComponent implements OnDestroy {
   readonly novedades = signal('');
   readonly cerrando = signal(false);
   readonly iniciando = signal(false);
+
+  // ── Corrección de un permiso rechazado ──
+  /** Permiso rechazado que se está corrigiendo; viaja en el reenvío. */
+  readonly correccion = signal<Correccion | null>(null);
+  /** Último permiso rechazado que el oficial aún puede corregir. */
+  readonly rechazoPendiente = signal<{ id: string; reason: string | null } | null>(null);
+  /** Integrantes del permiso anterior que hoy ya no cumplen y quedaron fuera. */
+  readonly omitidosCorreccion = signal(0);
+  private correccionAplicada = false;
 
   /** A quién le toca firmar ahora. */
   readonly firmante = computed<Integrante | null>(() => this.integrantes()[this.indiceFirma()] ?? null);
@@ -521,6 +533,7 @@ export class WorkAtHeightFormComponent implements OnDestroy {
         answers: this.respuestasNormalizadas(),
         safetyTalkConfirmed: true,
         safetyTalkToken: this.charlaToken(),
+        previousSubmissionId: this.correccion()?.id,
         members: cuadrilla.map((persona) => ({
           collaboratorId: persona.candidato.id,
           jobPositionId: persona.jobPositionId || undefined,
@@ -594,6 +607,9 @@ export class WorkAtHeightFormComponent implements OnDestroy {
         if (!flujo.canContinue) return;
         this.cargarDefinicion();
         this.cargarCuadrilla();
+        const corregir = this.ruta.snapshot.queryParamMap.get('corregir');
+        if (corregir) this.cargarCorreccion(corregir);
+        else this.buscarRechazoPendiente();
       },
       error: () => this.error.set('No fue posible validar tu estado. Revisa tu conexión.'),
     });
@@ -613,12 +629,83 @@ export class WorkAtHeightFormComponent implements OnDestroy {
             if (!yo) return;
             this.yoId.set(yo.id);
             this.integrantes.set([{ candidato: yo, jobPositionId: this.cargoPorDefecto(yo), firmaDataUrl: null }]);
+            this.aplicarCorreccion();
           },
           error: () => this.error.set('No fue posible cargar los colaboradores disponibles.'),
         });
       },
       error: () => this.error.set('No fue posible cargar los cargos.'),
     });
+  }
+
+  /**
+   * Abre el formulario en modo corrección. Se recarga la página a propósito:
+   * el flujo arranca limpio (charla, cuadrilla y firmas nuevas) en vez de
+   * reutilizar el estado del permiso rechazado que se está mostrando.
+   */
+  corregir(submissionId: string): void {
+    globalThis.location.assign(`/formulario/alturas?corregir=${encodeURIComponent(submissionId)}`);
+  }
+
+  private cargarCorreccion(submissionId: string): void {
+    this.http.get<Correccion>(`/api/submissions/mine/${submissionId}/correction`).subscribe({
+      next: (correccion) => {
+        this.correccion.set(correccion);
+        this.aplicarCorreccion();
+      },
+      error: (respuesta: HttpErrorResponse) => {
+        const detalle = respuesta.error?.message;
+        this.error.set(
+          typeof detalle === 'string'
+            ? `${detalle} Puedes diligenciar un permiso nuevo.`
+            : 'No fue posible recuperar el permiso rechazado. Puedes diligenciar uno nuevo.',
+        );
+      },
+    });
+  }
+
+  private buscarRechazoPendiente(): void {
+    this.http.get<Envio>('/api/submissions/mine/latest').subscribe({
+      next: (ultimo) => {
+        if (ultimo?.status === 'REJECTED' && ultimo.correctable) {
+          this.rechazoPendiente.set({ id: ultimo.id, reason: ultimo.approval?.reason ?? null });
+        }
+      },
+      error: () => undefined,
+    });
+  }
+
+  /**
+   * Precarga respuestas y cuadrilla del permiso rechazado. Espera a tener el
+   * formato y los candidatos: sin ellos no hay controles ni personas elegibles.
+   */
+  private aplicarCorreccion(): void {
+    const correccion = this.correccion();
+    if (this.correccionAplicada || !correccion || !this.definicion() || !this.yoId()) return;
+    this.correccionAplicada = true;
+
+    for (const [id, valor] of Object.entries(correccion.answers)) this.respuestas.get(id)?.setValue(valor);
+
+    const cargos = new Set(this.cargos().map((cargo) => cargo.id));
+    const elegibles = new Map(this.candidatos().map((candidato) => [candidato.id, candidato]));
+    const cuadrilla: Integrante[] = [];
+    let omitidos = 0;
+    // El oficial primero, como en un permiso nuevo; luego el resto en su orden.
+    const ordenados = [...correccion.members].sort((a, b) => Number(b.isLead) - Number(a.isLead));
+    for (const integrante of ordenados.slice(0, MAX_INTEGRANTES)) {
+      const candidato = elegibles.get(integrante.collaboratorId);
+      if (!candidato) {
+        omitidos++;
+        continue;
+      }
+      const jobPositionId =
+        integrante.jobPositionId && cargos.has(integrante.jobPositionId)
+          ? integrante.jobPositionId
+          : this.cargoPorDefecto(candidato);
+      cuadrilla.push({ candidato, jobPositionId, firmaDataUrl: null });
+    }
+    if (cuadrilla.some((persona) => persona.candidato.id === this.yoId())) this.integrantes.set(cuadrilla);
+    this.omitidosCorreccion.set(omitidos);
   }
 
   /** Salta al resultado para que el colaborador pueda cerrar lo que dejó abierto. */
@@ -648,6 +735,7 @@ export class WorkAtHeightFormComponent implements OnDestroy {
         }
         this.definicion.set(definicion);
         this.restaurarBorrador();
+        this.aplicarCorreccion();
       },
       error: () => this.error.set('No fue posible cargar el formato vigente.'),
     });

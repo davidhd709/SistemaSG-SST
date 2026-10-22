@@ -6,6 +6,7 @@ import {
   IsArray,
   IsBoolean,
   IsObject,
+  IsOptional,
   IsString,
   IsUUID,
   MaxLength,
@@ -42,4 +43,7 @@ export class SubmitFormDto {
   @ValidateNested({ each: true })
   @Type(() => CrewMemberDto)
   members!: CrewMemberDto[];
+
+  /** Permiso rechazado que este envío corrige, cuando el oficial lo reenvía. */
+  @IsOptional() @IsUUID() previousSubmissionId?: string;
 }

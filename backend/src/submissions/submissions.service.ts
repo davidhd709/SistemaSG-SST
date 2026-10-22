@@ -18,6 +18,7 @@ import { PdfService } from '../pdf/pdf.service';
 import { TemplateRegistry } from '../pdf/template-registry';
 import { SubmitFormDto, type CrewMemberDto } from './dto/submit-form.dto';
 import { CloseWorkdayDto } from './dto/close-workday.dto';
+import { MySubmissionsQueryDto } from './dto/my-submissions-query.dto';
 import { businessDate, businessDay } from '../common/business-date';
 import {
   EDITABLE_FIELD_TYPES,
@@ -191,6 +192,8 @@ export class SubmissionsService {
       throw new ConflictException('Ya tienes un permiso pendiente o una jornada sin cerrar.');
     }
 
+    if (dto.previousSubmissionId) await this.correccionDisponible(dto.previousSubmissionId, oficialId);
+
     const form = await this.prisma.form.findUnique({ where: { code: formCode }, include: { currentVersion: true } });
     if (!form?.currentVersion || form.status !== 'PUBLISHED' || !form.currentVersion.active) {
       throw new NotFoundException('No hay un formulario vigente.');
@@ -255,6 +258,7 @@ export class SubmissionsService {
             arlSnapshotJson: (cumplimientos.get(oficialId)?.arl ?? {}) as Prisma.InputJsonValue,
             submittedAt: ahora,
             workDate: businessDate(ahora),
+            previousSubmissionId: dto.previousSubmissionId,
           },
         });
 
@@ -305,6 +309,7 @@ export class SubmissionsService {
               crewSize: guardadas.length,
               safetyTalkVideo: charla.videoId,
               safetyTalkVideoSha256: charla.videoSha256,
+              ...(dto.previousSubmissionId ? { previousSubmissionId: dto.previousSubmissionId } : {}),
             },
             ip: request.ip,
             userAgent: request.header('user-agent'),
@@ -323,6 +328,10 @@ export class SubmissionsService {
       };
     } catch (error) {
       await Promise.all(guardadas.map((firma) => this.storage.deleteObject(firma.objectKey).catch(() => undefined)));
+      // Dos reenvíos simultáneos del mismo rechazo: el índice único deja pasar uno.
+      if (dto.previousSubmissionId && (error as { code?: string } | null)?.code === 'P2002') {
+        throw new ConflictException('Este permiso rechazado ya fue corregido.');
+      }
       throw error;
     }
   }
@@ -461,7 +470,7 @@ export class SubmissionsService {
   /** Lo último que hizo el colaborador, sea como oficial o como integrante. */
   async latest(request: AuthenticatedRequest) {
     const collaboratorId = this.collaboratorId(request);
-    return this.prisma.formSubmission.findFirst({
+    const ultimo = await this.prisma.formSubmission.findFirst({
       where: { members: { some: { collaboratorId } } },
       orderBy: { createdAt: 'desc' },
       select: {
@@ -473,6 +482,7 @@ export class SubmissionsService {
         closedAt: true,
         collaboratorId: true,
         approval: { select: { decision: true, decidedAt: true, reason: true } },
+        correction: { select: { id: true } },
         members: {
           select: {
             isLead: true,
@@ -481,6 +491,100 @@ export class SubmissionsService {
         },
       },
     });
+    if (!ultimo) return null;
+    const { correction, ...resto } = ultimo;
+    return { ...resto, correctable: this.esCorregible(ultimo, collaboratorId, correction) };
+  }
+
+  /**
+   * Historial del colaborador: los permisos en los que participó, como oficial
+   * o como integrante, con su decisión y su documento final cuando existe.
+   */
+  async mine(request: AuthenticatedRequest, query: MySubmissionsQueryDto) {
+    const collaboratorId = this.collaboratorId(request);
+    await this.expireStalePermits();
+    const { page = 1, pageSize = 20 } = query;
+    const where: Prisma.FormSubmissionWhereInput = {
+      status: { not: 'DRAFT' },
+      members: { some: { collaboratorId } },
+    };
+    const [total, items] = await this.prisma.$transaction([
+      this.prisma.formSubmission.count({ where }),
+      this.prisma.formSubmission.findMany({
+        where,
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+        select: {
+          id: true,
+          status: true,
+          collaboratorId: true,
+          workDate: true,
+          submittedAt: true,
+          startedAt: true,
+          closedAt: true,
+          previousSubmissionId: true,
+          finalPdfFileId: true,
+          approval: { select: { decision: true, decidedAt: true, reason: true } },
+          correction: { select: { id: true } },
+          formVersion: { select: { versionNumber: true, form: { select: { code: true, name: true } } } },
+          members: {
+            select: {
+              isLead: true,
+              collaborator: { select: { firstName: true, lastName: true } },
+              jobPosition: { select: { name: true } },
+            },
+          },
+        },
+      }),
+    ]);
+    return {
+      items: items.map(({ correction, formVersion, ...item }) => ({
+        ...item,
+        isLead: item.collaboratorId === collaboratorId,
+        form: { code: formVersion.form.code, name: formVersion.form.name, version: formVersion.versionNumber },
+        correctedById: correction?.id ?? null,
+        correctable: this.esCorregible(item, collaboratorId, correction),
+      })),
+      page,
+      pageSize,
+      total,
+      totalPages: Math.ceil(total / pageSize),
+    };
+  }
+
+  /**
+   * Lo que el oficial necesita para corregir un permiso rechazado: el motivo,
+   * sus respuestas editables y la cuadrilla. Las firmas y la charla no se
+   * reutilizan: el reenvío es un permiso nuevo y cada integrante vuelve a firmar.
+   */
+  async correctionSource(submissionId: string, request: AuthenticatedRequest) {
+    const collaboratorId = this.collaboratorId(request);
+    const anterior = await this.correccionDisponible(submissionId, collaboratorId);
+    const campos = (anterior.formVersion.schemaJson as { fields?: Field[] } | null)?.fields ?? [];
+    const editables = new Set(
+      campos
+        .filter(
+          (campo) =>
+            typeof campo?.id === 'string' &&
+            typeof campo.type === 'string' &&
+            EDITABLE_FIELD_TYPES.has(campo.type) &&
+            !isReservedSystemFieldId(campo.id),
+        )
+        .map((campo) => campo.id as string),
+    );
+    const respuestas = (anterior.answersJson ?? {}) as Record<string, unknown>;
+    return {
+      id: anterior.id,
+      workDate: anterior.workDate,
+      reason: anterior.approval?.reason ?? null,
+      answers: Object.fromEntries(Object.entries(respuestas).filter(([id]) => editables.has(id))),
+      members: anterior.members.map((member) => ({
+        collaboratorId: member.collaboratorId,
+        jobPositionId: member.jobPositionId,
+        isLead: member.isLead,
+      })),
+    };
   }
 
   /** Libera permisos que nunca comenzaron y conserva una traza del vencimiento. */
@@ -513,6 +617,34 @@ export class SubmissionsService {
   }
 
   // ── Interno ──────────────────────────────────────────────────────────
+  /** Solo quien diligenció un permiso rechazado puede corregirlo, y una sola vez. */
+  private esCorregible(
+    envio: { status: string; collaboratorId: string },
+    collaboratorId: string,
+    correccion: { id: string } | null,
+  ): boolean {
+    return envio.status === 'REJECTED' && envio.collaboratorId === collaboratorId && !correccion;
+  }
+
+  private async correccionDisponible(submissionId: string, collaboratorId: string) {
+    const anterior = await this.prisma.formSubmission.findUnique({
+      where: { id: submissionId },
+      include: {
+        approval: { select: { reason: true } },
+        correction: { select: { id: true } },
+        formVersion: { select: { schemaJson: true } },
+        members: { select: { collaboratorId: true, jobPositionId: true, isLead: true } },
+      },
+    });
+    if (!anterior) throw new NotFoundException('Permiso no encontrado.');
+    if (anterior.collaboratorId !== collaboratorId) {
+      throw new ForbiddenException('Solo el oficial que diligenció el permiso puede corregirlo.');
+    }
+    if (anterior.status !== 'REJECTED') throw new ConflictException('Solo se corrige un permiso rechazado.');
+    if (anterior.correction) throw new ConflictException('Este permiso rechazado ya fue corregido.');
+    return anterior;
+  }
+
   /** Permiso que impide abrir otro, pendiente o autorizado. */
   private async jornadaAbierta(collaboratorId: string) {
     return this.prisma.formSubmission.findFirst({

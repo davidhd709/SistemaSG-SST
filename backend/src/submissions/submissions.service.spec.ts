@@ -518,3 +518,107 @@ describe('SubmissionsService permit safeguards', () => {
     });
   });
 });
+
+describe('Corrección de un permiso rechazado', () => {
+  const rejectedId = '44444444-4444-4444-8444-444444444444';
+  const signature = Buffer.alloc(100);
+  signature[0] = 0x89;
+  signature[1] = 0x50;
+  const dto = {
+    answers: {},
+    safetyTalkConfirmed: true,
+    safetyTalkToken: 'challenge',
+    previousSubmissionId: rejectedId,
+    members: [
+      {
+        collaboratorId,
+        jobPositionId: leadPositionId,
+        signatureDataUrl: `data:image/png;base64,${signature.toString('base64')}`,
+      },
+    ],
+  };
+  const rechazado = (overrides: Record<string, unknown> = {}) => ({
+    id: rejectedId,
+    collaboratorId,
+    status: 'REJECTED',
+    workDate: new Date('2026-10-21T00:00:00Z'),
+    answersJson: { lugar: 'Subestación norte', fecha_auto: '21/10/2026', inventado: 'x' },
+    approval: { reason: 'Falta describir el punto de anclaje.' },
+    correction: null,
+    formVersion: {
+      schemaJson: {
+        fields: [
+          { id: 'lugar', type: 'text' },
+          { id: 'fecha_auto', type: 'auto', source: 'workDate' },
+        ],
+      },
+    },
+    members: [{ collaboratorId, jobPositionId: leadPositionId, isLead: true }],
+    ...overrides,
+  });
+
+  it('entrega motivo, cuadrilla y solo las respuestas editables del formato', async () => {
+    const { service, prisma } = setup();
+    prisma.formSubmission.findUnique.mockResolvedValue(rechazado());
+    const fuente = await service.correctionSource(rejectedId, request as never);
+    expect(fuente.reason).toBe('Falta describir el punto de anclaje.');
+    expect(fuente.answers).toEqual({ lugar: 'Subestación norte' });
+    expect(fuente.members).toEqual([{ collaboratorId, jobPositionId: leadPositionId, isLead: true }]);
+  });
+
+  it('solo la corrige el oficial que la diligenció, si está rechazada y una sola vez', async () => {
+    const { service, prisma } = setup();
+    prisma.formSubmission.findUnique.mockResolvedValueOnce(
+      rechazado({ collaboratorId: '55555555-5555-4555-8555-555555555555' }),
+    );
+    await expect(service.correctionSource(rejectedId, request as never)).rejects.toThrow(ForbiddenException);
+    prisma.formSubmission.findUnique.mockResolvedValueOnce(rechazado({ status: 'CLOSED' }));
+    await expect(service.correctionSource(rejectedId, request as never)).rejects.toThrow(ConflictException);
+    prisma.formSubmission.findUnique.mockResolvedValueOnce(rechazado({ correction: { id: 'otro' } }));
+    await expect(service.correctionSource(rejectedId, request as never)).rejects.toThrow(ConflictException);
+  });
+
+  it('enlaza el reenvío con el permiso rechazado', async () => {
+    const { service, prisma, tx, storage } = setup();
+    prisma.formSubmission.findUnique.mockResolvedValue(rechazado());
+    storage.putObject.mockResolvedValue({
+      storageProvider: 'LOCAL',
+      bucket: 'local',
+      objectKey: 'signatures/a.png',
+      sizeBytes: 100,
+      sha256: 'abc',
+    });
+    await service.submit('HSE-FO-016', dto, request as never);
+    expect(tx.formSubmission.create.mock.calls[0][0].data.previousSubmissionId).toBe(rejectedId);
+    expect(tx.auditEvent.create.mock.calls[0][0].data.afterJson.previousSubmissionId).toBe(rejectedId);
+  });
+
+  it('rechaza un segundo reenvío concurrente del mismo permiso y limpia las firmas', async () => {
+    const { service, prisma, tx, storage } = setup();
+    prisma.formSubmission.findUnique.mockResolvedValue(rechazado());
+    storage.putObject.mockResolvedValue({
+      storageProvider: 'LOCAL',
+      bucket: 'local',
+      objectKey: 'signatures/b.png',
+      sizeBytes: 100,
+      sha256: 'abc',
+    });
+    tx.formSubmission.create.mockRejectedValue(Object.assign(new Error('unique'), { code: 'P2002' }));
+    await expect(service.submit('HSE-FO-016', dto, request as never)).rejects.toThrow(
+      'Este permiso rechazado ya fue corregido.',
+    );
+    expect(storage.deleteObject).toHaveBeenCalledWith('signatures/b.png');
+  });
+
+  it('marca como corregible el último permiso rechazado del oficial', async () => {
+    const { service, prisma } = setup();
+    prisma.formSubmission.findFirst.mockResolvedValue({
+      id: rejectedId,
+      status: 'REJECTED',
+      collaboratorId,
+      correction: null,
+      members: [],
+    });
+    expect(await service.latest(request as never)).toMatchObject({ id: rejectedId, correctable: true });
+  });
+});

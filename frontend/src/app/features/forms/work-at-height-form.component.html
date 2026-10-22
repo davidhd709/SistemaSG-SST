@@ -25,6 +25,30 @@
       <h1 class="paso-titulo">Hola, {{ datos.collaborator.firstName }}</h1>
       <p class="paso-ayuda">Antes de iniciar labores verificamos que tus requisitos estén vigentes.</p>
 
+      @if (correccion(); as anterior) {
+        <div class="mensaje alerta" role="status">
+          <strong>Estás corrigiendo un permiso rechazado.</strong>
+          Motivo: {{ anterior.reason || 'sin motivo registrado' }}. Tus respuestas y tu cuadrilla ya están cargadas;
+          revisa lo señalado, mira la charla y vuelvan a firmar.
+          @if (omitidosCorreccion() > 0) {
+            {{ omitidosCorreccion() }}
+            {{ omitidosCorreccion() === 1 ? 'integrante ya no cumple' : 'integrantes ya no cumplen' }} los requisitos y
+            no {{ omitidosCorreccion() === 1 ? 'fue incluido' : 'fueron incluidos' }}.
+          }
+        </div>
+      } @else if (rechazoPendiente(); as rechazo) {
+        <div class="mensaje alerta" role="status">
+          <strong>Tu último permiso fue rechazado.</strong>
+          Motivo: {{ rechazo.reason || 'sin motivo registrado' }}.
+          <div class="acciones">
+            <button class="boton compacto" type="button" (click)="corregir(rechazo.id)">Corregir y reenviar</button>
+            <button class="boton secundario compacto" type="button" (click)="rechazoPendiente.set(null)">
+              Diligenciar uno nuevo
+            </button>
+          </div>
+        </div>
+      }
+
       <div class="bloque">
         <div class="titulo-seccion">
           <h2>Afiliación a la ARL</h2>
@@ -43,6 +67,7 @@
           }
         </dl>
 
+        <p class="secundario"><a routerLink="/mis-permisos">Ver mis permisos anteriores</a></p>
         @if (!datos.canContinue) {
           <p class="mensaje error">
             No puedes continuar porque falta actualizar: {{ requisitosPendientes() }}. Comunícate con tu coordinadora.
@@ -450,6 +475,11 @@
           <h2>Permiso rechazado</h2>
           <p>{{ resultado.approval?.reason || 'Comunícate con tu coordinadora.' }}</p>
         </div>
+        @if (resultado.correctable) {
+          <div class="acciones centrado">
+            <button class="boton" type="button" (click)="corregir(resultado.id)">Corregir y reenviar</button>
+          </div>
+        }
       } @else if (resultado.status === 'EXPIRED') {
         <div class="resultado rechazado">
           <span class="simbolo" aria-hidden="true"
@@ -478,6 +508,7 @@
       @if (resultado.status === 'PENDING_APPROVAL') {
         <p class="secundario centrado">El estado se actualiza solo cada 20 segundos.</p>
       }
+      <p class="centrado"><a routerLink="/mis-permisos">Ver mis permisos anteriores</a></p>
     }
   }
 </main>

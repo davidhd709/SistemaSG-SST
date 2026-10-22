@@ -36,7 +36,18 @@ export type Envio = {
   startedAt?: string | null;
   closedAt?: string | null;
   approval?: { reason?: string | null } | null;
+  /** El oficial puede corregir y reenviar este permiso rechazado. */
+  correctable?: boolean;
 } | null;
+
+/** Permiso rechazado que el oficial está corrigiendo. */
+export type Correccion = {
+  id: string;
+  workDate: string | null;
+  reason: string | null;
+  answers: Record<string, unknown>;
+  members: { collaboratorId: string; jobPositionId: string | null; isLead: boolean }[];
+};
 
 /** Un paso del formulario: una sección del esquema publicado. */
 export type Bloque = { titulo: string; campos: Campo[] };
