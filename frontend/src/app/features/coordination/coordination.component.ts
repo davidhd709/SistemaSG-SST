@@ -1,5 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { ActivatedRoute } from '@angular/router';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { AuthSessionService } from '../../core/auth-session.service';
 import { fechaCalendario, fechaHora } from '../../core/fechas';
@@ -147,6 +149,17 @@ export class CoordinationComponent {
   constructor() {
     this.cargar();
     this.contarVencimientos();
+    // Los avisos enlazan a una pestaña concreta (?pestana=jornadas).
+    inject(ActivatedRoute)
+      .queryParamMap.pipe(takeUntilDestroyed())
+      .subscribe((parametros) => this.abrirPestana(parametros.get('pestana')));
+  }
+
+  private abrirPestana(nombre: string | null): void {
+    if (nombre === 'jornadas') this.verJornadas();
+    else if (nombre === 'cumplimiento') this.verCumplimiento();
+    else if (nombre === 'custodia') this.verCustodia();
+    else if (nombre === 'vencimientos' || nombre === 'reportes') this.pestana.set(nombre);
   }
 
   contarVencimientos(): void {

@@ -1,6 +1,8 @@
 import { ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { ApprovalsService } from './approvals.service';
 
+const notifications = { notify: jest.fn().mockResolvedValue(undefined) };
+
 describe('ApprovalsService.custody (AUD-031)', () => {
   it('pagina el archivo completo y devuelve el total sin truncarlo en 500 registros', async () => {
     const prisma = {
@@ -11,7 +13,13 @@ describe('ApprovalsService.custody (AUD-031)', () => {
       $transaction: jest.fn((operations: Promise<unknown>[]) => Promise.all(operations)),
     };
     const submissions = { expireStalePermits: jest.fn().mockResolvedValue(undefined) };
-    const service = new ApprovalsService(prisma as never, {} as never, {} as never, submissions as never);
+    const service = new ApprovalsService(
+      prisma as never,
+      {} as never,
+      {} as never,
+      submissions as never,
+      notifications as never,
+    );
 
     await expect(service.custody({ page: 6, pageSize: 100 })).resolves.toEqual({
       items: [],
@@ -38,7 +46,13 @@ describe('ApprovalsService.generateMissingPdf (AUD-005)', () => {
   function context(submission: unknown) {
     const prisma = { formSubmission: { findUnique: jest.fn().mockResolvedValue(submission) } };
     const pdf = { generateFinalPdf: jest.fn().mockResolvedValue('pdf-file-1') };
-    const service = new ApprovalsService(prisma as never, {} as never, pdf as never, {} as never);
+    const service = new ApprovalsService(
+      prisma as never,
+      {} as never,
+      pdf as never,
+      {} as never,
+      notifications as never,
+    );
     return { service, prisma, pdf };
   }
 
@@ -118,7 +132,13 @@ describe('ApprovalsService.adminCloseWorkday (AUD-025)', () => {
     };
     const prisma = { $transaction: jest.fn((callback: (client: typeof tx) => Promise<unknown>) => callback(tx)) };
     const pdf = { generateFinalPdf: jest.fn().mockResolvedValue('pdf-file-1') };
-    const service = new ApprovalsService(prisma as never, {} as never, pdf as never, {} as never);
+    const service = new ApprovalsService(
+      prisma as never,
+      {} as never,
+      pdf as never,
+      {} as never,
+      notifications as never,
+    );
     return { service, tx, pdf };
   }
 

@@ -16,6 +16,7 @@ import { StorageService } from '../files/storage.service';
 import { ComplianceService, type Cumplimiento } from '../compliance/compliance.service';
 import { PdfService } from '../pdf/pdf.service';
 import { TemplateRegistry } from '../pdf/template-registry';
+import { NotificationsService } from '../notifications/notifications.service';
 import { SubmitFormDto, type CrewMemberDto } from './dto/submit-form.dto';
 import { CloseWorkdayDto } from './dto/close-workday.dto';
 import { MySubmissionsQueryDto } from './dto/my-submissions-query.dto';
@@ -82,6 +83,7 @@ export class SubmissionsService {
     private readonly templateRegistry: TemplateRegistry,
     private readonly jwt: JwtService,
     config: ConfigService,
+    private readonly notifications: NotificationsService,
   ) {
     this.safetyTalkSecret = config.getOrThrow<string>('SAFETY_TALK_JWT_SECRET');
   }
@@ -317,6 +319,16 @@ export class SubmissionsService {
           },
         });
         return created;
+      });
+
+      // Sin esperar: el envío push no debe demorar la respuesta al oficial.
+      void this.notifications.notifyPermission('submissions:review', {
+        type: 'SUBMISSION_PENDING',
+        title: dto.previousSubmissionId ? 'Permiso corregido por revisar' : 'Nuevo permiso por revisar',
+        body: `Una cuadrilla de ${guardadas.length} ${guardadas.length === 1 ? 'persona espera' : 'personas espera'} autorización para iniciar labores.`,
+        link: '/coordinacion',
+        entityType: 'FORM_SUBMISSION',
+        entityId: submission.id,
       });
 
       return {

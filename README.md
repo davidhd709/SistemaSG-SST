@@ -6,6 +6,16 @@ PWA para verificar ARL, confirmar charla de seguridad, diligenciar formularios v
 
 El sistema implementa autenticación administrativa y de colaboradores, permisos por rol, gestión de ARL y seguridad social, formularios versionados, firma de cuadrillas, aprobación, inicio y cierre de jornadas, PDF y auditoría. Un permiso pendiente o autorizado reserva a toda su cuadrilla. Si no inicia en la fecha de trabajo, vence y libera a sus integrantes. La generación de PDF es síncrona y el despliegue productivo requiere el override documentado en `docs/DEPLOYMENT_AND_BACKUPS.md`.
 
+## Funcionalidades por rol
+
+- **Oficial eléctrico (PWA):** verificación de requisitos, charla de seguridad, cuadrilla con firmas, inicio y cierre de jornada. En **Mis permisos** consulta su historial, descarga los PDF y corrige un permiso rechazado: respuestas y cuadrilla se precargan, y la charla y las firmas se repiten.
+- **Coordinación:** bandeja de revisión, cuadrillas activas, **vencimientos** de ARL, planillas y certificados (la renovación ya cargada no genera aviso), custodia documental y **reportes en Excel** (resumen, permisos, rechazos y cumplimiento).
+- **Administración:** cuentas y roles, **catálogo de cargos** (quién lidera la cuadrilla y a quién se exige certificado de alturas), auditoría y **editor de versiones del formato**. El editor impide retirar campos u opciones que imprime el PDF oficial.
+- **Legal:** consulta por colaborador y reportes en Excel.
+- **Avisos:** bandeja en la aplicación y, si se configuran llaves VAPID, notificaciones push. Cubre permisos por revisar, decisiones, cierres administrativos y el resumen diario de vencimientos y jornadas sin cerrar.
+
+Los permisos nuevos (`job-positions:manage`, `reports:read`) se asignan en migraciones, así que no hace falta volver a ejecutar el seed.
+
 ## Requisitos
 
 - Node.js 22 LTS o superior y pnpm 11 (gestionado con Corepack).

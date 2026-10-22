@@ -9,6 +9,7 @@ import { Prisma } from '@prisma/client';
 import { businessDate } from '../common/business-date';
 import { SubmissionsService } from '../submissions/submissions.service';
 import { CustodyQueryDto } from './dto/custody-query.dto';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class ApprovalsService {
@@ -19,6 +20,7 @@ export class ApprovalsService {
     private readonly arl: ArlService,
     private readonly pdf: PdfService,
     private readonly submissions: SubmissionsService,
+    private readonly notifications: NotificationsService,
   ) {}
   async dashboard() {
     await this.submissions.expireStalePermits();
@@ -227,21 +229,48 @@ export class ApprovalsService {
           correlationId: request.correlationId ?? 'unknown',
         },
       });
-      return { submissionId: id, status: newStatus, decision: approval.decision, decidedAt: approval.decidedAt };
+      return {
+        submissionId: id,
+        status: newStatus,
+        decision: approval.decision,
+        decidedAt: approval.decidedAt,
+        collaboratorId: submission.collaboratorId,
+      };
     });
+    const { collaboratorId, ...respuesta } = decision;
+    void this.notifications.notify(
+      [{ collaboratorId }],
+      dto.decision === 'APPROVED'
+        ? {
+            type: 'SUBMISSION_APPROVED',
+            title: 'Permiso autorizado',
+            body: 'Coordinación autorizó tu permiso. Registra el inicio de la jornada al comenzar a trabajar.',
+            link: '/formulario/alturas',
+            entityType: 'FORM_SUBMISSION',
+            entityId: id,
+          }
+        : {
+            type: 'SUBMISSION_REJECTED',
+            title: 'Permiso rechazado',
+            body: 'Coordinación rechazó tu permiso. Revisa el motivo y corrígelo desde Mis permisos.',
+            link: '/mis-permisos',
+            entityType: 'FORM_SUBMISSION',
+            entityId: id,
+          },
+    );
     // El PDF final se genera al cerrar la jornada, no aquí: hasta que la
     // cuadrilla no registre su hora de finalización el documento estaría
     // incompleto. Un rechazo sí cierra el proceso y se documenta de una vez.
     if (dto.decision === 'REJECTED') {
       try {
         const pdfFileId = await this.pdf.generateFinalPdf(id, { kind: 'USER', id: actorUserId });
-        return { ...decision, pdfFileId };
+        return { ...respuesta, pdfFileId };
       } catch (error) {
         this.logger.error(`No fue posible generar el PDF del envío rechazado ${id}`, error as Error);
-        return { ...decision, pdfFileId: null };
+        return { ...respuesta, pdfFileId: null };
       }
     }
-    return { ...decision, pdfFileId: null };
+    return { ...respuesta, pdfFileId: null };
   }
 
   /** Genera un PDF pendiente sin volver a decidir ni modificar las horas del envío. */
@@ -275,7 +304,7 @@ export class ApprovalsService {
     const closed = await this.prisma.$transaction(async (tx) => {
       const submission = await tx.formSubmission.findUnique({
         where: { id },
-        select: { status: true, startedAt: true, approval: { select: { id: true } } },
+        select: { status: true, startedAt: true, collaboratorId: true, approval: { select: { id: true } } },
       });
       if (!submission) throw new NotFoundException('Envío no encontrado.');
       if (submission.status !== 'APPROVED' || !submission.startedAt || !submission.approval) {
@@ -300,7 +329,15 @@ export class ApprovalsService {
           correlationId: request.correlationId ?? 'unknown',
         },
       });
-      return { id, status: 'CLOSED' as const, closedAt };
+      return { id, status: 'CLOSED' as const, closedAt, collaboratorId: submission.collaboratorId };
+    });
+    void this.notifications.notify([{ collaboratorId: closed.collaboratorId }], {
+      type: 'WORKDAY_ADMIN_CLOSED',
+      title: 'Coordinación cerró tu jornada',
+      body: 'La jornada quedó cerrada por Coordinación y el permiso pasó al archivo.',
+      link: '/mis-permisos',
+      entityType: 'FORM_SUBMISSION',
+      entityId: id,
     });
 
     let pdfFileId: string | null = null;
@@ -309,6 +346,6 @@ export class ApprovalsService {
     } catch (error) {
       this.logger.error(`No fue posible generar el PDF del cierre administrativo ${id}`, error as Error);
     }
-    return { ...closed, pdfFileId };
+    return { id: closed.id, status: closed.status, closedAt: closed.closedAt, pdfFileId };
   }
 }

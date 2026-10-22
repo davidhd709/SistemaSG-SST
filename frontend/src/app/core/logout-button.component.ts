@@ -1,6 +1,8 @@
 import { ChangeDetectionStrategy, Component, ElementRef, inject, signal } from '@angular/core';
 import { AuthSessionService } from './auth-session.service';
 import { RouterLink } from '@angular/router';
+import { NotificationBellComponent } from './notification-bell.component';
+import { NotificationsClientService } from './notifications.service';
 
 /**
  * Acciones de la cuenta en la cabecera. El equipo interno las encuentra en un
@@ -9,13 +11,14 @@ import { RouterLink } from '@angular/router';
  */
 @Component({
   selector: 'sg-logout-button',
-  imports: [RouterLink],
+  imports: [RouterLink, NotificationBellComponent],
   host: {
     '(document:click)': 'cerrarSiFuera($event)',
     '(document:keydown.escape)': 'abierto.set(false)',
   },
   template: `
     @if (session.isAuthenticated()) {
+      <sg-notification-bell />
       @if (session.kind() === 'ADMIN') {
         <div class="cuenta">
           <button
@@ -42,7 +45,7 @@ import { RouterLink } from '@angular/router';
                 </svg>
                 Cambiar contraseña
               </a>
-              <button role="menuitem" type="button" (click)="session.logout()">
+              <button role="menuitem" type="button" (click)="cerrarSesion()">
                 <svg viewBox="0 0 24 24" aria-hidden="true">
                   <path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3M10 16l-4-4 4-4M6 12h10" />
                 </svg>
@@ -52,12 +55,17 @@ import { RouterLink } from '@angular/router';
           }
         </div>
       } @else {
-        <button type="button" class="boton secundario compacto" (click)="session.logout()">Cerrar sesión</button>
+        <button type="button" class="boton secundario compacto" (click)="cerrarSesion()">Cerrar sesión</button>
       }
     }
   `,
   styles: [
     `
+      :host {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
       .cuenta {
         position: relative;
       }
@@ -144,6 +152,13 @@ export class LogoutButtonComponent {
   readonly session = inject(AuthSessionService);
   readonly abierto = signal(false);
   private readonly host = inject(ElementRef<HTMLElement>);
+  private readonly avisos = inject(NotificationsClientService);
+
+  /** Desvincula el push de este dispositivo antes de salir: en obra se comparte. */
+  cerrarSesion(): void {
+    this.abierto.set(false);
+    void this.avisos.cerrarSesion();
+  }
 
   cerrarSiFuera(evento: MouseEvent): void {
     if (this.abierto() && !this.host.nativeElement.contains(evento.target as Node)) this.abierto.set(false);

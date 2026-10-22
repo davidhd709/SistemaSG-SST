@@ -68,6 +68,8 @@ model User {
   closedSubmissions      FormSubmission[]        @relation("SubmissionClosedByUser")
   createdPayrolls        SocialSecurityPayroll[] @relation("PayrollCreatedBy")
   createdHeightCerts     HeightCertificate[]     @relation("HeightCertificateCreatedBy")
+  notifications          Notification[]
+  pushSubscriptions      PushSubscription[]
 
   @@map("users")
 }
@@ -164,6 +166,8 @@ model Collaborator {
   payrollMemberships  PayrollMembership[]
   heightCertificates  HeightCertificate[]
   refreshSessions     RefreshSession[]
+  notifications       Notification[]
+  pushSubscriptions   PushSubscription[]
 
   @@index([status])
   @@index([jobPositionId])
@@ -451,4 +455,52 @@ model AuditEvent {
   @@index([entityType, entityId, createdAt])
   @@index([createdAt])
   @@map("audit_events")
+}
+
+/// Aviso para una persona: un permiso por revisar, una decisión o un
+/// vencimiento próximo. Se muestra en la bandeja de la aplicación y, si la
+/// persona lo activó, también como notificación push en su dispositivo.
+model Notification {
+  id                      String        @id @default(uuid()) @db.Uuid
+  recipientUserId         String?       @db.Uuid
+  recipientCollaboratorId String?       @db.Uuid
+  type                    String
+  title                   String
+  body                    String
+  /// Ruta interna de la aplicación a la que lleva el aviso.
+  link                    String?
+  entityType              String?
+  entityId                String?
+  /// Evita repetir un aviso periódico, por ejemplo el resumen diario.
+  dedupeKey               String?       @unique
+  readAt                  DateTime?
+  createdAt               DateTime      @default(now())
+  recipientUser           User?         @relation(fields: [recipientUserId], references: [id], onDelete: Cascade)
+  recipientCollaborator   Collaborator? @relation(fields: [recipientCollaboratorId], references: [id], onDelete: Cascade)
+
+  @@index([recipientUserId, readAt, createdAt])
+  @@index([recipientCollaboratorId, readAt, createdAt])
+  @@index([createdAt])
+  @@map("notifications")
+}
+
+/// Suscripción Web Push de un dispositivo. El endpoint lo entrega el
+/// navegador y pertenece a un servicio de push conocido.
+model PushSubscription {
+  id             String        @id @default(uuid()) @db.Uuid
+  userId         String?       @db.Uuid
+  collaboratorId String?       @db.Uuid
+  endpoint       String        @unique
+  p256dh         String
+  auth           String
+  userAgent      String?
+  failures       Int           @default(0)
+  lastSuccessAt  DateTime?
+  createdAt      DateTime      @default(now())
+  user           User?         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  collaborator   Collaborator? @relation(fields: [collaboratorId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([collaboratorId])
+  @@map("push_subscriptions")
 }

@@ -86,6 +86,7 @@ function setup() {
     resolve: jest.fn().mockResolvedValue({ templatePath: '/template.pdf', mappingPath: '/mapping.json' }),
   };
   const pdf = { generateFinalPdf: jest.fn().mockResolvedValue('pdf-file-1') };
+  const notifications = { notifyPermission: jest.fn().mockResolvedValue(undefined) };
   const service = new SubmissionsService(
     prisma as never,
     storage as never,
@@ -94,8 +95,9 @@ function setup() {
     templateRegistry as never,
     jwt as never,
     config as never,
+    notifications as never,
   );
-  return { service, prisma, tx, storage, jwt, templateRegistry, pdf };
+  return { service, prisma, tx, storage, jwt, templateRegistry, pdf, notifications };
 }
 
 describe('Secreto dedicado de charla de seguridad (AUD-022)', () => {

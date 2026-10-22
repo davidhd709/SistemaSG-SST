@@ -21,6 +21,8 @@ import { FilesModule } from './files/files.module';
 import { PdfModule } from './pdf/pdf.module';
 import { LegalModule } from './legal/legal.module';
 import { ReportsModule } from './reports/reports.module';
+import { NotificationsModule } from './notifications/notifications.module';
+import { NotificationDigestModule } from './notifications/notification-digest.module';
 
 @Module({
   imports: [
@@ -54,6 +56,8 @@ import { ReportsModule } from './reports/reports.module';
     ApprovalsModule,
     LegalModule,
     ReportsModule,
+    NotificationsModule,
+    NotificationDigestModule,
     HealthModule,
   ],
   providers: [
