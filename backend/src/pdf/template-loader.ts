@@ -136,6 +136,11 @@ export class TemplateLoader {
     }
   }
 
+  /** Solo el mapping, sin cargar el PDF: basta para saber qué campos imprime la plantilla. */
+  async loadMapping(mappingPath: string): Promise<TemplateMapping> {
+    return this.parseMapping(await readFile(mappingPath, 'utf8'), mappingPath);
+  }
+
   private parseMapping(raw: string, mappingPath: string): TemplateMapping {
     let parsed: unknown;
     try {

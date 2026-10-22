@@ -6,6 +6,7 @@ import { AuthSessionService } from '../../core/auth-session.service';
 import { LogoutButtonComponent } from '../../core/logout-button.component';
 import { fechaHora } from '../../core/fechas';
 import { JobPositionsPanelComponent } from './job-positions-panel.component';
+import { FormEditorComponent } from './form-editor.component';
 
 type Rol = { code: string; name: string; permissions: { permission: { code: string } }[] };
 type Cargo = { id: string; code: string; name: string; canLead: boolean };
@@ -107,7 +108,7 @@ const ENTIDADES: Record<string, string> = {
  * cuentas y permisos, la auditoría del sistema y el formato publicado.
  */
 @Component({
-  imports: [ReactiveFormsModule, RouterLink, LogoutButtonComponent, JobPositionsPanelComponent],
+  imports: [ReactiveFormsModule, RouterLink, LogoutButtonComponent, JobPositionsPanelComponent, FormEditorComponent],
   template: `
     <header class="app-cabecera">
       <div class="fila">
@@ -598,11 +599,12 @@ const ENTIDADES: Record<string, string> = {
         }
       }
 
-      <!-- ══════════ Formatos ══════════ -->
+      <!-- ══════════ Cargos ══════════ -->
       @if (pestana() === 'cargos') {
         <sg-job-positions-panel />
       }
 
+      <!-- ══════════ Formatos ══════════ -->
       @if (pestana() === 'formularios') {
         @if (formato(); as forma) {
           <section class="formatos-cabecera">
@@ -634,43 +636,9 @@ const ENTIDADES: Record<string, string> = {
             <div class="formato-meta">
               <span>{{ forma.schemaJson.fields.length }} campos</span><span class="distintivo vigente">Vigente</span>
             </div>
-            <button class="boton secundario compacto" type="button" (click)="alternarDetalleFormato()">
-              {{ detalleFormato() ? 'Ocultar campos' : 'Ver campos' }}
-            </button>
           </article>
 
-          @if (detalleFormato()) {
-            <section class="formatos-campos">
-              <div class="titulo-seccion"><h3>Campos del formato vigente</h3></div>
-              <div class="tabla-scroll">
-                <table class="datos">
-                  <thead>
-                    <tr>
-                      <th>Campo</th>
-                      <th>Tipo</th>
-                      <th>Obligatorio</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    @for (campo of forma.schemaJson.fields; track campo.id) {
-                      <tr>
-                        <td>
-                          <strong>{{ campo.label }}</strong>
-                          <span class="secundario identificador">{{ campo.id }}</span>
-                        </td>
-                        <td>{{ campo.type }}</td>
-                        <td>{{ campo.required ? 'Sí' : 'No' }}</td>
-                      </tr>
-                    }
-                  </tbody>
-                </table>
-              </div>
-            </section>
-          }
-          <p class="formatos-nota">
-            La publicación de nuevas versiones se administra actualmente desde la API; los permisos firmados conservan
-            su versión original.
-          </p>
+          <sg-form-editor />
         } @else {
           <p class="secundario">Cargando el formato vigente…</p>
         }
@@ -1112,22 +1080,9 @@ const ENTIDADES: Record<string, string> = {
         color: var(--tinta-media);
         font-size: 0.875rem;
       }
-      .formato-tarjeta .boton {
-        width: 100%;
-        margin-top: 18px;
-      }
-      .formatos-campos {
-        margin-top: 26px;
-      }
-      .formatos-campos h3 {
-        margin: 0;
-        font-size: 1.125rem;
-      }
-      .formatos-nota {
-        max-width: 80ch;
-        margin: 20px 0 0;
-        color: var(--tinta-suave);
-        font-size: 0.875rem;
+      .formato-tarjeta + sg-form-editor {
+        display: block;
+        margin-top: 22px;
       }
 
       @media (max-width: 900px) {
@@ -1179,7 +1134,6 @@ export class AdminDashboardComponent {
   readonly seleccionados = signal<string[]>([]);
   readonly busqueda = signal('');
   readonly mostrarCrear = signal(false);
-  readonly detalleFormato = signal(false);
   readonly cuentaEditando = signal<Cuenta | null>(null);
   readonly cuentaRestableciendo = signal<Cuenta | null>(null);
   readonly credencialNueva = signal('');
@@ -1406,10 +1360,6 @@ export class AdminDashboardComponent {
 
   alternarFormularioUsuario(): void {
     this.mostrarCrear.update((valor) => !valor);
-  }
-
-  alternarDetalleFormato(): void {
-    this.detalleFormato.update((valor) => !valor);
   }
 
   crearUsuario(): void {
