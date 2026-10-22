@@ -3,10 +3,12 @@ import { HttpClient } from '@angular/common/http';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { AuthSessionService } from '../../core/auth-session.service';
+import { destinoPorRoles, type PerfilInterno } from '../../core/destino';
+import { LogoutButtonComponent } from '../../core/logout-button.component';
 
 @Component({
   standalone: true,
-  imports: [ReactiveFormsModule, RouterLink],
+  imports: [ReactiveFormsModule, RouterLink, LogoutButtonComponent],
   template: `
     <header class="app-cabecera">
       <div class="fila">
@@ -16,7 +18,11 @@ import { AuthSessionService } from '../../core/auth-session.service';
           >
           <span class="nombre">Mi cuenta<span class="lema">Seguridad de acceso</span></span>
         </div>
-        <a class="boton secundario compacto" routerLink="/administracion/panel">Volver al panel</a>
+        @if (temporal()) {
+          <sg-logout-button />
+        } @else {
+          <a class="boton secundario compacto" [routerLink]="volver()">Volver a mi área</a>
+        }
       </div>
     </header>
     <main class="app-contenido">
@@ -26,10 +32,15 @@ import { AuthSessionService } from '../../core/auth-session.service';
           <p>Después del cambio se cerrarán tus sesiones. Ingresa de nuevo con la contraseña nueva.</p>
         </div>
       </section>
+      @if (temporal()) {
+        <p class="mensaje alerta cambio" role="status">
+          Estás usando una contraseña temporal asignada por el administrador. Cámbiala para continuar.
+        </p>
+      }
       <section class="bloque cambio">
         <form [formGroup]="form" (ngSubmit)="guardar()" class="campos">
           <label class="campo"
-            ><span>Contraseña actual</span
+            ><span>{{ temporal() ? 'Contraseña temporal' : 'Contraseña actual' }}</span
             ><input type="password" formControlName="currentPassword" autocomplete="current-password"
           /></label>
           <label class="campo"
@@ -69,11 +80,22 @@ export class ChangePasswordComponent {
   private readonly fb = inject(FormBuilder);
   readonly saving = signal(false);
   readonly error = signal('');
+  readonly temporal = signal(false);
+  readonly volver = signal('/');
   readonly form = this.fb.nonNullable.group({
     currentPassword: ['', Validators.required],
     newPassword: ['', [Validators.required, Validators.minLength(12), Validators.maxLength(128)]],
     confirmPassword: ['', Validators.required],
   });
+
+  constructor() {
+    this.http.get<PerfilInterno>('/api/users/me').subscribe({
+      next: (perfil) => {
+        this.temporal.set(!!perfil.forcePasswordChange);
+        this.volver.set(destinoPorRoles(perfil));
+      },
+    });
+  }
 
   guardar(): void {
     if (this.form.invalid || this.saving()) return;

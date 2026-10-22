@@ -140,4 +140,36 @@ describe('UsersService.changeOwnPassword (AUD-012)', () => {
       expect(tx.refreshSession.updateMany).toHaveBeenCalledTimes(1);
     });
   });
+
+  it('una contraseña restablecida por Administración es temporal, revoca sesiones y se audita sin la clave', async () => {
+    const previous = {
+      id: 'user-2',
+      email: 'coordinacion@local.test',
+      status: 'ACTIVE',
+      createdAt: new Date(),
+      roles: [{ role: { id: 'r-coord', code: 'COORDINATOR', name: 'Coordinación' } }],
+    };
+    const tx = {
+      user: { count: jest.fn(), update: jest.fn().mockResolvedValue(previous) },
+      userRole: { deleteMany: jest.fn(), createMany: jest.fn() },
+      refreshSession: { updateMany: jest.fn().mockResolvedValue({ count: 1 }) },
+      auditEvent: { create: jest.fn().mockResolvedValue({}) },
+    };
+    const prisma = {
+      user: { findUniqueOrThrow: jest.fn().mockResolvedValue(previous), findUnique: jest.fn() },
+      role: { findMany: jest.fn() },
+      $transaction: jest.fn((callback: (client: typeof tx) => Promise<unknown>) => callback(tx)),
+    };
+    const service = new UsersService(prisma as never);
+
+    await service.update('user-2', { password: 'Temporal-segura-2026' }, request as never);
+
+    const { data } = tx.user.update.mock.calls[0][0] as { data: Record<string, unknown> };
+    expect(data.forcePasswordChange).toBe(true);
+    expect(data.passwordHash).toEqual(expect.any(String));
+    expect(tx.refreshSession.updateMany).toHaveBeenCalledTimes(1);
+    const auditoria = JSON.stringify(tx.auditEvent.create.mock.calls[0][0]);
+    expect(auditoria).toContain('"passwordReset":true');
+    expect(auditoria).not.toContain('Temporal-segura-2026');
+  });
 });

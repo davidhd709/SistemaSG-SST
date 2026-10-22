@@ -305,10 +305,6 @@ const ENTIDADES: Record<string, string> = {
                   </select></label
                 >
                 @if (cuenta.tipo === 'INTERNO') {
-                  <label class="campo ancho-total"
-                    ><span>Nueva contraseña <small>(opcional)</small></span
-                    ><input formControlName="password" type="password" autocomplete="new-password"
-                  /></label>
                   <div class="campo ancho-total">
                     <span id="roles-edicion">Roles asignados</span>
                     <div class="casillas" role="group" aria-labelledby="roles-edicion">
@@ -330,6 +326,76 @@ const ENTIDADES: Record<string, string> = {
                   </button>
                 </div>
               </form>
+            </section>
+          }
+
+          @if (cuentaRestableciendo(); as cuenta) {
+            <section class="bloque restablecer" aria-labelledby="restablecer-titulo">
+              <div class="titulo-seccion">
+                <h3 id="restablecer-titulo">Restablecer acceso de {{ cuenta.nombre }}</h3>
+                <button class="boton secundario compacto" type="button" (click)="cerrarRestablecer()">
+                  {{ credencialEntregada() ? 'Listo' : 'Cancelar' }}
+                </button>
+              </div>
+
+              @if (credencialEntregada(); as credencial) {
+                <p class="mensaje ok" role="status">
+                  {{ cuenta.tipo === 'INTERNO' ? 'Contraseña temporal asignada.' : 'PIN asignado.' }} Entrégalo
+                  personalmente o por un canal seguro: no se volverá a mostrar.
+                </p>
+                <div class="credencial">
+                  <code>{{ credencial }}</code>
+                  <button class="boton secundario compacto" type="button" (click)="copiarCredencial(credencial)">
+                    {{ copiada() ? 'Copiado' : 'Copiar' }}
+                  </button>
+                </div>
+                @if (cuenta.tipo === 'INTERNO') {
+                  <p class="secundario">La persona deberá cambiarla en su próximo ingreso.</p>
+                }
+              } @else {
+                <p class="secundario introduccion">
+                  @if (cuenta.tipo === 'INTERNO') {
+                    Se asignará una contraseña temporal. La persona deberá cambiarla en su próximo ingreso y se cerrarán
+                    sus sesiones abiertas.
+                  } @else {
+                    Se asignará un PIN nuevo, se desbloqueará el acceso si estaba bloqueado y se cerrarán sus sesiones
+                    abiertas.
+                  }
+                </p>
+                <form class="rejilla-campos dos" (ngSubmit)="restablecer()">
+                  <label class="campo">
+                    <span>{{ cuenta.tipo === 'INTERNO' ? 'Contraseña temporal' : 'PIN nuevo' }}</span>
+                    <input
+                      class="numerico"
+                      name="credencial"
+                      autocomplete="off"
+                      spellcheck="false"
+                      [attr.inputmode]="cuenta.tipo === 'INTERNO' ? null : 'numeric'"
+                      [value]="credencialNueva()"
+                      (input)="credencialNueva.set($any($event.target).value)"
+                    />
+                    <span class="ayuda">{{
+                      cuenta.tipo === 'INTERNO' ? 'Mínimo 12 caracteres.' : 'Entre 4 y 12 caracteres.'
+                    }}</span>
+                  </label>
+                  <div class="acciones generar">
+                    <button class="boton secundario compacto" type="button" (click)="generarCredencial(cuenta)">
+                      Generar otra
+                    </button>
+                  </div>
+                  <div class="acciones ancho-total">
+                    <button class="boton" [disabled]="!credencialValida() || guardando()">
+                      {{
+                        guardando()
+                          ? 'Restableciendo…'
+                          : cuenta.tipo === 'INTERNO'
+                            ? 'Restablecer contraseña'
+                            : 'Restablecer PIN'
+                      }}
+                    </button>
+                  </div>
+                </form>
+              }
             </section>
           }
 
@@ -421,7 +487,14 @@ const ENTIDADES: Record<string, string> = {
                         </td>
                         <td>{{ cuenta.ultimoAcceso ? momento(cuenta.ultimoAcceso) : 'Sin acceso registrado' }}</td>
                         <td>
-                          <button class="editar-cuenta" type="button" (click)="editarCuenta(cuenta)">Editar</button>
+                          <div class="acciones-fila">
+                            <button class="editar-cuenta" type="button" (click)="editarCuenta(cuenta)">Editar</button>
+                            @if (puedeRestablecer(cuenta)) {
+                              <button class="editar-cuenta" type="button" (click)="abrirRestablecer(cuenta)">
+                                Restablecer acceso
+                              </button>
+                            }
+                          </div>
                         </td>
                       </tr>
                     }
@@ -849,6 +922,44 @@ const ENTIDADES: Record<string, string> = {
         font-weight: 700;
         cursor: pointer;
       }
+      .acciones-fila {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+      .restablecer {
+        margin-bottom: 22px;
+        border-color: var(--alerta-borde);
+        box-shadow:
+          0 0 0 4px var(--alerta-fondo),
+          var(--sombra);
+      }
+      .restablecer h3 {
+        margin: 0;
+        font-size: 1.125rem;
+      }
+      .restablecer .generar {
+        align-self: center;
+      }
+      .credencial {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 12px;
+        margin: 16px 0 10px;
+        padding: 14px 16px;
+        border: 1px dashed var(--borde-fuerte);
+        border-radius: var(--radio);
+        background: var(--fondo);
+      }
+      .credencial code {
+        color: var(--marino);
+        font-family: var(--letra-marca);
+        font-size: 1.375rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        word-break: break-all;
+      }
       .editar-cuenta:hover {
         border-color: var(--azul);
         background: var(--teal-tenue);
@@ -1054,6 +1165,16 @@ export class AdminDashboardComponent {
   readonly mostrarCrear = signal(false);
   readonly detalleFormato = signal(false);
   readonly cuentaEditando = signal<Cuenta | null>(null);
+  readonly cuentaRestableciendo = signal<Cuenta | null>(null);
+  readonly credencialNueva = signal('');
+  readonly credencialEntregada = signal<string | null>(null);
+  readonly copiada = signal(false);
+  readonly credencialValida = computed(() => {
+    const valor = this.credencialNueva().trim();
+    return this.cuentaRestableciendo()?.tipo === 'INTERNO'
+      ? valor.length >= 12 && valor.length <= 128
+      : valor.length >= 4 && valor.length <= 12;
+  });
   readonly eventos = signal<Evento[]>([]);
   readonly formato = signal<Formulario | null>(null);
   readonly filtroAccion = signal('');
@@ -1069,7 +1190,6 @@ export class AdminDashboardComponent {
   readonly formularioEdicion = this.fb.nonNullable.group({
     email: ['', [Validators.email]],
     status: ['ACTIVE'],
-    password: [''],
     firstName: [''],
     lastName: [''],
     phone: [''],
@@ -1145,12 +1265,12 @@ export class AdminDashboardComponent {
   editarCuenta(cuenta: Cuenta): void {
     this.error.set('');
     this.aviso.set('');
+    this.cuentaRestableciendo.set(null);
     this.cuentaEditando.set(cuenta);
     this.seleccionados.set(cuenta.usuario?.roles.map((rol) => rol.code) ?? []);
     this.formularioEdicion.reset({
       email: cuenta.tipo === 'INTERNO' ? cuenta.usuario!.email : cuenta.colaborador!.email || '',
       status: cuenta.status,
-      password: '',
       firstName: cuenta.colaborador?.firstName || '',
       lastName: cuenta.colaborador?.lastName || '',
       phone: cuenta.colaborador?.phone || '',
@@ -1169,7 +1289,6 @@ export class AdminDashboardComponent {
             email: value.email,
             status: value.status,
             roleCodes: this.seleccionados(),
-            ...(value.password ? { password: value.password } : {}),
           }
         : {
             email: value.email,
@@ -1196,6 +1315,67 @@ export class AdminDashboardComponent {
           this.guardando.set(false);
         },
       });
+  }
+
+  // ── Restablecer acceso ───────────────────────────────────
+  /** Los colaboradores solo tienen PIN si su cargo inicia permisos. */
+  puedeRestablecer(cuenta: Cuenta): boolean {
+    return cuenta.tipo === 'INTERNO' || !!cuenta.colaborador?.jobPosition?.canLead;
+  }
+
+  abrirRestablecer(cuenta: Cuenta): void {
+    this.error.set('');
+    this.aviso.set('');
+    this.cuentaEditando.set(null);
+    this.credencialEntregada.set(null);
+    this.copiada.set(false);
+    this.cuentaRestableciendo.set(cuenta);
+    this.generarCredencial(cuenta);
+  }
+
+  cerrarRestablecer(): void {
+    this.cuentaRestableciendo.set(null);
+    this.credencialEntregada.set(null);
+    this.credencialNueva.set('');
+  }
+
+  /** Contraseña legible al dictarla (sin 0/O ni 1/l/I) o PIN de seis dígitos. */
+  generarCredencial(cuenta: Cuenta): void {
+    const alfabeto =
+      cuenta.tipo === 'INTERNO' ? 'abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789' : '0123456789';
+    const largo = cuenta.tipo === 'INTERNO' ? 12 : 6;
+    const azar = crypto.getRandomValues(new Uint32Array(largo));
+    const caracteres = Array.from(azar, (n) => alfabeto[n % alfabeto.length]).join('');
+    this.credencialNueva.set(cuenta.tipo === 'INTERNO' ? caracteres.match(/.{1,4}/g)!.join('-') : caracteres);
+  }
+
+  restablecer(): void {
+    const cuenta = this.cuentaRestableciendo();
+    if (!cuenta || !this.credencialValida() || this.guardando()) return;
+    const valor = this.credencialNueva().trim();
+    this.guardando.set(true);
+    this.error.set('');
+    const peticion =
+      cuenta.tipo === 'INTERNO'
+        ? this.http.patch(`/api/users/${cuenta.id}`, { password: valor })
+        : this.http.patch(`/api/collaborators/${cuenta.id}`, { pin: valor });
+    peticion.subscribe({
+      next: () => {
+        this.credencialEntregada.set(valor);
+        this.guardando.set(false);
+        this.cargarUsuarios();
+        this.cargarColaboradores();
+        this.cargarAuditoria();
+      },
+      error: () => {
+        this.error.set('No fue posible restablecer el acceso. Verifica tus permisos e intenta de nuevo.');
+        this.guardando.set(false);
+      },
+    });
+  }
+
+  copiarCredencial(valor: string): void {
+    void navigator.clipboard?.writeText(valor).then(() => this.copiada.set(true));
   }
 
   tieneRol(code: string): boolean {
