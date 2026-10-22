@@ -74,7 +74,9 @@ describe('JobPositionsService', () => {
       where: { jobPositionId: positionId },
       data: { jobTitle: 'Oficial electricista' },
     });
-    const auditoria = tx.auditEvent.create.mock.calls[0][0].data;
+    const auditoria = (
+      tx.auditEvent.create.mock.calls[0] as [{ data: { beforeJson: { name: string }; afterJson: { name: string } } }]
+    )[0].data;
     expect(auditoria.beforeJson.name).toBe('Oficial eléctrico');
     expect(auditoria.afterJson.name).toBe('Oficial electricista');
   });
