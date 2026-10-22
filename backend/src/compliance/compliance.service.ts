@@ -15,6 +15,24 @@ export interface Cumplimiento {
   faltantes: string[];
 }
 
+export type Requisito = 'ARL' | 'SEGURIDAD_SOCIAL' | 'ALTURAS';
+
+/**
+ * Un requisito vencido o que vence dentro del plazo consultado. `cubiertoHasta`
+ * es el último día con cobertura continua desde hoy: una renovación ya cargada
+ * que empieza al terminar la vigente lo extiende, así no se avisa en vano.
+ */
+export interface Vencimiento {
+  collaboratorId: string;
+  requisito: Requisito;
+  estado: 'VENCIDO' | 'POR_VENCER';
+  cubiertoHasta: string | null;
+  diasRestantes: number | null;
+  detalle?: string;
+}
+
+const DIA_MS = 86_400_000;
+
 /**
  * Decide si un colaborador puede subir a trabajar hoy.
  *
@@ -31,26 +49,7 @@ export class ComplianceService {
     if (!collaboratorIds.length) return new Map();
     const diasAviso = await this.diasParaAviso();
 
-    const [afiliaciones, coberturas, certificados, colaboradores] = await Promise.all([
-      this.prisma.arlAffiliation.findMany({
-        where: { collaboratorId: { in: collaboratorIds } },
-        orderBy: { endDate: 'desc' },
-      }),
-      this.prisma.payrollMembership.findMany({
-        where: { collaboratorId: { in: collaboratorIds } },
-        include: { payroll: true },
-        orderBy: { payroll: { periodEnd: 'desc' } },
-      }),
-      this.prisma.heightCertificate.findMany({
-        where: { collaboratorId: { in: collaboratorIds } },
-        orderBy: { expiresAt: 'desc' },
-      }),
-      this.prisma.collaborator.findMany({
-        where: { id: { in: collaboratorIds } },
-        select: { id: true, jobTitle: true },
-      }),
-    ]);
-    const cargos = new Map(colaboradores.map((colaborador) => [colaborador.id, colaborador.jobTitle]));
+    const { afiliaciones, coberturas, certificados, cargos } = await this.registros(collaboratorIds);
 
     const resultado = new Map<string, Cumplimiento>();
     for (const collaboratorId of collaboratorIds) {
@@ -117,6 +116,131 @@ export class ComplianceService {
   async evaluarUno(collaboratorId: string, now = new Date()): Promise<Cumplimiento> {
     const mapa = await this.evaluar([collaboratorId], now);
     return mapa.get(collaboratorId)!;
+  }
+
+  /**
+   * Requisitos vencidos o que vencen dentro de `dias`, ordenados por urgencia.
+   * Sirve para avisar con tiempo, antes de que alguien quede fuera de su cuadrilla.
+   */
+  async vencimientos(collaboratorIds: string[], dias: number, now = new Date()): Promise<Vencimiento[]> {
+    if (!collaboratorIds.length) return [];
+    const { afiliaciones, coberturas, certificados, cargos } = await this.registros(collaboratorIds);
+    const hoy = businessDate(now).getTime();
+    const limite = hoy + Math.max(0, dias) * DIA_MS;
+    const resultado: Vencimiento[] = [];
+
+    const revisar = (
+      collaboratorId: string,
+      requisito: Requisito,
+      rangos: { desde: Date; hasta: Date; detalle?: string }[],
+    ) => {
+      const hasta = this.cubiertoHasta(rangos, now);
+      if (hasta !== null && hasta > limite) return;
+      const ultimo = rangos.reduce<(typeof rangos)[number] | undefined>(
+        (mayor, rango) => (!mayor || rango.hasta > mayor.hasta ? rango : mayor),
+        undefined,
+      );
+      // Vencido: se informa la última fecha que tuvo cobertura, si la hubo.
+      const referencia = hasta ?? (ultimo ? this.dia(ultimo.hasta) : null);
+      resultado.push({
+        collaboratorId,
+        requisito,
+        estado: hasta === null ? 'VENCIDO' : 'POR_VENCER',
+        cubiertoHasta: referencia === null ? null : new Date(referencia).toISOString().slice(0, 10),
+        diasRestantes: hasta === null ? null : Math.round((hasta - hoy) / DIA_MS),
+        detalle: ultimo?.detalle,
+      });
+    };
+
+    for (const collaboratorId of collaboratorIds) {
+      revisar(
+        collaboratorId,
+        'ARL',
+        afiliaciones
+          .filter((item) => item.collaboratorId === collaboratorId)
+          .map((item) => ({ desde: item.startDate, hasta: item.endDate, detalle: item.providerName })),
+      );
+      revisar(
+        collaboratorId,
+        'SEGURIDAD_SOCIAL',
+        coberturas
+          .filter((item) => item.collaboratorId === collaboratorId)
+          .map((item) => ({
+            desde: item.payroll.periodStart,
+            hasta: item.payroll.periodEnd,
+            detalle: item.payroll.reference,
+          })),
+      );
+      if (this.esOficialElectrico(cargos.get(collaboratorId))) {
+        revisar(
+          collaboratorId,
+          'ALTURAS',
+          certificados
+            .filter((item) => item.collaboratorId === collaboratorId)
+            .map((item) => ({
+              desde: item.issuedAt,
+              hasta: item.expiresAt,
+              detalle: item.trainingEntity ?? undefined,
+            })),
+        );
+      }
+    }
+    // Primero lo vencido, luego lo que vence antes.
+    return resultado.sort((a, b) => (a.diasRestantes ?? -1) - (b.diasRestantes ?? -1));
+  }
+
+  private async registros(collaboratorIds: string[]) {
+    const [afiliaciones, coberturas, certificados, colaboradores] = await Promise.all([
+      this.prisma.arlAffiliation.findMany({
+        where: { collaboratorId: { in: collaboratorIds } },
+        orderBy: { endDate: 'desc' },
+      }),
+      this.prisma.payrollMembership.findMany({
+        where: { collaboratorId: { in: collaboratorIds } },
+        include: { payroll: true },
+        orderBy: { payroll: { periodEnd: 'desc' } },
+      }),
+      this.prisma.heightCertificate.findMany({
+        where: { collaboratorId: { in: collaboratorIds } },
+        orderBy: { expiresAt: 'desc' },
+      }),
+      this.prisma.collaborator.findMany({
+        where: { id: { in: collaboratorIds } },
+        select: { id: true, jobTitle: true },
+      }),
+    ]);
+    const cargos = new Map(colaboradores.map((colaborador) => [colaborador.id, colaborador.jobTitle]));
+    return { afiliaciones, coberturas, certificados, cargos };
+  }
+
+  /**
+   * Último día (en ms UTC) de cobertura continua a partir de hoy, o `null` si
+   * hoy no hay cobertura. Encadena registros que empiezan, a más tardar, el día
+   * siguiente al fin del anterior.
+   */
+  private cubiertoHasta(rangos: { desde: Date; hasta: Date }[], now: Date): number | null {
+    const hoy = businessDate(now).getTime();
+    const dias = rangos.map((rango) => ({ desde: this.dia(rango.desde), hasta: this.dia(rango.hasta) }));
+    let fin: number | null = null;
+    for (const rango of dias) {
+      if (rango.desde <= hoy && rango.hasta >= hoy && (fin === null || rango.hasta > fin)) fin = rango.hasta;
+    }
+    if (fin === null) return null;
+    let extendido = true;
+    while (extendido) {
+      extendido = false;
+      for (const rango of dias) {
+        if (rango.desde <= fin + DIA_MS && rango.hasta > fin) {
+          fin = rango.hasta;
+          extendido = true;
+        }
+      }
+    }
+    return fin;
+  }
+
+  private dia(fecha: Date): number {
+    return Date.UTC(fecha.getUTCFullYear(), fecha.getUTCMonth(), fecha.getUTCDate());
   }
 
   /**

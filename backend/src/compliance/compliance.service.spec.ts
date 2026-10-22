@@ -100,4 +100,76 @@ describe('ComplianceService (AUD-013)', () => {
     expect(res.apto).toBe(true);
     expect(res.faltantes).toEqual([]);
   });
+  describe('vencimientos', () => {
+    it('avisa lo que vence dentro del plazo y omite lo que tiene cobertura más allá', async () => {
+      // Hoy 20/10: ARL y planilla terminan el 31/10 (11 días); el certificado, el 31/12.
+      const lista = await setup().vencimientos(['col-1'], 15, now);
+      expect(lista).toEqual([
+        expect.objectContaining({
+          requisito: 'ARL',
+          estado: 'POR_VENCER',
+          cubiertoHasta: '2026-10-31',
+          diasRestantes: 11,
+        }),
+        expect.objectContaining({ requisito: 'SEGURIDAD_SOCIAL', estado: 'POR_VENCER', diasRestantes: 11 }),
+      ]);
+      expect(await setup().vencimientos(['col-1'], 5, now)).toEqual([]);
+    });
+
+    it('no avisa cuando la renovación ya está cargada y empieza al día siguiente', async () => {
+      const service = setup({
+        afiliaciones: [
+          {
+            collaboratorId: 'col-1',
+            providerName: 'Sura',
+            startDate: new Date('2026-11-01T00:00:00.000Z'),
+            endDate: new Date('2027-10-31T00:00:00.000Z'),
+          },
+          {
+            collaboratorId: 'col-1',
+            providerName: 'Sura',
+            startDate: new Date('2026-10-01T00:00:00.000Z'),
+            endDate: new Date('2026-10-31T00:00:00.000Z'),
+          },
+        ],
+      });
+      const lista = await service.vencimientos(['col-1'], 15, now);
+      expect(lista.map((item) => item.requisito)).toEqual(['SEGURIDAD_SOCIAL']);
+    });
+
+    it('marca como vencido lo que hoy no tiene cobertura e informa su última fecha', async () => {
+      const service = setup({
+        certificados: [
+          {
+            collaboratorId: 'col-1',
+            trainingEntity: 'SENA',
+            issuedAt: new Date('2025-01-01T00:00:00.000Z'),
+            expiresAt: new Date('2026-10-10T00:00:00.000Z'),
+          },
+        ],
+        coberturas: [],
+      });
+      const lista = await service.vencimientos(['col-1'], 15, now);
+      expect(lista.slice(0, 2)).toEqual([
+        expect.objectContaining({
+          requisito: 'SEGURIDAD_SOCIAL',
+          estado: 'VENCIDO',
+          cubiertoHasta: null,
+          diasRestantes: null,
+        }),
+        expect.objectContaining({
+          requisito: 'ALTURAS',
+          estado: 'VENCIDO',
+          cubiertoHasta: '2026-10-10',
+          detalle: 'SENA',
+        }),
+      ]);
+    });
+
+    it('no exige certificado de alturas a quien no es Oficial eléctrico', async () => {
+      const service = setup({ certificados: [], colaboradores: [{ id: 'col-1', jobTitle: 'Ayudante' }] });
+      const lista = await service.vencimientos(['col-1'], 5, now);
+      expect(lista.some((item) => item.requisito === 'ALTURAS')).toBe(false);
+    });
+  });
 });

@@ -4,6 +4,7 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { AuthSessionService } from '../../core/auth-session.service';
 import { fechaCalendario, fechaHora } from '../../core/fechas';
 import { LogoutButtonComponent } from '../../core/logout-button.component';
+import { ExpirationsPanelComponent } from './expirations-panel.component';
 
 import {
   agruparRespuestasDetalle,
@@ -29,7 +30,7 @@ import {
  * responsabilidad: revisar y autorizar el inicio de labores.
  */
 @Component({
-  imports: [ReactiveFormsModule, LogoutButtonComponent],
+  imports: [ReactiveFormsModule, LogoutButtonComponent, ExpirationsPanelComponent],
   templateUrl: './coordination.component.html',
   styleUrl: './coordination.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -39,7 +40,11 @@ export class CoordinationComponent {
   private readonly session = inject(AuthSessionService);
   private readonly fb = inject(FormBuilder);
 
-  readonly pestana = signal<'bandeja' | 'jornadas' | 'cumplimiento' | 'colaboradores' | 'custodia'>('bandeja');
+  readonly pestana = signal<'bandeja' | 'jornadas' | 'vencimientos' | 'cumplimiento' | 'colaboradores' | 'custodia'>(
+    'bandeja',
+  );
+  /** Requisitos vencidos o que vencen en 15 días; se muestra en la pestaña. */
+  readonly vencimientosProximos = signal(0);
   readonly dashboard = signal<Dashboard | null>(null);
   readonly pending = signal<Submission[]>([]);
   readonly detail = signal<Detail | null>(null);
@@ -140,6 +145,16 @@ export class CoordinationComponent {
 
   constructor() {
     this.cargar();
+    this.contarVencimientos();
+  }
+
+  contarVencimientos(): void {
+    this.http
+      .get<{ vencidos: number; porVencer: number }>('/api/compliance/expirations', { params: { days: 15 } })
+      .subscribe({
+        next: (respuesta) => this.vencimientosProximos.set(respuesta.vencidos + respuesta.porVencer),
+        error: () => undefined,
+      });
   }
 
   // ── Bandeja ──────────────────────────────────────────────

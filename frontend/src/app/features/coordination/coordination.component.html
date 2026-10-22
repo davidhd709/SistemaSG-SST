@@ -29,6 +29,17 @@
       <button role="tab" [attr.aria-selected]="pestana() === 'jornadas'" (click)="verJornadas()" type="button">
         Cuadrillas activas
       </button>
+      <button
+        role="tab"
+        [attr.aria-selected]="pestana() === 'vencimientos'"
+        (click)="pestana.set('vencimientos')"
+        type="button"
+      >
+        Vencimientos
+        @if (vencimientosProximos()) {
+          <span class="globo">{{ vencimientosProximos() }}</span>
+        }
+      </button>
       <button role="tab" [attr.aria-selected]="pestana() === 'cumplimiento'" (click)="verCumplimiento()" type="button">
         Curso de alturas
       </button>
@@ -506,6 +517,11 @@
         </p>
       }
     </section>
+  }
+
+  <!-- ══════════════ VENCIMIENTOS ══════════════ -->
+  @if (pestana() === 'vencimientos') {
+    <sg-expirations-panel (renovar)="verCumplimiento()" />
   }
 
   <!-- ══════════════ REQUISITOS ══════════════ -->
