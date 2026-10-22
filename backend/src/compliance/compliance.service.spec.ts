@@ -172,4 +172,18 @@ describe('ComplianceService (AUD-013)', () => {
       expect(lista.some((item) => item.requisito === 'ALTURAS')).toBe(false);
     });
   });
+  it('exige el certificado según el cargo del catálogo aunque el texto del cargo cambie', async () => {
+    const exige = setup({
+      certificados: [],
+      colaboradores: [{ id: 'col-1', jobTitle: 'Liniero', jobPosition: { requiresHeightCertificate: true } }],
+    });
+    expect((await exige.evaluarUno('col-1', now)).alturas.estado).toBe('VENCIDA');
+    const noExige = setup({
+      certificados: [],
+      colaboradores: [
+        { id: 'col-1', jobTitle: 'Oficial eléctrico', jobPosition: { requiresHeightCertificate: false } },
+      ],
+    });
+    expect((await noExige.evaluarUno('col-1', now)).alturas.estado).toBe('NO_APLICA');
+  });
 });

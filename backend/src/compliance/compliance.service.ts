@@ -34,6 +34,25 @@ export interface Vencimiento {
 const DIA_MS = 86_400_000;
 
 /**
+ * Si un colaborador debe tener certificado de alturas vigente. Lo decide su
+ * cargo del catálogo; el texto del cargo solo cuenta para registros antiguos
+ * que aún no tienen uno (REQ-001: solo el Oficial eléctrico).
+ */
+export function exigeCertificadoAlturas(colaborador: {
+  jobTitle: string | null;
+  jobPosition: { requiresHeightCertificate: boolean } | null;
+}): boolean {
+  if (colaborador.jobPosition) return colaborador.jobPosition.requiresHeightCertificate;
+  return (
+    (colaborador.jobTitle ?? '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .trim()
+      .toUpperCase() === 'OFICIAL ELECTRICO'
+  );
+}
+
+/**
  * Decide si un colaborador puede subir a trabajar hoy.
  *
  * Son tres requisitos y los tres bloquean por igual: afiliación a la ARL,
@@ -77,7 +96,7 @@ export class ComplianceService {
       const seguridadSocial = cobertura
         ? this.estadoPorVigencia(cobertura.payroll.periodStart, cobertura.payroll.periodEnd, diasAviso, now)
         : 'VENCIDA';
-      const requiereAlturas = this.esOficialElectrico(cargos.get(collaboratorId));
+      const requiereAlturas = cargos.get(collaboratorId) ?? false;
       const alturas: RequisitoEstado = requiereAlturas
         ? certificado
           ? this.estadoPorVigencia(certificado.issuedAt, certificado.expiresAt, diasAviso, now)
@@ -171,7 +190,7 @@ export class ComplianceService {
             detalle: item.payroll.reference,
           })),
       );
-      if (this.esOficialElectrico(cargos.get(collaboratorId))) {
+      if (cargos.get(collaboratorId)) {
         revisar(
           collaboratorId,
           'ALTURAS',
@@ -206,10 +225,10 @@ export class ComplianceService {
       }),
       this.prisma.collaborator.findMany({
         where: { id: { in: collaboratorIds } },
-        select: { id: true, jobTitle: true },
+        select: { id: true, jobTitle: true, jobPosition: { select: { requiresHeightCertificate: true } } },
       }),
     ]);
-    const cargos = new Map(colaboradores.map((colaborador) => [colaborador.id, colaborador.jobTitle]));
+    const cargos = new Map(colaboradores.map((colaborador) => [colaborador.id, exigeCertificadoAlturas(colaborador)]));
     return { afiliaciones, coberturas, certificados, cargos };
   }
 
@@ -267,15 +286,5 @@ export class ComplianceService {
   private async diasParaAviso(): Promise<number> {
     const ajuste = await this.prisma.systemSetting.findUnique({ where: { key: 'arl_expiring_days' } });
     return typeof ajuste?.valueJson === 'number' && Number.isInteger(ajuste.valueJson) ? ajuste.valueJson : 30;
-  }
-
-  private esOficialElectrico(cargo: string | null | undefined): boolean {
-    return (
-      (cargo ?? '')
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .trim()
-        .toUpperCase() === 'OFICIAL ELECTRICO'
-    );
   }
 }

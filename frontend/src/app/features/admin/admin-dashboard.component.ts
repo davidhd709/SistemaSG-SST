@@ -5,6 +5,7 @@ import { RouterLink } from '@angular/router';
 import { AuthSessionService } from '../../core/auth-session.service';
 import { LogoutButtonComponent } from '../../core/logout-button.component';
 import { fechaHora } from '../../core/fechas';
+import { JobPositionsPanelComponent } from './job-positions-panel.component';
 
 type Rol = { code: string; name: string; permissions: { permission: { code: string } }[] };
 type Cargo = { id: string; code: string; name: string; canLead: boolean };
@@ -71,7 +72,7 @@ type Cuenta = {
   colaborador?: Colaborador;
 };
 
-type Pestana = 'inicio' | 'accesos' | 'auditoria' | 'formularios';
+type Pestana = 'inicio' | 'accesos' | 'cargos' | 'auditoria' | 'formularios';
 
 /** Cómo se lee cada acción registrada, para no mostrar el código en crudo. */
 const ACCIONES: Record<string, string> = {
@@ -106,7 +107,7 @@ const ENTIDADES: Record<string, string> = {
  * cuentas y permisos, la auditoría del sistema y el formato publicado.
  */
 @Component({
-  imports: [ReactiveFormsModule, RouterLink, LogoutButtonComponent],
+  imports: [ReactiveFormsModule, RouterLink, LogoutButtonComponent, JobPositionsPanelComponent],
   template: `
     <header class="app-cabecera">
       <div class="fila">
@@ -150,6 +151,13 @@ const ENTIDADES: Record<string, string> = {
             </svg>
             Cuentas y permisos
           </button>
+          <button role="tab" type="button" [attr.aria-selected]="pestana() === 'cargos'" (click)="ver('cargos')">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <rect x="3" y="7" width="18" height="13" rx="2" />
+              <path d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2M3 13h18" />
+            </svg>
+            Cargos
+          </button>
           <button role="tab" type="button" [attr.aria-selected]="pestana() === 'auditoria'" (click)="ver('auditoria')">
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path d="M4 5h12M4 12h8m-8 7h12" />
@@ -191,6 +199,10 @@ const ENTIDADES: Record<string, string> = {
               <h2 id="accesos-rapidos-titulo">Accesos rápidos</h2>
               <button type="button" (click)="ver('accesos')">
                 Crear usuario
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6" /></svg>
+              </button>
+              <button type="button" (click)="ver('cargos')">
+                Gestionar cargos
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6" /></svg>
               </button>
               <button type="button" (click)="ver('formularios')">
@@ -587,6 +599,10 @@ const ENTIDADES: Record<string, string> = {
       }
 
       <!-- ══════════ Formatos ══════════ -->
+      @if (pestana() === 'cargos') {
+        <sg-job-positions-panel />
+      }
+
       @if (pestana() === 'formularios') {
         @if (formato(); as forma) {
           <section class="formatos-cabecera">

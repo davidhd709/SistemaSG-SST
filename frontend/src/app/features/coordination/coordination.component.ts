@@ -129,9 +129,9 @@ export class CoordinationComponent {
     this.grupos().flatMap((grupo) => grupo.respuestas.filter((respuesta) => respuesta.alerta)),
   );
 
-  /** Auxiliares, ayudantes y supervisores no requieren el certificado de alturas. */
+  /** Solo los cargos que exigen certificado de alturas (hoy, el Oficial eléctrico). */
   readonly oficialesElectricos = computed(() =>
-    this.cumplimiento().filter((fila) => fila.collaborator.jobTitle === 'Oficial eléctrico'),
+    this.cumplimiento().filter((fila) => fila.cumplimiento.alturas.estado !== 'NO_APLICA'),
   );
   readonly pdfsCustodia = computed(() =>
     this.documentosCustodia().filter((documento) => documento.finalPdfFile !== null),

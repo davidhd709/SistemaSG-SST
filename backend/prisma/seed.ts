@@ -20,6 +20,7 @@ const roles: Record<string, { name: string; permissions: string[] }> = {
       'collaborators:create',
       'collaborators:read',
       'collaborators:manage',
+      'job-positions:manage',
       'arl:read',
       'arl:manage',
       'forms:manage',
@@ -81,19 +82,17 @@ async function main(): Promise<void> {
       where: { roleId: role.id, permission: { code: { notIn: definition.permissions } } },
     });
   }
-  // Cargos de la cuadrilla. Solo el oficial eléctrico abre permisos de trabajo.
+  // Cargos iniciales de la cuadrilla. Solo el oficial eléctrico abre permisos
+  // de trabajo y requiere certificado de alturas. Después del primer seed el
+  // catálogo se administra desde la aplicación, así que aquí solo se crean.
   const cargos = [
-    { code: 'OFICIAL_ELECTRICO', name: 'Oficial eléctrico', canLead: true },
-    { code: 'AUXILIAR_ELECTRICO', name: 'Auxiliar eléctrico', canLead: false },
-    { code: 'AYUDANTE', name: 'Ayudante', canLead: false },
-    { code: 'SUPERVISOR', name: 'Supervisor', canLead: false },
+    { code: 'OFICIAL_ELECTRICO', name: 'Oficial eléctrico', canLead: true, requiresHeightCertificate: true },
+    { code: 'AUXILIAR_ELECTRICO', name: 'Auxiliar eléctrico', canLead: false, requiresHeightCertificate: false },
+    { code: 'AYUDANTE', name: 'Ayudante', canLead: false, requiresHeightCertificate: false },
+    { code: 'SUPERVISOR', name: 'Supervisor', canLead: false, requiresHeightCertificate: false },
   ];
   for (const cargo of cargos) {
-    await prisma.jobPosition.upsert({
-      where: { code: cargo.code },
-      update: { name: cargo.name, canLead: cargo.canLead },
-      create: cargo,
-    });
+    await prisma.jobPosition.upsert({ where: { code: cargo.code }, update: {}, create: cargo });
   }
 
   await prisma.systemSetting.upsert({
