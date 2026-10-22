@@ -30,7 +30,7 @@ Los colaboradores acceden con documento y PIN desde su teléfono antes de comenz
 - El colaborador usa solo celular; los controles deben ser táctiles, legibles y claros en exteriores o con poca luz.
 - Coordinación debe funcionar eficazmente tanto en celular como en escritorio.
 - Las áreas de ARL, Legal y Administración se diseñan para escritorio.
-- No se usan fuentes remotas, para no depender de descargas en conexiones limitadas.
+- No se usan fuentes de terceros: la tipografía de marca (Montserrat) se empaqueta en la app y la PWA la cachea, para no depender de descargas externas en conexiones limitadas.
 - Se preservan los roles, permisos, validaciones de ARL, trazabilidad y contenido funcional existente.
 
 ## Evidence on Hand
@@ -39,7 +39,8 @@ Los colaboradores acceden con documento y PIN desde su teléfono antes de comenz
 - Especificación del formulario: `docs/FORM_HSE-FO-016.md`.
 - Decisiones técnicas y de negocio: `docs/DECISIONS.md`.
 - Flujos y funcionalidades implementados en `frontend/src/app/features/`.
-- No hay marca, logo ni activos visuales corporativos vinculantes actualmente.
+- Marca vinculante: logo "Gestión SST — Sistema de formatos, salud y seguridad en el trabajo" (originales en `images/Logos-SST`, derivados web en `frontend/src/assets/marca`). Colores de marca: azul marino (~#0c2c4c) y verde azulado (~#1a8c78); tipografía geométrica Montserrat.
+- Compromiso visual (oct. 2026): el usuario eligió la consola operativa estándar de la categoría (identidad marina, tarjetas blancas, acentos verde azulado) ejecutada con alto nivel de acabado, en lugar de una dirección temática.
 
 ## Product Principles
 

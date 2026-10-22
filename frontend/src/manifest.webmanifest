@@ -1,10 +1,23 @@
 {
-  "name": "Sistema SG-SST",
-  "short_name": "SG-SST",
-  "theme_color": "#1f7a62",
-  "background_color": "#f4f1e9",
+  "name": "Gestión SST — Sistema de formatos",
+  "short_name": "Gestión SST",
+  "theme_color": "#08213a",
+  "background_color": "#edf1f5",
   "display": "standalone",
   "scope": "/",
   "start_url": "/",
-  "icons": [{ "src": "favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+  "icons": [
+    {
+      "src": "assets/marca/icono-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "assets/marca/icono-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
 }

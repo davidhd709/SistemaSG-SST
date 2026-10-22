@@ -1,7 +1,9 @@
 <header class="app-cabecera">
   <div class="fila">
     <div class="marca">
-      <span class="sigla" aria-hidden="true">SST</span>
+      <img class="sigla" src="assets/marca/marca-clara.png" alt="" width="40" height="40" /><span class="sello"
+        >Gestión SST</span
+      >
       <span class="nombre">
         Coordinación
         <span class="lema">Autorización de inicio de labores</span>
@@ -12,13 +14,6 @@
 </header>
 
 <main class="app-contenido">
-  @if (error()) {
-    <p class="mensaje error" role="alert">{{ error() }}</p>
-  }
-  @if (aviso()) {
-    <p class="mensaje ok" role="status">{{ aviso() }}</p>
-  }
-
   <section class="area-masthead" aria-labelledby="coordinacion-titulo">
     <div class="area-masthead-texto">
       <h1 id="coordinacion-titulo">Coordinación</h1>
@@ -50,6 +45,12 @@
       </button>
     </div>
   </section>
+  @if (error()) {
+    <p class="mensaje error" role="alert">{{ error() }}</p>
+  }
+  @if (aviso()) {
+    <p class="mensaje ok" role="status">{{ aviso() }}</p>
+  }
 
   @if (dashboard()?.overdue) {
     <p class="mensaje alerta" role="status">

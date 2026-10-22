@@ -22,20 +22,14 @@ type Planilla = {
   template: ` <header class="app-cabecera">
       <div class="fila">
         <div class="marca">
-          <span class="sigla" aria-hidden="true">SST</span
+          <img class="sigla" src="assets/marca/marca-clara.png" alt="" width="40" height="40" /><span class="sello"
+            >Gestión SST</span
           ><span class="nombre">Gestión de requisitos<span class="lema">ARL y seguridad social</span></span>
         </div>
         <sg-logout-button />
       </div>
     </header>
     <main class="app-contenido">
-      @if (error()) {
-        <p class="mensaje error" role="alert">{{ error() }}</p>
-      }
-      @if (aviso()) {
-        <p class="mensaje ok" role="status">{{ aviso() }}</p>
-      }
-
       <section class="area-masthead" aria-labelledby="social-titulo">
         <div>
           <h1 id="social-titulo">Seguridad social</h1>
@@ -47,6 +41,12 @@ type Planilla = {
         <a routerLink="/gestor-arl">ARL</a>
         <a routerLink="/seguridad-social" routerLinkActive="activo">Seguridad social</a>
       </nav>
+      @if (error()) {
+        <p class="mensaje error" role="alert">{{ error() }}</p>
+      }
+      @if (aviso()) {
+        <p class="mensaje ok" role="status">{{ aviso() }}</p>
+      }
 
       <section class="bloque">
         <div class="titulo-seccion">
@@ -156,58 +156,6 @@ type Planilla = {
     </main>`,
   styles: [
     `
-      .area-masthead {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 24px;
-        margin: 0 0 28px;
-        padding: 21px 24px;
-        border-radius: 16px;
-        background: #efeee8;
-      }
-      .area-masthead h1 {
-        margin: 0 0 4px;
-        font-size: clamp(1.45rem, 2.6vw, 2rem);
-        letter-spacing: -0.03em;
-      }
-      .area-masthead p {
-        max-width: 65ch;
-        margin: 0;
-        color: var(--tinta-media);
-        font-size: 0.875rem;
-      }
-      .area-contexto {
-        padding: 6px 10px;
-        border-radius: 999px;
-        background: #dceee5;
-        color: #245d4c;
-        font-size: 0.75rem;
-        font-weight: 750;
-        white-space: nowrap;
-      }
-      .modulos {
-        display: flex;
-        gap: 8px;
-        margin: -12px 0 28px;
-      }
-      .modulos a {
-        min-height: 42px;
-        padding: 10px 14px;
-        border-radius: 10px;
-        color: var(--tinta-media);
-        font-weight: 700;
-        text-decoration: none;
-      }
-      .modulos a:hover,
-      .modulos a:focus-visible {
-        background: #e5eee8;
-        color: #245d4c;
-      }
-      .modulos a.activo {
-        background: #245d4c;
-        color: #fff;
-      }
       .introduccion {
         margin: -4px 0 18px;
       }
@@ -236,13 +184,6 @@ type Planilla = {
       }
       .bloque + .bloque {
         margin-top: 24px;
-      }
-      @media (max-width: 640px) {
-        .area-masthead {
-          align-items: start;
-          flex-direction: column;
-          padding: 18px 16px;
-        }
       }
     `,
   ],

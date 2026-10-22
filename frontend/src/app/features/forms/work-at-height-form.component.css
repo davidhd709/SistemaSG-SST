@@ -27,7 +27,7 @@
   display: block;
   width: 100%;
   max-height: 58vh;
-  background: #101a1d;
+  background: var(--marino-950);
   border-radius: var(--radio);
 }
 .estado-charla {

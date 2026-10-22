@@ -8,20 +8,36 @@ import { AuthSessionService } from '../../core/auth-session.service';
   standalone: true,
   imports: [ReactiveFormsModule, RouterLink],
   template: `
-    <main class="contenedor" style="max-width: 560px; padding-block: 48px">
-      <a routerLink="/administracion/panel">Volver al panel</a>
-      <section class="bloque">
-        <h1>Cambiar mi contraseña</h1>
-        <p class="secundario">Después del cambio se cerrarán tus sesiones. Ingresa de nuevo con la contraseña nueva.</p>
-        <form [formGroup]="form" (ngSubmit)="guardar()">
+    <header class="app-cabecera">
+      <div class="fila">
+        <div class="marca">
+          <img class="sigla" src="assets/marca/marca-clara.png" alt="" width="40" height="40" /><span class="sello"
+            >Gestión SST</span
+          >
+          <span class="nombre">Mi cuenta<span class="lema">Seguridad de acceso</span></span>
+        </div>
+        <a class="boton secundario compacto" routerLink="/administracion/panel">Volver al panel</a>
+      </div>
+    </header>
+    <main class="app-contenido">
+      <section class="area-masthead" aria-labelledby="clave-titulo">
+        <div>
+          <h1 id="clave-titulo">Cambiar mi contraseña</h1>
+          <p>Después del cambio se cerrarán tus sesiones. Ingresa de nuevo con la contraseña nueva.</p>
+        </div>
+      </section>
+      <section class="bloque cambio">
+        <form [formGroup]="form" (ngSubmit)="guardar()" class="campos">
           <label class="campo"
             ><span>Contraseña actual</span
             ><input type="password" formControlName="currentPassword" autocomplete="current-password"
           /></label>
           <label class="campo"
             ><span>Nueva contraseña</span
-            ><input type="password" formControlName="newPassword" autocomplete="new-password"
-          /></label>
+            ><input type="password" formControlName="newPassword" autocomplete="new-password" /><span class="ayuda"
+              >Mínimo 12 caracteres.</span
+            ></label
+          >
           <label class="campo"
             ><span>Repetir nueva contraseña</span
             ><input type="password" formControlName="confirmPassword" autocomplete="new-password"
@@ -29,13 +45,22 @@ import { AuthSessionService } from '../../core/auth-session.service';
           @if (error()) {
             <p class="mensaje alerta" role="alert">{{ error() }}</p>
           }
-          <button class="boton" type="submit" [disabled]="form.invalid || saving()">
-            {{ saving() ? 'Guardando…' : 'Cambiar contraseña' }}
-          </button>
+          <div class="acciones">
+            <button class="boton" type="submit" [disabled]="form.invalid || saving()">
+              {{ saving() ? 'Guardando…' : 'Cambiar contraseña' }}
+            </button>
+          </div>
         </form>
       </section>
     </main>
   `,
+  styles: [
+    `
+      .cambio {
+        max-width: 560px;
+      }
+    `,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ChangePasswordComponent {
