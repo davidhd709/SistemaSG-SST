@@ -13,59 +13,89 @@ type AdminProfile = { roles: { code: string }[] };
 @Component({
   imports: [ReactiveFormsModule, RouterLink],
   template: `<main class="pantalla">
-    <div class="tarjeta">
-      <div class="marca">
-        <span class="sigla" aria-hidden="true">SST</span>
-        <span class="nombre">
-          Sistema SG-SST
-          <span class="lema">Control previo al inicio de labores</span>
-        </span>
+    <div class="acceso">
+      <aside class="panel-marca con-escudo">
+        <img
+          class="logo"
+          src="assets/marca/logo-completo-claro.png"
+          alt="Gestión SST, sistema de formatos de salud y seguridad en el trabajo"
+          width="720"
+          height="243"
+        />
+        <p class="titular">Cada permiso, trazable hasta su decisión</p>
+        <ul>
+          <li>
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <rect x="5" y="4" width="14" height="17" rx="2" />
+              <path d="M9 4V3h6v1M9 12l2 2 4-4" />
+            </svg>
+            Revisión y autorización de permisos
+          </li>
+          <li>
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <rect x="3" y="5" width="18" height="14" rx="2" />
+              <circle cx="9" cy="11" r="2" />
+              <path d="M6 16c.6-1.4 1.7-2 3-2s2.4.6 3 2M15 10h3M15 13h3" />
+            </svg>
+            Afiliaciones ARL y seguridad social
+          </li>
+          <li>
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M4 6h10M4 12h8M4 18h10" />
+              <circle cx="18" cy="6" r="2" />
+              <circle cx="16" cy="12" r="2" />
+              <circle cx="18" cy="18" r="2" />
+            </svg>
+            Auditoría y consulta legal
+          </li>
+        </ul>
+      </aside>
+
+      <div class="tarjeta">
+        <div class="encabezado">
+          <h1>Acceso administrativo</h1>
+          <p>Usa las credenciales asignadas por la organización.</p>
+        </div>
+
+        <form [formGroup]="form" (ngSubmit)="submit()" class="campos">
+          <label class="campo">
+            <span>Correo institucional</span>
+            <input
+              formControlName="email"
+              autocomplete="username"
+              type="email"
+              enterkeyhint="next"
+              autocapitalize="off"
+              spellcheck="false"
+            />
+          </label>
+
+          <label class="campo">
+            <span>Contraseña</span>
+            <input formControlName="password" autocomplete="current-password" type="password" enterkeyhint="go" />
+          </label>
+
+          @if (error()) {
+            <p class="mensaje error" role="alert">{{ error() }}</p>
+          }
+
+          <button class="boton bloque" [disabled]="form.invalid || loading()">
+            {{ loading() ? 'Ingresando…' : 'Ingresar' }}
+          </button>
+        </form>
+
+        <ul class="roles">
+          <li>Coordinación</li>
+          <li>Gestor de ARL</li>
+          <li>Legal</li>
+          <li>Administración</li>
+        </ul>
+
+        <p class="pie-acceso">
+          ¿Vas a iniciar labores?
+          <a routerLink="/ingreso">Entra con tu documento y PIN</a>
+        </p>
       </div>
-
-      <div class="encabezado">
-        <span class="etiqueta-rol">Equipo interno</span>
-        <h1>Acceso administrativo</h1>
-        <p>Usa las credenciales asignadas por la organización.</p>
-      </div>
-
-      <form [formGroup]="form" (ngSubmit)="submit()" class="campos">
-        <label class="campo">
-          <span>Correo institucional</span>
-          <input
-            formControlName="email"
-            autocomplete="username"
-            type="email"
-            enterkeyhint="next"
-            autocapitalize="off"
-            spellcheck="false"
-          />
-        </label>
-
-        <label class="campo">
-          <span>Contraseña</span>
-          <input formControlName="password" autocomplete="current-password" type="password" enterkeyhint="go" />
-        </label>
-
-        @if (error()) {
-          <p class="mensaje error" role="alert">{{ error() }}</p>
-        }
-
-        <button class="boton bloque" [disabled]="form.invalid || loading()">
-          {{ loading() ? 'Ingresando…' : 'Ingresar' }}
-        </button>
-      </form>
-
-      <ul class="roles">
-        <li>Coordinación</li>
-        <li>Gestor de ARL</li>
-        <li>Legal</li>
-        <li>Administración</li>
-      </ul>
-
-      <p class="pie-acceso">
-        ¿Vas a iniciar labores?
-        <a routerLink="/ingreso">Entra con tu documento y PIN</a>
-      </p>
     </div>
   </main>`,
   styles: [
@@ -79,12 +109,13 @@ type AdminProfile = { roles: { code: string }[] };
         list-style: none;
       }
       .roles li {
-        padding: 4px 10px;
-        border: 1px solid var(--borde);
+        padding: 4px 11px;
         border-radius: 999px;
         background: var(--fondo);
+        box-shadow: inset 0 0 0 1px var(--borde);
         color: var(--tinta-media);
         font-size: 0.8125rem;
+        font-weight: 500;
       }
     `,
   ],

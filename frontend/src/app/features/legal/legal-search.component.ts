@@ -71,7 +71,9 @@ const ESTADOS: Record<string, string> = {
     <header class="app-cabecera">
       <div class="fila">
         <div class="marca">
-          <span class="sigla" aria-hidden="true">SST</span>
+          <img class="sigla" src="assets/marca/marca-clara.png" alt="" width="40" height="40" /><span class="sello"
+            >Gestión SST</span
+          >
           <span class="nombre">
             Consulta Legal
             <span class="lema">Cumplimiento y trazabilidad</span>
@@ -82,10 +84,6 @@ const ESTADOS: Record<string, string> = {
     </header>
 
     <main class="app-contenido">
-      @if (error()) {
-        <p class="mensaje error" role="alert">{{ error() }}</p>
-      }
-
       <section class="area-masthead" aria-labelledby="legal-titulo">
         <div>
           <h1 id="legal-titulo">Consulta legal</h1>
@@ -93,6 +91,9 @@ const ESTADOS: Record<string, string> = {
         </div>
         <span class="area-contexto">Solo lectura</span>
       </section>
+      @if (error()) {
+        <p class="mensaje error" role="alert">{{ error() }}</p>
+      }
 
       @if (expediente(); as ficha) {
         <!-- ══════════ Expediente ══════════ -->
@@ -396,20 +397,26 @@ const ESTADOS: Record<string, string> = {
         gap: 14px;
       }
       .expediente {
-        padding: 18px 20px;
+        padding: 20px 22px;
         border: 1px solid var(--borde);
-        border-left: 4px solid var(--borde-fuerte);
-        border-radius: var(--radio);
-        background: var(--fondo);
+        border-radius: 16px;
+        background: var(--superficie);
+        box-shadow: var(--sombra-1);
       }
       .expediente.autorizado {
-        border-left-color: var(--ok);
+        border-color: var(--ok-borde);
+        background: linear-gradient(180deg, #f2faf6 0, #fff 110px);
       }
       .expediente.rechazado {
-        border-left-color: var(--error);
+        border-color: var(--error-borde);
+        background: linear-gradient(180deg, #fff5f4 0, #fff 110px);
       }
       .expediente.pendiente {
-        border-left-color: var(--alerta);
+        border-color: var(--alerta-borde);
+        background: linear-gradient(180deg, #fffaf0 0, #fff 110px);
+      }
+      .expediente strong {
+        font-family: var(--letra-marca);
       }
       .expediente .encabezado {
         display: flex;
@@ -473,43 +480,6 @@ const ESTADOS: Record<string, string> = {
         display: flex;
         flex-wrap: wrap;
         gap: 6px;
-      }
-      .area-masthead {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 24px;
-        margin: 0 0 28px;
-        padding: 21px 24px;
-        border-radius: 16px;
-        background: #efeee8;
-      }
-      .area-masthead h1 {
-        margin: 0 0 4px;
-        font-size: clamp(1.45rem, 2.6vw, 2rem);
-        letter-spacing: -0.03em;
-      }
-      .area-masthead p {
-        max-width: 68ch;
-        margin: 0;
-        color: var(--tinta-media);
-        font-size: 0.875rem;
-      }
-      .area-contexto {
-        padding: 6px 10px;
-        border-radius: 999px;
-        background: #dceee5;
-        color: #245d4c;
-        font-size: 0.75rem;
-        font-weight: 750;
-        white-space: nowrap;
-      }
-      @media (max-width: 640px) {
-        .area-masthead {
-          align-items: start;
-          flex-direction: column;
-          padding: 18px 16px;
-        }
       }
     `,
   ],

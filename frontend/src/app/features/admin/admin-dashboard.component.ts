@@ -108,76 +108,74 @@ const ENTIDADES: Record<string, string> = {
 @Component({
   imports: [ReactiveFormsModule, RouterLink, LogoutButtonComponent],
   template: `
-    <header class="admin-bar">
-      <div class="admin-bar-inner">
+    <header class="app-cabecera">
+      <div class="fila">
         <a
-          class="admin-wordmark"
+          class="marca"
           routerLink="/administracion/panel"
           (click)="ver('inicio')"
-          aria-label="Ir al inicio de Administración"
+          aria-label="Ir al resumen de Administración"
         >
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M12 3 18 5.4v5.4c0 4.1-2.5 7.8-6 9.2-3.5-1.4-6-5.1-6-9.2V5.4L12 3Z" />
-            <path d="m9.2 11.6 1.8 1.8 3.9-4" />
-          </svg>
-          <span>Administración</span>
+          <img class="sigla" src="assets/marca/marca-clara.png" alt="" width="40" height="40" /><span class="sello"
+            >Gestión SST</span
+          >
+          <span class="nombre">Administración<span class="lema">Cuentas, auditoría y formatos</span></span>
         </a>
         <sg-logout-button />
       </div>
     </header>
 
     <main class="app-contenido">
-      @if (pestana() !== 'inicio') {
-        <section class="admin-masthead" aria-labelledby="admin-titulo">
-          <div class="admin-resumen">
-            <div>
-              <h1 id="admin-titulo">Administración del sistema</h1>
-              <p>Gestiona cuentas internas, consulta la trazabilidad y revisa los formatos publicados.</p>
-            </div>
-            <span class="admin-contexto">Acceso restringido</span>
-          </div>
+      <section class="area-masthead" aria-labelledby="admin-titulo">
+        <div>
+          <h1 id="admin-titulo">Administración del sistema</h1>
+          <p>Gestiona cuentas internas, consulta la trazabilidad y revisa los formatos publicados.</p>
+        </div>
 
-          <div class="pestanas admin-tabs" role="tablist" aria-label="Secciones de Administración">
-            <button role="tab" type="button" [attr.aria-selected]="pestana() === 'accesos'" (click)="ver('accesos')">
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M16 19v-1.5a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4V19" />
-                <circle cx="9.5" cy="7" r="3.2" />
-                <path d="M17 8h4m-2-2v4" />
-              </svg>
-              Cuentas y permisos
-            </button>
-            <button
-              role="tab"
-              type="button"
-              [attr.aria-selected]="pestana() === 'auditoria'"
-              (click)="ver('auditoria')"
-            >
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M4 5h12M4 12h8m-8 7h12" />
-                <circle cx="18" cy="5" r="2" />
-                <circle cx="14" cy="12" r="2" />
-                <circle cx="18" cy="19" r="2" />
-              </svg>
-              Auditoría
-              @if (eventos().length) {
-                <span class="globo">{{ eventos().length }}</span>
-              }
-            </button>
-            <button
-              role="tab"
-              type="button"
-              [attr.aria-selected]="pestana() === 'formularios'"
-              (click)="ver('formularios')"
-            >
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M6 3h8l4 4v14H6z" />
-                <path d="M14 3v5h5M9 13h6m-6 4h6" />
-              </svg>
-              Formatos
-            </button>
-          </div>
-        </section>
-      }
+        <div class="pestanas" role="tablist" aria-label="Secciones de Administración">
+          <button role="tab" type="button" [attr.aria-selected]="pestana() === 'inicio'" (click)="ver('inicio')">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <rect x="3" y="3" width="7" height="9" rx="1.5" />
+              <rect x="14" y="3" width="7" height="5" rx="1.5" />
+              <rect x="14" y="12" width="7" height="9" rx="1.5" />
+              <rect x="3" y="16" width="7" height="5" rx="1.5" />
+            </svg>
+            Resumen
+          </button>
+          <button role="tab" type="button" [attr.aria-selected]="pestana() === 'accesos'" (click)="ver('accesos')">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M16 19v-1.5a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4V19" />
+              <circle cx="9.5" cy="7" r="3.2" />
+              <path d="M17 8h4m-2-2v4" />
+            </svg>
+            Cuentas y permisos
+          </button>
+          <button role="tab" type="button" [attr.aria-selected]="pestana() === 'auditoria'" (click)="ver('auditoria')">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M4 5h12M4 12h8m-8 7h12" />
+              <circle cx="18" cy="5" r="2" />
+              <circle cx="14" cy="12" r="2" />
+              <circle cx="18" cy="19" r="2" />
+            </svg>
+            Auditoría
+            @if (eventos().length) {
+              <span class="globo">{{ eventos().length }}</span>
+            }
+          </button>
+          <button
+            role="tab"
+            type="button"
+            [attr.aria-selected]="pestana() === 'formularios'"
+            (click)="ver('formularios')"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M6 3h8l4 4v14H6z" />
+              <path d="M14 3v5h5M9 13h6m-6 4h6" />
+            </svg>
+            Formatos
+          </button>
+        </div>
+      </section>
 
       @if (error()) {
         <p class="mensaje error" role="alert">{{ error() }}</p>
@@ -187,78 +185,69 @@ const ENTIDADES: Record<string, string> = {
       }
 
       @if (pestana() === 'inicio') {
-        <section class="admin-inicio" aria-labelledby="inicio-titulo">
-          <aside class="admin-rail" aria-label="Secciones de Administración">
-            <div class="admin-rail-titulo">
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M12 3 18 5.4v5.4c0 4.1-2.5 7.8-6 9.2-3.5-1.4-6-5.1-6-9.2V5.4L12 3Z" />
-                <path d="m9.2 11.6 1.8 1.8 3.9-4" />
-              </svg>
-              <div>
-                <strong>Administración<br />del sistema</strong><span>Gestiona cuentas internas y trazabilidad</span>
+        <section class="admin-inicio" aria-label="Resumen administrativo">
+          <div class="admin-resumen-grid">
+            <section class="bloque admin-accesos-rapidos" aria-labelledby="accesos-rapidos-titulo">
+              <h2 id="accesos-rapidos-titulo">Accesos rápidos</h2>
+              <button type="button" (click)="ver('accesos')">
+                Crear usuario
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6" /></svg>
+              </button>
+              <button type="button" (click)="ver('formularios')">
+                Revisar formato
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6" /></svg>
+              </button>
+              <button type="button" (click)="ver('auditoria')">
+                Consultar auditoría
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6" /></svg>
+              </button>
+            </section>
+            <section class="bloque admin-estado" aria-labelledby="estado-titulo">
+              <div class="titulo-seccion">
+                <h2 id="estado-titulo">Estado del sistema</h2>
+                <span class="distintivo vigente">Disponible</span>
               </div>
-            </div>
-            <div class="admin-rail-nav">
-              <button type="button" (click)="ver('accesos')">Cuentas y permisos</button>
-              <button type="button" (click)="ver('auditoria')">Auditoría</button>
-              <button type="button" (click)="ver('formularios')">Formatos</button>
-            </div>
-          </aside>
-
-          <div class="admin-panel-principal">
-            <header class="admin-saludo">
-              <h1 id="inicio-titulo">Hola, Administrador</h1>
-              <p>Aquí tienes el resumen operativo del sistema SG-SST.</p>
-            </header>
-
-            <div class="admin-indicadores" aria-label="Resumen administrativo">
-              <article>
-                <span>Roles disponibles</span>
-                <strong>{{ roles().length }}</strong>
-                <small>Para asignar a usuarios internos</small>
-              </article>
-              <article>
-                <span>Eventos cargados</span>
-                <strong>{{ eventos().length }}</strong>
-                <small>Registros de auditoría recientes</small>
-              </article>
-              <article>
-                <span>Formato vigente</span>
-                <strong>{{ formato() ? 'v' + formato()!.versionNumber : '—' }}</strong>
-                <small>{{ formato()?.code || 'Cargando formato' }}</small>
-              </article>
-            </div>
-
-            <div class="admin-resumen-grid">
-              <section class="admin-accesos-rapidos" aria-labelledby="accesos-rapidos-titulo">
-                <h2 id="accesos-rapidos-titulo">Accesos rápidos</h2>
-                <button type="button" (click)="ver('accesos')">Crear usuario <span aria-hidden="true">›</span></button>
-                <button type="button" (click)="ver('formularios')">
-                  Revisar formato <span aria-hidden="true">›</span>
-                </button>
-                <button type="button" (click)="ver('auditoria')">
-                  Consultar auditoría <span aria-hidden="true">›</span>
-                </button>
-              </section>
-              <section class="admin-estado" aria-labelledby="estado-titulo">
-                <div class="admin-estado-cabecera">
-                  <h2 id="estado-titulo">Estado del sistema</h2>
-                  <span>Disponible</span>
-                </div>
-                <ul>
-                  <li><span>Acceso administrativo protegido</span><small>Activo</small></li>
-                  <li>
-                    <span>Roles y permisos cargados</span
-                    ><small>{{ roles().length ? 'Actualizado' : 'Cargando' }}</small>
-                  </li>
-                  <li>
-                    <span>Registro de trazabilidad</span
-                    ><small>{{ eventos().length ? 'Disponible' : 'Sin datos' }}</small>
-                  </li>
-                </ul>
-              </section>
-            </div>
+              <ul>
+                <li><span>Acceso administrativo protegido</span><small>Activo</small></li>
+                <li>
+                  <span>Roles y permisos cargados</span
+                  ><small>{{ roles().length ? roles().length + ' roles' : 'Cargando' }}</small>
+                </li>
+                <li>
+                  <span>Formato publicado</span
+                  ><small>{{ formato() ? formato()!.code + ' · v' + formato()!.versionNumber : 'Cargando' }}</small>
+                </li>
+                <li>
+                  <span>Registro de trazabilidad</span
+                  ><small>{{ eventos().length ? 'Disponible' : 'Sin datos' }}</small>
+                </li>
+              </ul>
+            </section>
           </div>
+
+          <section class="bloque admin-actividad" aria-labelledby="actividad-titulo">
+            <div class="titulo-seccion">
+              <h2 id="actividad-titulo">Actividad reciente</h2>
+              <button class="boton secundario compacto" type="button" (click)="ver('auditoria')">
+                Ver auditoría completa
+              </button>
+            </div>
+            @if (eventos().length) {
+              <ol>
+                @for (evento of eventos().slice(0, 5); track evento.id) {
+                  <li [class.fallo]="esFallo(evento)">
+                    <span class="evento-etiqueta" [class.evento-alerta]="esFallo(evento)">{{
+                      nombreAccion(evento.action)
+                    }}</span>
+                    <span class="actor">{{ nombreActor(evento) }}</span>
+                    <time class="momento">{{ momento(evento.createdAt) }}</time>
+                  </li>
+                }
+              </ol>
+            } @else {
+              <p class="secundario">Todavía no hay eventos registrados.</p>
+            }
+          </section>
         </section>
       }
 
@@ -271,7 +260,12 @@ const ENTIDADES: Record<string, string> = {
               <p>Administra las cuentas internas con acceso al sistema.</p>
             </div>
             <button class="boton compacto" type="button" (click)="alternarFormularioUsuario()">
-              {{ mostrarCrear() ? 'Cerrar formulario' : '+ Crear usuario' }}
+              @if (mostrarCrear()) {
+                Cerrar formulario
+              } @else {
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+                Crear usuario
+              }
             </button>
           </div>
 
@@ -458,7 +452,7 @@ const ENTIDADES: Record<string, string> = {
           <button class="boton secundario compacto" type="button" (click)="cargarAuditoria()">Actualizar</button>
         </div>
 
-        <div class="filtros auditoria-filtros">
+        <div class="auditoria-filtros">
           <label class="campo">
             <span class="sr-only">Filtrar por acción</span>
             <select [value]="filtroAccion()" (change)="filtroAccion.set($any($event.target).value)">
@@ -596,677 +590,78 @@ const ENTIDADES: Record<string, string> = {
   `,
   styles: [
     `
-      .acciones {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
-        align-items: center;
-      }
-      .admin-resumen {
-        display: flex;
-        align-items: end;
-        justify-content: space-between;
-        gap: 24px;
-        margin: 6px 0 30px;
-      }
-      .admin-resumen h1 {
-        margin: 0 0 8px;
-        font-size: clamp(1.8rem, 3vw, 2.55rem);
-        letter-spacing: -0.035em;
-      }
-      .admin-resumen p {
-        max-width: 62ch;
-        margin: 0;
-        color: var(--tinta-media);
-      }
-      .admin-contexto {
-        flex: none;
-        padding: 7px 11px;
-        border: 1px solid #b9d5c7;
-        border-radius: 999px;
-        background: #edf8f2;
-        color: #155d4a;
-        font-size: 0.8125rem;
-        font-weight: 700;
-      }
-      .admin-tabs {
-        margin-bottom: 28px;
-        padding: 5px;
-        border: 1px solid var(--borde);
-        border-radius: 16px;
-        background: rgb(255 255 255 / 0.72);
-      }
-      .admin-tabs button {
-        flex: 1 1 auto;
-        justify-content: center;
-      }
-      .admin-cuentas {
-        width: 100%;
-      }
-      .usuarios-cabecera {
-        display: flex;
-        align-items: end;
-        justify-content: space-between;
-        gap: 18px;
-        margin-bottom: 20px;
-      }
-      .usuarios-cabecera h2 {
-        margin: 0 0 4px;
-        font-size: 1.45rem;
-        letter-spacing: -0.03em;
-      }
-      .usuarios-cabecera p {
-        margin: 0;
-        color: var(--tinta-media);
-        font-size: 0.875rem;
-      }
-      .crear-usuario {
-        margin-bottom: 20px;
-      }
-      .editar-usuario {
-        margin-bottom: 20px;
-        background: #f7fbf8;
-      }
-      .crear-usuario h3 {
-        margin: 0;
-        font-size: 1.08rem;
-      }
-      .usuarios-tabla {
-        padding: 20px;
-        border-radius: 14px;
-        background: #fff;
-        box-shadow: 0 10px 26px rgb(24 50 68 / 0.06);
-      }
-      .usuarios-herramientas {
-        display: flex;
-        justify-content: space-between;
-        gap: 16px;
-        align-items: center;
-        margin-bottom: 18px;
-      }
-      .usuarios-herramientas > span {
-        color: var(--tinta-suave);
-        font-size: 0.8125rem;
-      }
-      .buscador-usuarios {
-        width: min(100%, 310px);
-      }
-      .buscador-usuarios input {
-        min-height: 40px;
-        font-size: 0.8125rem;
-      }
-      .usuarios-datos td:first-child {
-        min-width: 210px;
-      }
-      .usuarios-datos td:last-child {
-        white-space: nowrap;
-      }
-      .avatar-usuario {
-        display: inline-grid;
-        place-items: center;
-        width: 25px;
-        height: 25px;
-        margin-right: 9px;
-        border-radius: 50%;
-        background: #b5ddd0;
-        color: #175745;
-        font-size: 0.6875rem;
-        font-weight: 800;
-        vertical-align: middle;
-      }
-      .usuarios-datos strong {
-        font-size: 0.8125rem;
-        font-weight: 700;
-      }
-      .usuarios-datos td {
-        color: #3c5661;
-        font-size: 0.8125rem;
-      }
-      .editar-cuenta {
-        border: 0;
-        background: transparent;
-        color: var(--azul-oscuro);
-        font: inherit;
-        font-size: 0.75rem;
-        font-weight: 750;
-        text-decoration: underline;
-        text-underline-offset: 3px;
-        cursor: pointer;
-      }
-      .sr-only {
-        position: absolute;
-        width: 1px;
-        height: 1px;
-        padding: 0;
-        margin: -1px;
-        overflow: hidden;
-        clip: rect(0, 0, 0, 0);
-        white-space: nowrap;
-        border: 0;
-      }
-      .crear-usuario {
-        min-height: 100%;
-      }
-      .secundario {
-        display: block;
-        color: var(--tinta-suave);
-        font-size: 0.875rem;
-      }
-      .introduccion {
-        margin: -6px 0 20px;
-      }
-      h3 {
-        margin: 26px 0 10px;
-        font-size: 1.0625rem;
-      }
-
-      .filtros {
-        display: grid;
-        gap: 14px;
-        margin-bottom: 18px;
-      }
-      .auditoria-cabecera {
-        display: flex;
-        align-items: end;
-        justify-content: space-between;
-        gap: 18px;
-        margin-bottom: 20px;
-      }
-      .auditoria-cabecera h2 {
-        margin: 0 0 4px;
-        font-size: 1.45rem;
-        letter-spacing: -0.03em;
-      }
-      .auditoria-cabecera p {
-        margin: 0;
-        color: var(--tinta-media);
-        font-size: 0.875rem;
-      }
-      .auditoria-filtros {
-        display: flex;
-        justify-content: flex-end;
-        gap: 10px;
-        margin: -56px 0 20px;
-      }
-      .auditoria-filtros .campo {
-        width: auto;
-      }
-      .auditoria-filtros select {
-        min-height: 40px;
-        min-width: 175px;
-        font-size: 0.8125rem;
-      }
-      .evento-etiqueta {
-        display: inline-block;
-        padding: 4px 9px;
-        border-radius: 999px;
-        background: #e1f1ea;
-        color: #1b6250;
-        font-size: 0.6875rem;
-        font-weight: 750;
-        white-space: nowrap;
-      }
-      .evento-alerta {
-        background: #fbe5e2;
-        color: #9c251e;
-      }
-      .formatos-cabecera {
-        display: flex;
-        align-items: end;
-        justify-content: space-between;
-        gap: 18px;
-        margin-bottom: 20px;
-      }
-      .formatos-cabecera h2 {
-        margin: 0 0 4px;
-        font-size: 1.45rem;
-        letter-spacing: -0.03em;
-      }
-      .formatos-cabecera p {
-        margin: 0;
-        color: var(--tinta-media);
-        font-size: 0.875rem;
-      }
-      .formatos-indicadores {
-        display: grid;
-        grid-template-columns: repeat(4, minmax(0, 1fr));
-        gap: 14px;
-        margin-bottom: 30px;
-      }
-      .formatos-indicadores article {
-        padding: 17px 18px;
-        border: 1px solid #e1e6e1;
-        border-radius: 12px;
-        background: #fff;
-      }
-      .formatos-indicadores span {
-        display: block;
-        color: var(--tinta-media);
-        font-size: 0.6875rem;
-        font-weight: 750;
-        letter-spacing: 0.035em;
-        text-transform: uppercase;
-      }
-      .formatos-indicadores strong {
-        display: block;
-        margin-top: 6px;
-        font-size: 1.35rem;
-        letter-spacing: -0.03em;
-      }
-      .formato-tarjeta {
-        width: min(100%, 340px);
-        padding: 20px;
-        border: 1px solid #e1e6e1;
-        border-radius: 14px;
-        background: #fff;
-        box-shadow: 0 10px 26px rgb(24 50 68 / 0.06);
-      }
-      .formato-tarjeta-cabecera,
-      .formato-meta {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 12px;
-      }
-      .formato-tarjeta-cabecera span {
-        padding: 4px 8px;
-        border-radius: 999px;
-        background: #dcefe7;
-        color: #175746;
-        font-size: 0.6875rem;
-        font-weight: 750;
-      }
-      .formato-tarjeta-cabecera small {
-        color: var(--tinta-suave);
-        font-size: 0.75rem;
-        font-weight: 700;
-      }
-      .formato-tarjeta h3 {
-        margin: 17px 0 8px;
-        font-size: 1.05rem;
-      }
-      .formato-tarjeta p {
-        min-height: 48px;
-        margin: 0 0 18px;
-        color: var(--tinta-media);
-        font-size: 0.8125rem;
-        line-height: 1.45;
-      }
-      .formato-meta {
-        padding-top: 14px;
-        border-top: 1px solid #edf0ed;
-        color: var(--tinta-media);
-        font-size: 0.75rem;
-      }
-      .formato-tarjeta .boton {
-        width: 100%;
-        margin-top: 18px;
-      }
-      .formatos-campos {
-        margin-top: 24px;
-      }
-      .formatos-nota {
-        max-width: 80ch;
-        margin: 18px 0 0;
-        color: var(--tinta-suave);
-        font-size: 0.8125rem;
-      }
-      .tabla-scroll {
-        background: var(--superficie);
-      }
-      .tabla-scroll table.datos tbody tr {
-        transition: background-color 150ms ease;
-      }
-      @media (min-width: 640px) {
-        .filtros {
-          grid-template-columns: 1fr 1fr;
-          max-width: 620px;
-        }
-      }
-
-      .momento {
-        white-space: nowrap;
-        font-variant-numeric: tabular-nums;
-      }
-      .identificador {
-        font-size: 0.75rem;
-        word-break: break-all;
-      }
-      .fila-alerta {
-        background: var(--error-fondo);
-      }
-      .casilla span {
-        display: block;
-      }
-      @media (max-width: 640px) {
-        .admin-resumen {
-          align-items: start;
-          flex-direction: column;
-          gap: 12px;
-          margin-bottom: 22px;
-        }
-        .admin-tabs {
-          margin-inline: -2px;
-        }
-        .admin-tabs button {
-          flex: 0 0 auto;
-        }
-      }
-
-      /* La consola se apoya en una cabecera sobria y una franja de contexto,
-         para que los cambios de sección no oculten dónde se está trabajando. */
-      .admin-bar {
-        border-bottom: 1px solid #dde3df;
-        background: #fffefb;
-      }
-      .admin-bar-inner {
-        display: grid;
-        grid-template-columns: 1fr auto;
-        align-items: center;
-        gap: 24px;
-        max-width: 1240px;
-        min-height: 68px;
-        margin-inline: auto;
-        padding: 0 28px;
-      }
-      .admin-wordmark {
-        display: inline-flex;
-        align-items: center;
-        gap: 9px;
-        width: fit-content;
-        color: var(--tinta);
-        font-size: 0.9375rem;
-        font-weight: 750;
+      .app-cabecera a.marca {
         text-decoration: none;
       }
-      .admin-wordmark svg {
-        width: 19px;
-        height: 19px;
-        fill: #dff1e8;
-        stroke: var(--azul-oscuro);
-        stroke-linecap: round;
-        stroke-linejoin: round;
-        stroke-width: 1.7px;
-      }
-      .admin-bar sg-logout-button {
-        justify-self: end;
+      .app-cabecera a.marca:hover {
+        color: #fff;
       }
 
-      .app-contenido {
-        max-width: 1240px;
-        padding-top: 30px;
-      }
-      .admin-masthead {
-        margin-bottom: 30px;
-        padding: 21px 24px 14px;
-        border-radius: 16px;
-        background: #efeee8;
-      }
-      .admin-resumen {
-        align-items: center;
-        margin: 0 0 18px;
-      }
-      .admin-resumen h1 {
-        margin-bottom: 3px;
-        font-size: clamp(1.45rem, 2.6vw, 2rem);
-        letter-spacing: -0.03em;
-      }
-      .admin-resumen p {
-        font-size: 0.875rem;
-      }
-      .admin-contexto {
-        border: 0;
-        background: #dceee5;
-        color: #245d4c;
-        font-size: 0.75rem;
-      }
-      .admin-tabs {
-        justify-content: flex-end;
-        gap: 6px;
-        margin: 0;
-        padding: 0;
-        border: 0;
-        background: transparent;
-      }
-      .admin-tabs button {
-        display: inline-flex;
-        flex: 0 0 auto;
-        align-items: center;
-        gap: 7px;
-        padding: 9px 14px;
-        color: #294654;
-        font-size: 0.8125rem;
-        font-weight: 650;
-      }
-      .admin-tabs button svg {
-        width: 15px;
-        height: 15px;
-        fill: none;
-        stroke: currentColor;
-        stroke-linecap: round;
-        stroke-linejoin: round;
-        stroke-width: 1.8px;
-      }
-      .admin-tabs button:hover {
-        background: rgb(255 255 255 / 66%);
-      }
-      .admin-tabs button[aria-selected='true'] {
-        background: #98cbbb;
-        color: #123f38;
-      }
-      .admin-tabs .globo {
-        margin-left: 1px;
-        padding: 0 5px;
-        background: rgb(255 255 255 / 55%);
-        color: inherit;
-        font-size: 0.6875rem;
-      }
-      .bloque {
-        padding: 26px;
-        border: 1px solid #e2e5e1;
-        box-shadow: 0 10px 26px rgb(24 50 68 / 0.06);
-      }
-      .titulo-seccion h2 {
-        font-size: 1.35rem;
-        letter-spacing: -0.025em;
-      }
-      .introduccion {
-        max-width: 67ch;
-        line-height: 1.6;
-      }
-      .filtros {
-        padding: 16px;
-        border-radius: 12px;
-        background: #f6f7f3;
-      }
-      .tabla-scroll {
-        border-color: #e3e6e2;
-        border-radius: 12px;
-        box-shadow: none;
-      }
-      table.datos th,
-      table.datos td {
-        padding: 14px 16px;
-      }
-      table.datos thead th {
-        background: #f1f2ed;
-      }
-      table.datos tbody tr:hover {
-        background: #f2f8f4;
-      }
-
-      .admin-inicio {
-        display: grid;
-        grid-template-columns: 176px minmax(0, 1fr);
-        gap: 26px;
-        align-items: start;
-        padding-top: 18px;
-      }
-      .admin-rail {
-        padding: 20px 16px;
-        border-radius: 14px;
-        background: #efeee8;
-      }
-      .admin-rail-titulo {
-        display: flex;
-        gap: 10px;
-        align-items: flex-start;
-      }
-      .admin-rail-titulo svg {
-        flex: none;
-        width: 25px;
-        height: 25px;
-        margin-top: 2px;
-        fill: #a8d4c4;
-        stroke: #1d6352;
-        stroke-linecap: round;
-        stroke-linejoin: round;
-        stroke-width: 1.7px;
-      }
-      .admin-rail-titulo strong {
-        display: block;
-        font-size: 0.875rem;
-        line-height: 1.22;
-      }
-      .admin-rail-titulo span {
-        display: block;
-        margin-top: 5px;
-        color: var(--tinta-media);
-        font-size: 0.6875rem;
-        line-height: 1.35;
-      }
-      .admin-rail-nav {
-        display: grid;
-        gap: 4px;
-        margin-top: 22px;
-      }
-      .admin-rail-nav button,
-      .admin-accesos-rapidos button {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        width: 100%;
-        border: 0;
-        color: #234451;
-        font: inherit;
-        text-align: left;
-        cursor: pointer;
-      }
-      .admin-rail-nav button {
-        padding: 10px 10px;
-        border-radius: 9px;
-        background: transparent;
-        font-size: 0.75rem;
-        font-weight: 650;
-      }
-      .admin-rail-nav button:hover,
-      .admin-rail-nav button:focus-visible {
-        background: #fffefa;
-      }
-      .admin-panel-principal {
-        min-width: 0;
-      }
-      .admin-saludo {
-        margin: 0 0 30px;
-      }
-      .admin-saludo h1 {
-        margin: 0 0 4px;
-        font-size: clamp(1.75rem, 3vw, 2.2rem);
-        letter-spacing: -0.035em;
-      }
-      .admin-saludo p {
-        margin: 0;
-        color: var(--tinta-media);
-        font-size: 0.875rem;
-      }
-      .admin-indicadores {
-        display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 16px;
-        margin-bottom: 30px;
-      }
-      .admin-indicadores article {
-        min-height: 128px;
-        padding: 20px;
-        border: 1px solid #dce3df;
-        border-radius: 12px;
-        background: #fff;
-      }
-      .admin-indicadores span,
-      .admin-indicadores small {
-        display: block;
-        color: var(--tinta-media);
-        font-size: 0.6875rem;
-      }
-      .admin-indicadores span {
-        font-weight: 750;
-        letter-spacing: 0.035em;
-        text-transform: uppercase;
-      }
-      .admin-indicadores strong {
-        display: block;
-        margin: 13px 0 7px;
-        color: #142d3c;
-        font-size: 1.75rem;
-        letter-spacing: -0.04em;
-        line-height: 1;
-        font-variant-numeric: tabular-nums;
-      }
+      /* ── Resumen ── */
       .admin-resumen-grid {
         display: grid;
-        grid-template-columns: minmax(230px, 0.45fr) minmax(0, 1fr);
-        gap: 16px;
+        grid-template-columns: minmax(240px, 0.42fr) minmax(0, 1fr);
+        gap: 18px;
       }
-      .admin-accesos-rapidos,
-      .admin-estado {
-        padding: 20px;
-        border: 1px solid #dce3df;
-        border-radius: 12px;
-        background: #fff;
+      .admin-resumen-grid .bloque + .bloque {
+        margin-top: 0;
       }
-      .admin-accesos-rapidos h2,
-      .admin-estado h2 {
-        margin: 0 0 16px;
-        font-size: 1rem;
-        letter-spacing: -0.015em;
+      .admin-resumen-grid h2 {
+        margin: 0 0 14px;
+        font-size: 1.0625rem;
       }
       .admin-accesos-rapidos {
         display: grid;
+        align-content: start;
         gap: 8px;
       }
       .admin-accesos-rapidos h2 {
-        margin-bottom: 4px;
+        margin-bottom: 6px;
       }
       .admin-accesos-rapidos button {
-        min-height: 42px;
-        padding: 10px 12px;
-        border-radius: 8px;
-        background: #f1f1ec;
-        font-size: 0.75rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        min-height: 48px;
+        padding: 10px 14px;
+        border: 1px solid var(--borde);
+        border-radius: 12px;
+        background: #f7f9fb;
+        color: var(--tinta);
+        font: inherit;
+        font-family: var(--letra-marca);
+        font-size: 0.875rem;
         font-weight: 700;
+        text-align: left;
+        cursor: pointer;
+        transition:
+          background-color 160ms ease,
+          border-color 160ms ease;
       }
       .admin-accesos-rapidos button:hover {
-        background: #e0eee7;
-        color: #124b3e;
+        border-color: var(--azul);
+        background: var(--teal-tenue);
+        color: var(--azul-oscuro);
       }
-      .admin-accesos-rapidos button span {
-        font-size: 1.4rem;
-        font-weight: 400;
-        line-height: 0.75;
+      .admin-accesos-rapidos svg,
+      .usuarios-cabecera svg {
+        width: 18px;
+        height: 18px;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 2;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        transition: transform 200ms var(--curva);
       }
-      .admin-estado-cabecera {
-        display: flex;
-        justify-content: space-between;
-        gap: 12px;
-        align-items: start;
+      .admin-accesos-rapidos button:hover svg {
+        transform: translateX(3px);
       }
-      .admin-estado-cabecera span {
-        padding: 4px 9px;
-        border-radius: 999px;
-        background: #a8d4c4;
-        color: #164e40;
-        font-size: 0.6875rem;
-        font-weight: 750;
+      .admin-estado .titulo-seccion {
+        margin-bottom: 6px;
+      }
+      .admin-estado .titulo-seccion h2 {
+        margin: 0;
       }
       .admin-estado ul {
         margin: 0;
@@ -1275,63 +670,353 @@ const ENTIDADES: Record<string, string> = {
       }
       .admin-estado li {
         display: flex;
-        justify-content: space-between;
-        gap: 18px;
-        padding: 12px 0;
-        border-top: 1px solid #edf0ed;
-        color: #294754;
-        font-size: 0.75rem;
+        align-items: center;
+        gap: 12px;
+        padding: 14px 0;
+        border-top: 1px solid #e6ebf0;
+        color: var(--tinta);
+        font-size: 0.9375rem;
+      }
+      .admin-estado li:first-child {
+        border-top: 0;
       }
       .admin-estado li::before {
-        width: 6px;
-        height: 6px;
-        margin: 6px 0 0;
-        border-radius: 50%;
-        background: #28785f;
         content: '';
+        flex: none;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--teal);
+        box-shadow: 0 0 0 4px var(--teal-tenue);
       }
       .admin-estado li span {
         margin-right: auto;
       }
       .admin-estado li small {
-        color: var(--tinta-media);
+        color: var(--tinta-suave);
+        font-size: 0.8125rem;
         white-space: nowrap;
       }
 
+      .admin-actividad {
+        margin-top: 18px;
+      }
+      .admin-actividad ol {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+      }
+      .admin-actividad li {
+        display: grid;
+        grid-template-columns: minmax(0, 15rem) minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 16px;
+        padding: 12px 0;
+        border-top: 1px solid #e6ebf0;
+        font-size: 0.9375rem;
+      }
+      .admin-actividad li:first-child {
+        border-top: 0;
+      }
+      .admin-actividad .evento-etiqueta {
+        justify-self: start;
+      }
+      .admin-actividad .momento {
+        color: var(--tinta-suave);
+        font-size: 0.875rem;
+      }
       @media (max-width: 640px) {
-        .admin-bar-inner {
-          min-height: 60px;
-          padding: 0 16px;
+        .admin-actividad li {
+          grid-template-columns: 1fr;
+          gap: 4px;
         }
-        .admin-masthead {
-          margin-inline: -2px;
-          padding: 18px 16px 12px;
+      }
+
+      /* ── Cabeceras de sección ── */
+      .usuarios-cabecera,
+      .auditoria-cabecera,
+      .formatos-cabecera {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 20px;
+      }
+      .usuarios-cabecera h2,
+      .auditoria-cabecera h2,
+      .formatos-cabecera h2 {
+        margin: 0 0 4px;
+        font-size: 1.375rem;
+      }
+      .usuarios-cabecera p,
+      .auditoria-cabecera p,
+      .formatos-cabecera p {
+        margin: 0;
+        color: var(--tinta-media);
+        font-size: 0.9375rem;
+      }
+
+      /* ── Cuentas ── */
+      .crear-usuario,
+      .editar-usuario {
+        margin-bottom: 22px;
+      }
+      .editar-usuario {
+        border-color: #b8d9d1;
+        box-shadow:
+          0 0 0 4px var(--teal-tenue),
+          var(--sombra);
+      }
+      .crear-usuario h3,
+      .editar-usuario h3 {
+        margin: 0;
+        font-size: 1.125rem;
+      }
+      .casilla span {
+        display: block;
+      }
+      .usuarios-tabla {
+        padding: 18px;
+        border: 1px solid var(--borde);
+        border-radius: var(--radio-grande);
+        background: var(--superficie);
+        box-shadow: var(--sombra);
+      }
+      .usuarios-tabla .tabla-scroll {
+        box-shadow: none;
+      }
+      .usuarios-herramientas {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 14px;
+      }
+      .usuarios-herramientas > span {
+        color: var(--tinta-suave);
+        font-size: 0.875rem;
+        font-variant-numeric: tabular-nums;
+      }
+      .buscador-usuarios {
+        width: min(100%, 340px);
+      }
+      .buscador-usuarios input {
+        min-height: 42px;
+        padding-left: 40px;
+        background: #f7f9fb
+          url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2355687c' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='m20 20-3.5-3.5'/%3E%3C/svg%3E")
+          no-repeat 13px center / 17px;
+        font-size: 0.9375rem;
+      }
+      .usuarios-datos td:first-child {
+        min-width: 240px;
+      }
+      .usuarios-datos td:first-child strong {
+        display: block;
+      }
+      .usuarios-datos td:first-child .secundario {
+        margin-left: 44px;
+      }
+      .usuarios-datos td:last-child {
+        white-space: nowrap;
+      }
+      .avatar-usuario {
+        float: left;
+        display: grid;
+        place-items: center;
+        width: 34px;
+        height: 34px;
+        margin-right: 10px;
+        border-radius: 50%;
+        background: linear-gradient(150deg, var(--marino-600), var(--marino));
+        color: #fff;
+        font-family: var(--letra-marca);
+        font-size: 0.75rem;
+        font-weight: 700;
+        box-shadow: 0 3px 8px -3px rgb(8 33 58 / 0.5);
+      }
+      .editar-cuenta {
+        min-height: 34px;
+        padding: 5px 12px;
+        border: 1px solid var(--borde-fuerte);
+        border-radius: 9px;
+        background: var(--superficie);
+        color: var(--tinta);
+        font: inherit;
+        font-family: var(--letra-marca);
+        font-size: 0.8125rem;
+        font-weight: 700;
+        cursor: pointer;
+      }
+      .editar-cuenta:hover {
+        border-color: var(--azul);
+        background: var(--teal-tenue);
+        color: var(--azul-oscuro);
+      }
+
+      /* ── Auditoría ── */
+      .auditoria-filtros {
+        display: grid;
+        gap: 12px;
+        margin-bottom: 18px;
+        padding: 14px;
+        border: 1px solid var(--borde);
+        border-radius: 14px;
+        background: var(--superficie);
+        box-shadow: var(--sombra-1);
+      }
+      .auditoria-filtros select {
+        min-height: 44px;
+      }
+      @media (min-width: 640px) {
+        .auditoria-filtros {
+          grid-template-columns: repeat(2, minmax(0, 280px));
         }
-        .admin-resumen {
-          align-items: start;
+      }
+      .momento {
+        white-space: nowrap;
+        font-variant-numeric: tabular-nums;
+      }
+      .identificador {
+        font-size: 0.8125rem;
+        word-break: break-all;
+      }
+      .evento-etiqueta {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 3px 10px 3px 8px;
+        border-radius: 999px;
+        background: var(--teal-tenue);
+        color: var(--azul-oscuro);
+        font-size: 0.8125rem;
+        font-weight: 650;
+        white-space: nowrap;
+      }
+      .evento-etiqueta::before {
+        content: '';
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: currentColor;
+      }
+      .evento-alerta {
+        background: #fbe1de;
+        color: var(--error);
+      }
+
+      /* ── Formatos ── */
+      .formatos-indicadores {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 14px;
+        margin-bottom: 28px;
+      }
+      .formatos-indicadores article {
+        padding: 18px 20px;
+        border: 1px solid var(--borde);
+        border-radius: 16px;
+        background: var(--superficie);
+        box-shadow: var(--sombra);
+      }
+      .formatos-indicadores span {
+        display: block;
+        color: var(--tinta-media);
+        font-size: 0.875rem;
+        font-weight: 500;
+      }
+      .formatos-indicadores strong {
+        display: block;
+        margin-top: 6px;
+        color: var(--marino);
+        font-family: var(--letra-marca);
+        font-size: 1.625rem;
+        font-weight: 700;
+        letter-spacing: -0.03em;
+        font-variant-numeric: tabular-nums;
+      }
+      .formato-tarjeta {
+        width: min(100%, 380px);
+        padding: 22px;
+        border: 1px solid var(--borde);
+        border-radius: var(--radio-grande);
+        background:
+          url('/assets/marca/marca.png') no-repeat right 20px top 18px / 38px,
+          var(--superficie);
+        box-shadow: var(--sombra);
+      }
+      .formato-tarjeta-cabecera,
+      .formato-meta {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .formato-tarjeta-cabecera span {
+        padding: 4px 10px;
+        border-radius: 8px;
+        background: var(--marino);
+        color: #fff;
+        font-family: var(--letra-marca);
+        font-size: 0.75rem;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+      }
+      .formato-tarjeta-cabecera small {
+        color: var(--tinta-suave);
+        font-family: var(--letra-marca);
+        font-size: 0.8125rem;
+        font-weight: 700;
+      }
+      .formato-tarjeta h3 {
+        margin: 18px 0 8px;
+        font-size: 1.125rem;
+      }
+      .formato-tarjeta p {
+        margin: 0 0 18px;
+        color: var(--tinta-media);
+        font-size: 0.9375rem;
+        line-height: 1.5;
+      }
+      .formato-meta {
+        justify-content: space-between;
+        padding-top: 14px;
+        border-top: 1px solid #e6ebf0;
+        color: var(--tinta-media);
+        font-size: 0.875rem;
+      }
+      .formato-tarjeta .boton {
+        width: 100%;
+        margin-top: 18px;
+      }
+      .formatos-campos {
+        margin-top: 26px;
+      }
+      .formatos-campos h3 {
+        margin: 0;
+        font-size: 1.125rem;
+      }
+      .formatos-nota {
+        max-width: 80ch;
+        margin: 20px 0 0;
+        color: var(--tinta-suave);
+        font-size: 0.875rem;
+      }
+
+      @media (max-width: 900px) {
+        .admin-resumen-grid {
+          grid-template-columns: 1fr;
         }
-        .admin-contexto {
-          display: none;
+        .formatos-indicadores {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
         }
-        .admin-tabs {
-          justify-content: flex-start;
-          overflow-x: auto;
-        }
-        .admin-tabs button {
-          padding: 9px 12px;
-        }
-        .bloque {
-          padding: 20px 16px;
-        }
-        .usuarios-cabecera {
-          align-items: start;
-          flex-direction: column;
-        }
+      }
+      @media (max-width: 640px) {
         .usuarios-cabecera .boton {
           width: 100%;
         }
         .usuarios-tabla {
-          padding: 16px;
+          padding: 14px;
         }
         .usuarios-herramientas {
           align-items: stretch;
@@ -1340,24 +1025,7 @@ const ENTIDADES: Record<string, string> = {
         .buscador-usuarios {
           width: 100%;
         }
-        .auditoria-cabecera {
-          align-items: start;
-          flex-direction: column;
-        }
-        .auditoria-filtros {
-          display: grid;
-          grid-template-columns: 1fr;
-          margin: 0 0 18px;
-        }
-        .auditoria-filtros select {
-          width: 100%;
-        }
-        .formatos-cabecera {
-          align-items: start;
-          flex-direction: column;
-        }
         .formatos-indicadores {
-          grid-template-columns: repeat(2, minmax(0, 1fr));
           gap: 10px;
         }
         .formatos-indicadores article {
@@ -1365,39 +1033,6 @@ const ENTIDADES: Record<string, string> = {
         }
         .formato-tarjeta {
           width: 100%;
-        }
-        .admin-inicio {
-          grid-template-columns: 1fr;
-          gap: 20px;
-          padding-top: 0;
-        }
-        .admin-rail {
-          padding: 16px;
-        }
-        .admin-rail-nav {
-          grid-template-columns: repeat(3, minmax(0, 1fr));
-          margin-top: 16px;
-        }
-        .admin-rail-nav button {
-          padding: 8px 5px;
-          font-size: 0.6875rem;
-          text-align: center;
-          justify-content: center;
-        }
-        .admin-saludo {
-          margin-bottom: 22px;
-        }
-        .admin-indicadores,
-        .admin-resumen-grid {
-          grid-template-columns: 1fr;
-        }
-        .admin-indicadores {
-          gap: 10px;
-          margin-bottom: 22px;
-        }
-        .admin-indicadores article {
-          min-height: auto;
-          padding: 16px;
         }
       }
     `,

@@ -16,6 +16,8 @@
             "tsConfig": "tsconfig.app.json",
             "assets": [
               "src/favicon.svg",
+              { "glob": "**/*", "input": "src/assets/marca", "output": "assets/marca" },
+              { "glob": "*.woff2", "input": "src/assets/fuentes", "output": "assets/fuentes" },
               {
                 "glob": "*.mp4",
                 "input": "src/assets/videos/charlas-seguridad",
@@ -58,6 +60,8 @@
             "tsConfig": "tsconfig.spec.json",
             "assets": [
               "src/favicon.svg",
+              { "glob": "**/*", "input": "src/assets/marca", "output": "assets/marca" },
+              { "glob": "*.woff2", "input": "src/assets/fuentes", "output": "assets/fuentes" },
               {
                 "glob": "*.mp4",
                 "input": "src/assets/videos/charlas-seguridad",

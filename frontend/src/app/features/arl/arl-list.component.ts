@@ -61,7 +61,9 @@ type CrearColaborador = {
     <header class="app-cabecera">
       <div class="fila">
         <div class="marca">
-          <span class="sigla" aria-hidden="true">SST</span>
+          <img class="sigla" src="assets/marca/marca-clara.png" alt="" width="40" height="40" /><span class="sello"
+            >Gestión SST</span
+          >
           <span class="nombre">
             Afiliaciones ARL
             <span class="lema">Vigencias y soportes</span>
@@ -72,13 +74,6 @@ type CrearColaborador = {
     </header>
 
     <main class="app-contenido">
-      @if (error()) {
-        <p class="mensaje error" role="alert">{{ error() }}</p>
-      }
-      @if (aviso()) {
-        <p class="mensaje ok" role="status">{{ aviso() }}</p>
-      }
-
       <section class="area-masthead" aria-labelledby="arl-titulo">
         <div>
           <h1 id="arl-titulo">Gestión de afiliaciones ARL</h1>
@@ -91,6 +86,12 @@ type CrearColaborador = {
         <a routerLink="/gestor-arl" routerLinkActive="activo" [routerLinkActiveOptions]="{ exact: true }">ARL</a>
         <a routerLink="/seguridad-social" routerLinkActive="activo">Seguridad social</a>
       </nav>
+      @if (error()) {
+        <p class="mensaje error" role="alert">{{ error() }}</p>
+      }
+      @if (aviso()) {
+        <p class="mensaje ok" role="status">{{ aviso() }}</p>
+      }
 
       @if (seleccionada(); as fila) {
         <!-- ══════════ Ficha del colaborador ══════════ -->
@@ -252,7 +253,12 @@ type CrearColaborador = {
             <span class="secundario">Registra colaboradores y administra su vigencia ARL.</span>
           </div>
           <button class="boton compacto" type="button" (click)="alternarRegistroColaborador()">
-            {{ mostrandoRegistro() ? 'Cerrar registro' : '+ Registrar colaborador' }}
+            @if (mostrandoRegistro()) {
+              Cerrar registro
+            } @else {
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+              Registrar colaborador
+            }
           </button>
         </div>
 
@@ -438,65 +444,13 @@ type CrearColaborador = {
       }
       .registro-colaborador {
         margin-bottom: 24px;
-        background: #f7fbf8;
+        background: linear-gradient(180deg, #f6f9fc, #fff);
       }
       .registro-colaborador h3 {
         margin: 0;
       }
       .lista-arl-cabecera {
         margin-top: 28px;
-      }
-      .area-masthead {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 24px;
-        margin: 0 0 28px;
-        padding: 21px 24px;
-        border-radius: 16px;
-        background: #efeee8;
-      }
-      .area-masthead h1 {
-        margin: 0 0 4px;
-        font-size: clamp(1.45rem, 2.6vw, 2rem);
-        letter-spacing: -0.03em;
-      }
-      .area-masthead p {
-        max-width: 68ch;
-        margin: 0;
-        color: var(--tinta-media);
-        font-size: 0.875rem;
-      }
-      .area-contexto {
-        padding: 6px 10px;
-        border-radius: 999px;
-        background: #dceee5;
-        color: #245d4c;
-        font-size: 0.75rem;
-        font-weight: 750;
-        white-space: nowrap;
-      }
-      .modulos {
-        display: flex;
-        gap: 8px;
-        margin: -12px 0 28px;
-      }
-      .modulos a {
-        min-height: 42px;
-        padding: 10px 14px;
-        border-radius: 10px;
-        color: var(--tinta-media);
-        font-weight: 700;
-        text-decoration: none;
-      }
-      .modulos a:hover,
-      .modulos a:focus-visible {
-        background: #e5eee8;
-        color: #245d4c;
-      }
-      .modulos a.activo {
-        background: #245d4c;
-        color: #fff;
       }
       .distintivo.urgencia-5 {
         background: #fff3d6;
@@ -512,13 +466,6 @@ type CrearColaborador = {
         background: #fbd8d4;
         border-color: #dc8077;
         color: #a1261e;
-      }
-      @media (max-width: 640px) {
-        .area-masthead {
-          align-items: start;
-          flex-direction: column;
-          padding: 18px 16px;
-        }
       }
     `,
   ],
