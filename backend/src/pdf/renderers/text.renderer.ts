@@ -58,7 +58,14 @@ export class TextRenderer {
     while (currentFontSize >= minFontSize) {
       lines = this.wrapText(value, font, currentFontSize, width);
       if (maxLines !== undefined) lines = lines.slice(0, maxLines);
-      const totalTextHeight = lines.length === 1 ? currentFontSize : lines.length * currentFontSize * 1.2;
+      // Con renglones impresos el interlineado es fijo: cuenta la distancia
+      // entre la primera y la última línea más el alto de una letra.
+      const totalTextHeight =
+        lines.length === 1
+          ? currentFontSize
+          : field.lineHeight
+            ? (lines.length - 1) * field.lineHeight + currentFontSize
+            : lines.length * currentFontSize * 1.2;
       if (totalTextHeight <= height) {
         fits = true;
         break;
@@ -69,7 +76,7 @@ export class TextRenderer {
     if (!fits) {
       switch (overflow) {
         case 'truncate': {
-          lines = this.truncateToFit(value, font, minFontSize, width, height);
+          lines = this.truncateToFit(value, font, minFontSize, width, height, field.lineHeight);
           currentFontSize = minFontSize;
           break;
         }
@@ -91,8 +98,10 @@ export class TextRenderer {
       }
     }
 
-    const leading = currentFontSize * 1.2;
-    if (lines.length === 1) {
+    const leading = field.lineHeight ?? currentFontSize * 1.2;
+    // Con renglones impresos, aun una sola línea va en el primer renglón:
+    // centrarla la dejaría entre dos renglones o encima de uno.
+    if (lines.length === 1 && !field.lineHeight) {
       // Línea única: centrado vertical en la celda con padding mínimo
       const lineY = baseY + Math.max(0.5, (height - currentFontSize) / 2);
       const lineX = this.computeX(lines[0], font, currentFontSize, x, width, align);
@@ -161,8 +170,17 @@ export class TextRenderer {
    * Trunca el texto para que quepa en la celda con la fuente más pequeña,
    * añadiendo "…" al final si fue necesario recortar.
    */
-  private truncateToFit(text: string, font: PDFFont, fontSize: number, maxWidth: number, maxHeight: number): string[] {
-    const maxLinesCount = Math.max(1, Math.floor(maxHeight / (fontSize * 1.2)));
+  private truncateToFit(
+    text: string,
+    font: PDFFont,
+    fontSize: number,
+    maxWidth: number,
+    maxHeight: number,
+    lineHeight?: number,
+  ): string[] {
+    const maxLinesCount = lineHeight
+      ? Math.max(1, Math.floor((maxHeight - fontSize) / lineHeight) + 1)
+      : Math.max(1, Math.floor(maxHeight / (fontSize * 1.2)));
     const lines = this.wrapText(text, font, fontSize, maxWidth).slice(0, maxLinesCount);
 
     if (lines.length === 0) return [];

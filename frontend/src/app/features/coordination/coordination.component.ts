@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { AuthSessionService } from '../../core/auth-session.service';
 import { fechaCalendario, fechaHora } from '../../core/fechas';
@@ -33,7 +33,7 @@ import {
  * responsabilidad: revisar y autorizar el inicio de labores.
  */
 @Component({
-  imports: [ReactiveFormsModule, LogoutButtonComponent, ExpirationsPanelComponent, ReportsPanelComponent],
+  imports: [ReactiveFormsModule, RouterLink, LogoutButtonComponent, ExpirationsPanelComponent, ReportsPanelComponent],
   templateUrl: './coordination.component.html',
   styleUrl: './coordination.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -470,15 +470,19 @@ export class CoordinationComponent {
           this.ultimoPdf.set(result.pdfFileId);
           this.aviso.set(
             decision === 'APPROVED'
-              ? 'Autorizado. El colaborador ya puede iniciar labores y el PDF quedó generado.'
+              ? result.pdfFileId
+                ? 'Aprobado. El formato quedó archivado con su documento final.'
+                : 'Autorizado. El colaborador ya puede iniciar labores; el PDF se genera al cerrar la jornada.'
               : 'Envío rechazado. El colaborador verá el motivo registrado.',
           );
           this.decidiendo.set(false);
           this.cerrarRevision();
           this.cargar();
         },
-        error: () => {
-          this.error.set('No fue posible registrar la decisión.');
+        error: (respuesta: { error?: { message?: unknown } }) => {
+          // Por ejemplo, falta registrar la firma que se estampa al aprobar.
+          const detalle = respuesta.error?.message;
+          this.error.set(typeof detalle === 'string' ? detalle : 'No fue posible registrar la decisión.');
           this.decidiendo.set(false);
         },
       });

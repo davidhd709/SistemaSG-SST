@@ -21,6 +21,10 @@ export class TemplateRegistry {
   private readonly root = resolve(__dirname, '..', '..', 'pdf-templates');
   private readonly defaults: Record<string, string> = {
     'HSE-FO-016': 'v00',
+    // La carpeta repite la versión impresa en cada formato oficial.
+    'HSE-FO-018': 'v02',
+    'FORSG-03': 'v002',
+    'HSE-FO-023': 'v00',
   };
 
   async resolve(formCode: string, templateVersion?: string): Promise<TemplateLocations> {

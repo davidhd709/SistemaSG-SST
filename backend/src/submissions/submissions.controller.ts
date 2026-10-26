@@ -14,13 +14,17 @@ import { SubmissionsService } from './submissions.service';
 export class SubmissionsController {
   constructor(private readonly submissions: SubmissionsService) {}
 
-  @Get('workflow') workflow(@Req() request: AuthenticatedRequest) {
-    return this.submissions.workflow(request);
+  /** Estado del colaborador frente a un formato (`?form=CÓDIGO`; por defecto, alturas). */
+  @Get('workflow') workflow(@Query('form') form: string | undefined, @Req() request: AuthenticatedRequest) {
+    return this.submissions.workflow(request, form || undefined);
   }
 
-  /** Colaboradores que hoy pueden integrar la cuadrilla. */
-  @Get('crew-candidates') crewCandidates(@Req() request: AuthenticatedRequest) {
-    return this.submissions.crewCandidates(request);
+  /** Colaboradores que hoy pueden integrar la cuadrilla del formato. */
+  @Get('crew-candidates') crewCandidates(
+    @Query('form') form: string | undefined,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    return this.submissions.crewCandidates(request, form || undefined);
   }
 
   @Get('job-positions') jobPositions() {
@@ -32,8 +36,8 @@ export class SubmissionsController {
     return this.submissions.mine(request, query);
   }
 
-  @Get('mine/latest') latest(@Req() request: AuthenticatedRequest) {
-    return this.submissions.latest(request);
+  @Get('mine/latest') latest(@Query('form') form: string | undefined, @Req() request: AuthenticatedRequest) {
+    return this.submissions.latest(request, form || undefined);
   }
 
   /** Datos de un permiso rechazado para corregirlo y reenviarlo. */

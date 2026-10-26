@@ -27,13 +27,14 @@ import { NotificationsClientService } from './notifications.service';
             aria-haspopup="menu"
             [attr.aria-expanded]="abierto()"
             aria-controls="menu-cuenta"
+            aria-label="Mi cuenta"
             (click)="abierto.set(!abierto())"
           >
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <circle cx="12" cy="8" r="3.5" />
               <path d="M5 20c.9-3.4 3.6-5.5 7-5.5s6.1 2.1 7 5.5" />
             </svg>
-            Mi cuenta
+            <span class="texto">Mi cuenta</span>
             <svg class="flecha" viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5" /></svg>
           </button>
           @if (abierto()) {
@@ -81,6 +82,17 @@ import { NotificationsClientService } from './notifications.service';
       }
       .boton[aria-expanded='true'] .flecha {
         transform: rotate(180deg);
+      }
+      /* En el celular la cabecera es una sola barra: el ícono basta. */
+      @media (max-width: 640px) {
+        .cuenta .texto {
+          display: none;
+        }
+        .cuenta .boton {
+          min-width: 44px;
+          min-height: 44px;
+          padding-inline: 10px;
+        }
       }
       .menu {
         position: absolute;

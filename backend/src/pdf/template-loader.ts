@@ -15,6 +15,8 @@ export interface TextField {
   fontSize: number;
   minFontSize?: number;
   maxLines?: number;
+  /** Interlineado fijo, para escribir sobre los renglones impresos del formato. */
+  lineHeight?: number;
   align?: FieldAlign;
   overflow?: OverflowPolicy;
 }
@@ -25,7 +27,13 @@ export interface CheckboxField {
   x: number;
   y: number;
   size: number;
+  /**
+   * Marca a dibujar: un texto ('X', 'NA'), '√' (trazo vectorial: la fuente
+   * estándar no tiene ese glifo) u 'O' (óvalo que encierra una opción impresa).
+   */
   mark?: string;
+  /** Ancho del óvalo cuando `mark` es 'O'; por defecto, `size`. */
+  width?: number;
   checkedWhen: { field: string; includes?: string; equals?: string };
 }
 
@@ -79,6 +87,8 @@ export interface TemplateMeta {
   pageSize: { width: number; height: number };
   orientation: 'portrait' | 'landscape';
   coordinateOrigin?: 'top-left' | 'bottom-left';
+  /** SHA-256 del PDF oficial: prueba que la plantilla no se alteró. */
+  templateSha256?: string;
 }
 
 export interface TemplateMapping {

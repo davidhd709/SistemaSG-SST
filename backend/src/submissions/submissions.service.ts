@@ -24,10 +24,14 @@ import { businessDate, businessDay } from '../common/business-date';
 import {
   EDITABLE_FIELD_TYPES,
   RESERVED_AUTOMATIC_FIELD_IDS,
+  etapaDelCampo,
   isAutoFieldSource,
   isReservedSystemFieldId,
+  requeridoSi,
   type AutoFieldSource,
+  type EtapaCampo,
 } from '../forms/form-schema-policy';
+import { aptoPara, faltantesPara, perfilFormato, type PerfilFormato } from '../forms/form-profiles';
 
 type Field = {
   id?: unknown;
@@ -36,6 +40,8 @@ type Field = {
   options?: unknown;
   source?: unknown;
   maxLength?: unknown;
+  stage?: unknown;
+  requiredWhen?: unknown;
 };
 
 const DEFAULT_MAX_TEXT_LENGTH = 500;
@@ -126,14 +132,18 @@ export class SubmissionsService {
     return payload;
   }
 
-  /** Estado del oficial que abre el permiso y su propio cumplimiento. */
-  async workflow(request: AuthenticatedRequest) {
+  /** Estado del oficial que abre el formato y su propio cumplimiento. */
+  async workflow(request: AuthenticatedRequest, formCode = 'HSE-FO-016') {
     await this.expireStalePermits();
     const collaboratorId = this.collaboratorId(request);
+    const perfil = this.perfil(formCode);
     const collaborator = await this.prisma.collaborator.findUnique({ where: { id: collaboratorId } });
     if (!collaborator) throw new NotFoundException();
-    const cumplimiento = await this.compliance.evaluarUno(collaboratorId);
-    const abierta = await this.jornadaAbierta(collaboratorId);
+    const evaluado = await this.compliance.evaluarUno(collaboratorId);
+    // El certificado de alturas solo cuenta en los formatos de alturas.
+    const faltantes = faltantesPara(evaluado, perfil);
+    const cumplimiento = { ...evaluado, faltantes, apto: faltantes.length === 0 };
+    const abierta = await this.jornadaAbierta(collaboratorId, formCode);
 
     return {
       collaborator: {
@@ -150,6 +160,7 @@ export class SubmissionsService {
       // No se abre un permiso nuevo mientras haya una jornada sin cerrar.
       jornadaAbierta: abierta && { id: abierta.id, workDate: abierta.workDate, startedAt: abierta.startedAt },
       canContinue: cumplimiento.apto && !abierta,
+      perfil,
     };
   }
 
@@ -157,15 +168,16 @@ export class SubmissionsService {
    * Colaboradores que hoy pueden integrar una cuadrilla. Quien no cumple los
    * tres requisitos no aparece: el oficial no debería poder elegirlo por error.
    */
-  async crewCandidates(request: AuthenticatedRequest) {
+  async crewCandidates(request: AuthenticatedRequest, formCode = 'HSE-FO-016') {
     this.collaboratorId(request);
+    const perfil = this.perfil(formCode);
     const activos = await this.prisma.collaborator.findMany({
       where: { status: 'ACTIVE' },
       select: { id: true, firstName: true, lastName: true, documentNumber: true, jobTitle: true, team: true },
       orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
     });
     const cumplimientos = await this.compliance.evaluar(activos.map((persona) => persona.id));
-    const aptos = activos.filter((persona) => cumplimientos.get(persona.id)?.apto);
+    const aptos = activos.filter((persona) => aptoPara(cumplimientos.get(persona.id), perfil));
 
     return {
       candidates: aptos.map((persona) => ({ ...persona, cumplimiento: cumplimientos.get(persona.id) })),
@@ -188,13 +200,27 @@ export class SubmissionsService {
    */
   async submit(formCode: string, dto: SubmitFormDto, request: AuthenticatedRequest) {
     const oficialId = this.collaboratorId(request);
-    const charla = await this.validateSafetyTalk(dto.safetyTalkToken, oficialId);
+    const perfil = this.perfil(formCode);
+    if (perfil.charla && (!dto.safetyTalkConfirmed || !dto.safetyTalkToken)) {
+      throw new ForbiddenException('Completa la charla antes de confirmar el permiso.');
+    }
+    const charla = perfil.charla ? await this.validateSafetyTalk(dto.safetyTalkToken!, oficialId) : null;
+    if (dto.members.length > perfil.maxIntegrantes) {
+      throw new BadRequestException(
+        `El formato ${formCode} admite hasta ${perfil.maxIntegrantes} ${perfil.maxIntegrantes === 1 ? 'persona' : 'integrantes'}.`,
+      );
+    }
     await this.expireStalePermits();
-    if (await this.jornadaAbierta(oficialId)) {
-      throw new ConflictException('Ya tienes un permiso pendiente o una jornada sin cerrar.');
+    if (await this.jornadaAbierta(oficialId, formCode)) {
+      throw new ConflictException('Ya tienes este formato pendiente o una jornada sin cerrar.');
     }
 
-    if (dto.previousSubmissionId) await this.correccionDisponible(dto.previousSubmissionId, oficialId);
+    if (dto.previousSubmissionId) {
+      const anterior = await this.correccionDisponible(dto.previousSubmissionId, oficialId);
+      if (anterior.formVersion.form.code !== formCode) {
+        throw new BadRequestException('La corrección debe hacerse en el mismo formato.');
+      }
+    }
 
     const form = await this.prisma.form.findUnique({ where: { code: formCode }, include: { currentVersion: true } });
     if (!form?.currentVersion || form.status !== 'PUBLISHED' || !form.currentVersion.active) {
@@ -203,7 +229,7 @@ export class SubmissionsService {
     const templateVersion = this.templateRegistry.defaultVersion(formCode);
     if (!templateVersion) throw new NotFoundException('No hay una plantilla PDF vigente para este formulario.');
     await this.templateRegistry.resolve(formCode, templateVersion);
-    this.validateAnswers(form.currentVersion.schemaJson, dto.answers);
+    this.validateAnswers(form.currentVersion.schemaJson, dto.answers, 'open');
 
     const integrantes = this.normalizarCuadrilla(dto.members, oficialId);
     const integrantesIds = integrantes.map((persona) => persona.collaboratorId);
@@ -212,9 +238,7 @@ export class SubmissionsService {
       throw new ForbiddenException('Todos los integrantes de la cuadrilla deben estar activos.');
     }
     const cumplimientos = await this.compliance.evaluar(integrantesIds);
-    const incumplen = integrantes
-      .map((persona) => cumplimientos.get(persona.collaboratorId))
-      .filter((cumplimiento): cumplimiento is Cumplimiento => Boolean(cumplimiento) && !cumplimiento!.apto);
+    const incumplen = integrantes.filter((persona) => !aptoPara(cumplimientos.get(persona.collaboratorId), perfil));
     if (incumplen.length) {
       throw new ForbiddenException(
         `No puedes incluir a ${incumplen.length} ${incumplen.length === 1 ? 'integrante' : 'integrantes'} sin los requisitos al día.`,
@@ -233,15 +257,17 @@ export class SubmissionsService {
         for (const id of [...integrantesIds].sort()) {
           await tx.$queryRaw`SELECT 1 AS locked FROM pg_advisory_xact_lock(hashtext(${id}))`;
         }
+        // Los formatos son independientes: solo choca el mismo formato abierto.
         const existente = await tx.formSubmission.findFirst({
           where: {
             status: { in: ['PENDING_APPROVAL', 'APPROVED'] },
+            formVersion: { form: { code: formCode } },
             members: { some: { collaboratorId: { in: integrantesIds } } },
           },
           select: { id: true },
         });
         if (existente)
-          throw new ConflictException('Un integrante ya tiene un permiso pendiente o una jornada abierta.');
+          throw new ConflictException('Un integrante ya tiene este formato pendiente o una jornada abierta.');
         const created = await tx.formSubmission.create({
           data: {
             collaboratorId: oficialId,
@@ -252,11 +278,11 @@ export class SubmissionsService {
               momento: ahora,
               cumplimiento: cumplimientos.get(oficialId),
             }) as Prisma.InputJsonValue,
-            safetyTalkConfirmed: true,
-            safetyTalkConfirmedAt: ahora,
-            safetyTalkChallengeId: charla.jti,
-            safetyTalkVideo: charla.videoId,
-            safetyTalkVideoSha256: charla.videoSha256,
+            safetyTalkConfirmed: Boolean(charla),
+            safetyTalkConfirmedAt: charla ? ahora : null,
+            safetyTalkChallengeId: charla?.jti,
+            safetyTalkVideo: charla?.videoId,
+            safetyTalkVideoSha256: charla?.videoSha256,
             arlSnapshotJson: (cumplimientos.get(oficialId)?.arl ?? {}) as Prisma.InputJsonValue,
             submittedAt: ahora,
             workDate: businessDate(ahora),
@@ -309,8 +335,7 @@ export class SubmissionsService {
               formVersion: form.currentVersion!.versionNumber,
               status: 'PENDING_APPROVAL',
               crewSize: guardadas.length,
-              safetyTalkVideo: charla.videoId,
-              safetyTalkVideoSha256: charla.videoSha256,
+              ...(charla ? { safetyTalkVideo: charla.videoId, safetyTalkVideoSha256: charla.videoSha256 } : {}),
               ...(dto.previousSubmissionId ? { previousSubmissionId: dto.previousSubmissionId } : {}),
             },
             ip: request.ip,
@@ -324,7 +349,9 @@ export class SubmissionsService {
       // Sin esperar: el envío push no debe demorar la respuesta al oficial.
       void this.notifications.notifyPermission('submissions:review', {
         type: 'SUBMISSION_PENDING',
-        title: dto.previousSubmissionId ? 'Permiso corregido por revisar' : 'Nuevo permiso por revisar',
+        title: dto.previousSubmissionId
+          ? `${form.name} corregido por revisar`
+          : `Nuevo envío por revisar: ${form.name}`,
         body: `Una cuadrilla de ${guardadas.length} ${guardadas.length === 1 ? 'persona espera' : 'personas espera'} autorización para iniciar labores.`,
         link: '/coordinacion',
         entityType: 'FORM_SUBMISSION',
@@ -354,12 +381,17 @@ export class SubmissionsService {
     await this.expireStalePermits();
     const submission = await this.prisma.formSubmission.findUnique({
       where: { id: submissionId },
-      include: { members: { select: { collaboratorId: true } }, formVersion: { select: { schemaJson: true } } },
+      include: {
+        members: { select: { collaboratorId: true } },
+        formVersion: { select: { schemaJson: true, form: { select: { code: true } } } },
+      },
     });
     if (!submission) throw new NotFoundException('Permiso no encontrado.');
     if (!submission.members.some((member) => member.collaboratorId === collaboratorId)) {
       throw new ForbiddenException('Solo un integrante de la cuadrilla puede iniciar esta jornada.');
     }
+    const perfil = this.perfil(submission.formVersion.form.code);
+    if (!perfil.jornada) throw new ConflictException('Este formato no tiene jornada que iniciar.');
     if (submission.status !== 'APPROVED') throw new ConflictException('El permiso debe estar autorizado.');
     if (submission.startedAt) throw new ConflictException('La jornada ya fue iniciada.');
 
@@ -370,7 +402,7 @@ export class SubmissionsService {
     const ids = submission.members.map((member) => member.collaboratorId);
     const activos = await this.prisma.collaborator.count({ where: { id: { in: ids }, status: 'ACTIVE' } });
     const vigencias = await this.compliance.evaluar(ids, ahora);
-    if (activos !== ids.length || ids.some((id) => !vigencias.get(id)?.apto)) {
+    if (activos !== ids.length || ids.some((id) => !aptoPara(vigencias.get(id), perfil))) {
       throw new ForbiddenException('La cuadrilla debe estar activa y con los requisitos vigentes al iniciar.');
     }
     return this.prisma.$transaction(async (tx) => {
@@ -410,55 +442,113 @@ export class SubmissionsService {
     const submission = await this.prisma.formSubmission.findUnique({
       where: { id: submissionId },
       include: {
-        members: { select: { collaboratorId: true } },
+        members: { select: { id: true, collaboratorId: true } },
         approval: { select: { id: true } },
-        formVersion: { select: { schemaJson: true } },
+        formVersion: { select: { schemaJson: true, form: { select: { code: true } } } },
       },
     });
     if (!submission) throw new NotFoundException('Permiso no encontrado.');
     if (!submission.members.some((member) => member.collaboratorId === collaboratorId)) {
       throw new ForbiddenException('Solo un integrante de la cuadrilla puede cerrar esta jornada.');
     }
+    const perfil = this.perfil(submission.formVersion.form.code);
+    if (!perfil.jornada) throw new ConflictException('Este formato no tiene jornada que cerrar.');
     if (submission.status === 'CLOSED') throw new ConflictException('Esta jornada ya fue cerrada.');
     if (submission.status !== 'APPROVED') {
       throw new ConflictException('Solo se cierra una jornada autorizada por Coordinación.');
     }
     if (!submission.startedAt) throw new ConflictException('Primero registra el inicio de la jornada.');
 
+    // Lo que el formato pide diligenciar una vez terminada la tarea.
+    const respuestasCierre = (dto.answers ?? {}) as Record<string, unknown>;
+    this.validateAnswers(submission.formVersion.schemaJson, respuestasCierre, 'close');
+
+    // Firma de término: cada integrante firma al cerrar, ni más ni menos.
+    let firmasCierre: FirmaGuardada[] = [];
+    if (perfil.firmaCierre) {
+      const firmas = dto.signatures ?? [];
+      const esperados = new Set(submission.members.map((member) => member.collaboratorId));
+      const recibidos = new Set(firmas.map((firma) => firma.collaboratorId));
+      if (
+        firmas.length !== esperados.size ||
+        recibidos.size !== esperados.size ||
+        [...esperados].some((id) => !recibidos.has(id))
+      ) {
+        throw new BadRequestException('Cada integrante de la cuadrilla debe firmar el término de la jornada.');
+      }
+      firmasCierre = await this.guardarFirmas(firmas);
+    } else if (dto.signatures?.length) {
+      throw new BadRequestException('Este formato no lleva firma de término.');
+    }
+
     const ahora = new Date();
-    const cerrada = await this.prisma.$transaction(async (tx) => {
-      const cambiadas = await tx.formSubmission.updateMany({
-        where: { id: submissionId, status: 'APPROVED', startedAt: { not: null } },
-        data: {
-          status: 'CLOSED',
-          closedAt: ahora,
-          closedById: collaboratorId,
-          closureNotes: dto.notes?.trim() || null,
-          // La hora de finalización solo existe ahora: se escribe en la
-          // respuesta para que el documento final la muestre.
-          answersJson: this.completarAutomaticos(submission.formVersion.schemaJson, submission.answersJson as object, {
-            momento: submission.startedAt ?? ahora,
-            cierre: ahora,
-            solo: ['closedAt'],
-          }) as Prisma.InputJsonValue,
-        },
+    let cerrada;
+    try {
+      cerrada = await this.prisma.$transaction(async (tx) => {
+        const cambiadas = await tx.formSubmission.updateMany({
+          where: { id: submissionId, status: 'APPROVED', startedAt: { not: null } },
+          data: {
+            status: 'CLOSED',
+            closedAt: ahora,
+            closedById: collaboratorId,
+            closureNotes: dto.notes?.trim() || null,
+            // La hora de finalización solo existe ahora: se escribe en la
+            // respuesta para que el documento final la muestre.
+            answersJson: {
+              ...this.completarAutomaticos(submission.formVersion.schemaJson, submission.answersJson as object, {
+                momento: submission.startedAt ?? ahora,
+                cierre: ahora,
+                solo: ['closedAt'],
+              }),
+              ...respuestasCierre,
+            } as Prisma.InputJsonValue,
+          },
+        });
+        if (cambiadas.count !== 1) throw new ConflictException('La jornada fue cerrada por otra operación.');
+        for (const firma of firmasCierre) {
+          const member = submission.members.find((item) => item.collaboratorId === firma.collaboratorId)!;
+          const file = await tx.fileObject.create({
+            data: {
+              storageProvider: firma.storageProvider,
+              bucket: firma.bucket,
+              objectKey: firma.objectKey.replace(/\\/g, '/'),
+              originalName: `firma-termino-${firma.collaboratorId}.png`,
+              mimeType: 'image/png',
+              sizeBytes: firma.sizeBytes,
+              sha256: firma.sha256,
+              createdById: null,
+            },
+          });
+          const signature = await tx.signature.create({
+            data: {
+              submissionId,
+              fileId: file.id,
+              sha256: firma.sha256,
+              ip: request.ip,
+              userAgent: request.header('user-agent'),
+            },
+          });
+          await tx.submissionMember.update({ where: { id: member.id }, data: { closingSignatureId: signature.id } });
+        }
+        await tx.auditEvent.create({
+          data: {
+            actorCollaboratorId: collaboratorId,
+            action: 'CLOSE_WORKDAY',
+            entityType: 'FORM_SUBMISSION',
+            entityId: submissionId,
+            afterJson: { status: 'CLOSED', closedAt: ahora.toISOString() },
+            reason: dto.notes?.trim() || undefined,
+            ip: request.ip,
+            userAgent: request.header('user-agent'),
+            correlationId: request.correlationId ?? 'unknown',
+          },
+        });
+        return tx.formSubmission.findUniqueOrThrow({ where: { id: submissionId } });
       });
-      if (cambiadas.count !== 1) throw new ConflictException('La jornada fue cerrada por otra operación.');
-      await tx.auditEvent.create({
-        data: {
-          actorCollaboratorId: collaboratorId,
-          action: 'CLOSE_WORKDAY',
-          entityType: 'FORM_SUBMISSION',
-          entityId: submissionId,
-          afterJson: { status: 'CLOSED', closedAt: ahora.toISOString() },
-          reason: dto.notes?.trim() || undefined,
-          ip: request.ip,
-          userAgent: request.header('user-agent'),
-          correlationId: request.correlationId ?? 'unknown',
-        },
-      });
-      return tx.formSubmission.findUniqueOrThrow({ where: { id: submissionId } });
-    });
+    } catch (error) {
+      await Promise.all(firmasCierre.map((firma) => this.storage.deleteObject(firma.objectKey).catch(() => undefined)));
+      throw error;
+    }
 
     // Ahora sí el permiso está completo: con la jornada cerrada, el documento
     // final incluye horas reales de inicio y fin. Si falla, el cierre se
@@ -480,10 +570,14 @@ export class SubmissionsService {
   }
 
   /** Lo último que hizo el colaborador, sea como oficial o como integrante. */
-  async latest(request: AuthenticatedRequest) {
+  async latest(request: AuthenticatedRequest, formCode?: string) {
     const collaboratorId = this.collaboratorId(request);
+    if (formCode) this.perfil(formCode);
     const ultimo = await this.prisma.formSubmission.findFirst({
-      where: { members: { some: { collaboratorId } } },
+      where: {
+        members: { some: { collaboratorId } },
+        ...(formCode ? { formVersion: { form: { code: formCode } } } : {}),
+      },
       orderBy: { createdAt: 'desc' },
       select: {
         id: true,
@@ -498,7 +592,7 @@ export class SubmissionsService {
         members: {
           select: {
             isLead: true,
-            collaborator: { select: { id: true, firstName: true, lastName: true } },
+            collaborator: { select: { id: true, firstName: true, lastName: true, documentNumber: true } },
           },
         },
       },
@@ -581,6 +675,7 @@ export class SubmissionsService {
             typeof campo?.id === 'string' &&
             typeof campo.type === 'string' &&
             EDITABLE_FIELD_TYPES.has(campo.type) &&
+            etapaDelCampo(campo) === 'open' &&
             !isReservedSystemFieldId(campo.id),
         )
         .map((campo) => campo.id as string),
@@ -644,7 +739,7 @@ export class SubmissionsService {
       include: {
         approval: { select: { reason: true } },
         correction: { select: { id: true } },
-        formVersion: { select: { schemaJson: true } },
+        formVersion: { select: { schemaJson: true, form: { select: { code: true } } } },
         members: { select: { collaboratorId: true, jobPositionId: true, isLead: true } },
       },
     });
@@ -657,10 +752,14 @@ export class SubmissionsService {
     return anterior;
   }
 
-  /** Permiso que impide abrir otro, pendiente o autorizado. */
-  private async jornadaAbierta(collaboratorId: string) {
+  /** Envío del mismo formato que impide abrir otro, pendiente o autorizado. */
+  private async jornadaAbierta(collaboratorId: string, formCode: string) {
     return this.prisma.formSubmission.findFirst({
-      where: { status: { in: ['PENDING_APPROVAL', 'APPROVED'] }, members: { some: { collaboratorId } } },
+      where: {
+        status: { in: ['PENDING_APPROVAL', 'APPROVED'] },
+        formVersion: { form: { code: formCode } },
+        members: { some: { collaboratorId } },
+      },
       orderBy: { createdAt: 'desc' },
       select: { id: true, workDate: true, startedAt: true },
     });
@@ -694,7 +793,9 @@ export class SubmissionsService {
       throw new BadRequestException('El cargo del oficial no está habilitado para liderar la cuadrilla.');
   }
 
-  private async guardarFirmas(members: CrewMemberDto[]): Promise<FirmaGuardada[]> {
+  private async guardarFirmas(
+    members: { collaboratorId: string; jobPositionId?: string; signatureDataUrl: string }[],
+  ): Promise<FirmaGuardada[]> {
     const guardadas: FirmaGuardada[] = [];
     try {
       for (const persona of members) {
@@ -788,6 +889,12 @@ export class SubmissionsService {
     return 'No vigente';
   }
 
+  private perfil(formCode: string): PerfilFormato {
+    const perfil = perfilFormato(formCode);
+    if (!perfil) throw new NotFoundException('Formato no disponible.');
+    return perfil;
+  }
+
   private collaboratorId(request: AuthenticatedRequest): string {
     if (request.principal?.kind !== 'COLLABORATOR')
       throw new ForbiddenException('Esta operación solo está disponible para colaboradores.');
@@ -803,7 +910,11 @@ export class SubmissionsService {
     return content;
   }
 
-  private validateAnswers(schema: Prisma.JsonValue, answers: object): void {
+  /**
+   * Valida las respuestas de una etapa: al abrir no se aceptan los campos que
+   * el formato pide al terminar la tarea, y al cerrar solo se aceptan esos.
+   */
+  private validateAnswers(schema: Prisma.JsonValue, answers: object, etapa: EtapaCampo): void {
     if (!schema || typeof schema !== 'object' || Array.isArray(schema))
       throw new BadRequestException('El formulario publicado tiene un esquema inválido.');
     const fields = (schema as { fields?: Field[] }).fields;
@@ -832,7 +943,7 @@ export class SubmissionsService {
         if (isReservedSystemFieldId(field.id)) {
           throw new BadRequestException('El formulario publicado tiene un esquema inválido.');
         }
-        editableFieldIds.add(field.id);
+        if (etapaDelCampo(field) === etapa) editableFieldIds.add(field.id);
       } else {
         throw new BadRequestException('El formulario publicado tiene un esquema inválido.');
       }
@@ -847,7 +958,7 @@ export class SubmissionsService {
       }
     }
     for (const field of fields) {
-      if (typeof field.id !== 'string' || field.type === 'auto') continue;
+      if (typeof field.id !== 'string' || field.type === 'auto' || etapaDelCampo(field) !== etapa) continue;
       // Esta selección solo es obligatoria cuando el trabajador respondió que sí hay
       // tareas adicionales de alto riesgo. El cliente oculta y limpia el campo
       // al responder "No", por lo que no puede exigirse en ese caso.
@@ -859,7 +970,9 @@ export class SubmissionsService {
         value === '' ||
         (typeof value === 'string' && value.trim().length === 0) ||
         (Array.isArray(value) && !value.length);
-      if (field.required && !isConditionallyOptionalOtrasTar && isEmpty)
+      const condicion = requeridoSi(field.requiredWhen);
+      const requeridoPorCondicion = Boolean(condicion && source[condicion.field] === condicion.equals);
+      if ((field.required || requeridoPorCondicion) && !isConditionallyOptionalOtrasTar && isEmpty)
         throw new BadRequestException(`El campo ${field.id} es obligatorio.`);
       if (
         value === undefined ||

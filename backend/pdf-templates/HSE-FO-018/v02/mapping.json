@@ -1,0 +1,3060 @@
+{
+  "meta": {
+    "formCode": "HSE-FO-018",
+    "templateVersion": "v02",
+    "pageCount": 4,
+    "pageSize": {
+      "width": 612,
+      "height": 792
+    },
+    "orientation": "portrait",
+    "templateSha256": "878ef5d418c2a2d2e3da3adc7bd2fd5b55ad57505877f72493446c25ccaed5ea",
+    "_calibration": "v02 — coordenadas medidas sobre el PDF oficial HSE-FO-018 (casillas de imagen y renglones)."
+  },
+  "fields": {
+    "fecha_trabajo": {
+      "type": "DATE",
+      "page": 0,
+      "x": 138.1,
+      "y": 638.8,
+      "width": 138.4,
+      "height": 10,
+      "fontSize": 10,
+      "minFontSize": 7,
+      "align": "left",
+      "overflow": "truncate",
+      "maxLines": 1
+    },
+    "vigencia_permiso": {
+      "type": "DATE",
+      "page": 0,
+      "x": 369.4,
+      "y": 638.8,
+      "width": 187.6,
+      "height": 10,
+      "fontSize": 10,
+      "minFontSize": 7,
+      "align": "left",
+      "overflow": "truncate",
+      "maxLines": 1
+    },
+    "obra": {
+      "type": "TEXT",
+      "page": 0,
+      "x": 65.4,
+      "y": 625.3,
+      "width": 214.9,
+      "height": 10,
+      "fontSize": 10,
+      "minFontSize": 7,
+      "align": "left",
+      "overflow": "truncate",
+      "maxLines": 1
+    },
+    "compania": {
+      "type": "TEXT",
+      "page": 0,
+      "x": 337.3,
+      "y": 625.3,
+      "width": 220.5,
+      "height": 10,
+      "fontSize": 10,
+      "minFontSize": 7,
+      "align": "left",
+      "overflow": "truncate",
+      "maxLines": 1
+    },
+    "area_labor": {
+      "type": "TEXT",
+      "page": 0,
+      "x": 183.7,
+      "y": 611.9,
+      "width": 373.8,
+      "height": 10,
+      "fontSize": 10,
+      "minFontSize": 7,
+      "align": "left",
+      "overflow": "truncate",
+      "maxLines": 1
+    },
+    "limitacion_primera_vez_si": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 428.9,
+      "y": 464.5,
+      "size": 10,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "limitacion_primera_vez",
+        "equals": "SI"
+      }
+    },
+    "limitacion_primera_vez_no": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 476.9,
+      "y": 464.5,
+      "size": 10,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "limitacion_primera_vez",
+        "equals": "NO"
+      }
+    },
+    "limitacion_entrenamiento_si": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 428.9,
+      "y": 451,
+      "size": 10,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "limitacion_entrenamiento",
+        "equals": "SI"
+      }
+    },
+    "limitacion_entrenamiento_no": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 477.7,
+      "y": 451,
+      "size": 10,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "limitacion_entrenamiento",
+        "equals": "NO"
+      }
+    },
+    "limitacion_herramientas_si": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 428.9,
+      "y": 437.6,
+      "size": 10,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "limitacion_herramientas",
+        "equals": "SI"
+      }
+    },
+    "limitacion_herramientas_no": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 478.5,
+      "y": 437.6,
+      "size": 10,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "limitacion_herramientas",
+        "equals": "NO"
+      }
+    },
+    "condiciones_meteorologicas": {
+      "type": "MULTILINE_TEXT",
+      "page": 0,
+      "x": 38,
+      "y": 343.3,
+      "width": 532.5,
+      "height": 23.5,
+      "fontSize": 10,
+      "minFontSize": 7,
+      "align": "left",
+      "overflow": "truncate",
+      "lineHeight": 13.5
+    },
+    "actividad": {
+      "type": "MULTILINE_TEXT",
+      "page": 0,
+      "x": 38,
+      "y": 262.8,
+      "width": 532.5,
+      "height": 50.3,
+      "fontSize": 10,
+      "minFontSize": 7,
+      "align": "left",
+      "overflow": "truncate",
+      "lineHeight": 13.4
+    },
+    "atrapamiento_riesgo_1": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 165.3,
+      "y": 181,
+      "size": 9,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "atrapamiento_riesgos",
+        "includes": "Muerte"
+      }
+    },
+    "atrapamiento_riesgo_2": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 165.3,
+      "y": 169,
+      "size": 9,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "atrapamiento_riesgos",
+        "includes": "Amputación"
+      }
+    },
+    "atrapamiento_riesgo_3": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 165.3,
+      "y": 154.9,
+      "size": 9,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "atrapamiento_riesgos",
+        "includes": "Aplastamiento"
+      }
+    },
+    "atrapamiento_control_1": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 165.3,
+      "y": 116.3,
+      "size": 9,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "atrapamiento_controles",
+        "includes": "Bloqueo"
+      }
+    },
+    "atrapamiento_control_2": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 165.3,
+      "y": 104.3,
+      "size": 9,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "atrapamiento_controles",
+        "includes": "Mantener distancia"
+      }
+    },
+    "atrapamiento_control_3": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 165.3,
+      "y": 90.2,
+      "size": 9,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "atrapamiento_controles",
+        "includes": "Guardas o protecciones"
+      }
+    },
+    "atrapamiento_control_4": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 165.3,
+      "y": 78.7,
+      "size": 9,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "atrapamiento_controles",
+        "includes": "No usar ropa suelta"
+      }
+    },
+    "atrapamiento_control_5": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 165.3,
+      "y": 65.8,
+      "size": 9,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "atrapamiento_controles",
+        "includes": "Extensiones de herramientas / Evita usar las manos"
+      }
+    },
+    "atrapamiento_otro": {
+      "type": "TEXT",
+      "page": 1,
+      "x": 38,
+      "y": 672.5,
+      "width": 197.7,
+      "height": 8,
+      "fontSize": 8,
+      "minFontSize": 5,
+      "align": "left",
+      "overflow": "truncate",
+      "maxLines": 1
+    },
+    "espacio_confinado_riesgo_1": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 420.3,
+      "y": 181,
+      "size": 9,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "espacio_confinado_riesgos",
+        "includes": "Muerte"
+      }
+    },
+    "espacio_confinado_riesgo_2": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 420.3,
+      "y": 169,
+      "size": 9,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "espacio_confinado_riesgos",
+        "includes": "Asfixia"
+      }
+    },
+    "espacio_confinado_riesgo_3": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 420.3,
+      "y": 153.4,
+      "size": 9,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "espacio_confinado_riesgos",
+        "includes": "Intoxicación"
+      }
+    },
+    "espacio_confinado_control_1": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 419.6,
+      "y": 114.3,
+      "size": 9,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "espacio_confinado_controles",
+        "includes": "Chequeo medico diario / previo a la tarea"
+      }
+    },
+    "espacio_confinado_control_2": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 419.6,
+      "y": 90.2,
+      "size": 9,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "espacio_confinado_controles",
+        "includes": "Permiso para espacio confinado"
+      }
+    },
+    "espacio_confinado_control_3": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 419.6,
+      "y": 65.1,
+      "size": 9,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "espacio_confinado_controles",
+        "includes": "Ventilación / Extracción"
+      }
+    },
+    "espacio_confinado_control_4": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 419.6,
+      "y": 52.3,
+      "size": 9,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "espacio_confinado_controles",
+        "includes": "Medidor de gases"
+      }
+    },
+    "espacio_confinado_control_5": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 419.6,
+      "y": 40.1,
+      "size": 9,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "espacio_confinado_controles",
+        "includes": "Vigía"
+      }
+    },
+    "espacio_confinado_otro": {
+      "type": "TEXT",
+      "page": 1,
+      "x": 310.9,
+      "y": 672.5,
+      "width": 197.7,
+      "height": 8,
+      "fontSize": 8,
+      "minFontSize": 5,
+      "align": "left",
+      "overflow": "truncate",
+      "maxLines": 1
+    },
+    "altura_riesgo_1": {
+      "type": "CHECKBOX",
+      "page": 1,
+      "x": 143.6,
+      "y": 632.3,
+      "size": 9,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "altura_riesgos",
+        "includes": "Muerte"
+      }
+    },
+    "altura_riesgo_2": {
+      "type": "CHECKBOX",
+      "page": 1,
+      "x": 143.6,
+      "y": 620.3,
+      "size": 9,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "altura_riesgos",
+        "includes": "Fracturas"
+      }
+    },
+    "altura_riesgo_3": {
+      "type": "CHECKBOX",
+      "page": 1,
+      "x": 143.6,
+      "y": 606.1,
+      "size": 9,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "altura_riesgos",
+        "includes": "Caídas a diferente nivel"
+      }
+    },
+    "altura_control_1": {
+      "type": "CHECKBOX",
+      "page": 1,
+      "x": 143.6,
+      "y": 567.5,
+      "size": 9,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "altura_controles",
+        "includes": "Chequeo médico diario"
+      }
+    },
+    "altura_control_2": {
+      "type": "CHECKBOX",
+      "page": 1,
+      "x": 143.6,
+      "y": 555.6,
+      "size": 9,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "altura_controles",
+        "includes": "Uso de arnés cuerpo completo"
+      }
+    },
+    "altura_control_3": {
+      "type": "CHECKBOX",
+      "page": 1,
+      "x": 143.6,
+      "y": 530.5,
+      "size": 9,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "altura_controles",
+        "includes": "Línea de vida con doble gancho"
+      }
+    },
+    "altura_control_4": {
+      "type": "CHECKBOX",
+      "page": 1,
+      "x": 143.6,
+      "y": 506.8,
+      "size": 9,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "altura_controles",
+        "includes": "Siempre sujeto a puntos fijos"
+      }
+    },
+    "altura_control_5": {
+      "type": "CHECKBOX",
+      "page": 1,
+      "x": 143.6,
+      "y": 492.6,
+      "size": 9,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "altura_controles",
+        "includes": "Acordonar parte inferior"
+      }
+    },
+    "altura_otro": {
+      "type": "TEXT",
+      "page": 1,
+      "x": 38,
+      "y": 460.5,
+      "width": 197.7,
+      "height": 8,
+      "fontSize": 8,
+      "minFontSize": 5,
+      "align": "left",
+      "overflow": "truncate",
+      "maxLines": 1
+    },
+    "equipos_moviles_riesgo_1": {
+      "type": "CHECKBOX",
+      "page": 1,
+      "x": 391.8,
+      "y": 632.3,
+      "size": 9,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "equipos_moviles_riesgos",
+        "includes": "Muerte"
+      }
+    },
+    "equipos_moviles_riesgo_2": {
+      "type": "CHECKBOX",
+      "page": 1,
+      "x": 391.8,
+      "y": 620.3,
+      "size": 9,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "equipos_moviles_riesgos",
+        "includes": "Atropellamiento"
+      }
+    },
+    "equipos_moviles_riesgo_3": {
+      "type": "CHECKBOX",
+      "page": 1,
+      "x": 391.8,
+      "y": 604.7,
+      "size": 9,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "equipos_moviles_riesgos",
+        "includes": "Aplastamiento"
+      }
+    },
+    "equipos_moviles_control_1": {
+      "type": "CHECKBOX",
+      "page": 1,
+      "x": 391,
+      "y": 565.5,
+      "size": 9,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "equipos_moviles_controles",
+        "includes": "Mantener distancia mínima 4mt"
+      }
+    },
+    "equipos_moviles_control_2": {
+      "type": "CHECKBOX",
+      "page": 1,
+      "x": 391,
+      "y": 553.7,
+      "size": 9,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "equipos_moviles_controles",
+        "includes": "Acordonamiento"
+      }
+    },
+    "equipos_moviles_control_3": {
+      "type": "CHECKBOX",
+      "page": 1,
+      "x": 391,
+      "y": 540.7,
+      "size": 9,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "equipos_moviles_controles",
+        "includes": "Respetar señalización"
+      }
+    },
+    "equipos_moviles_control_4": {
+      "type": "CHECKBOX",
+      "page": 1,
+      "x": 391,
+      "y": 528,
+      "size": 9,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "equipos_moviles_controles",
+        "includes": "Check-list de equipo"
+      }
+    },
+    "equipos_moviles_control_5": {
+      "type": "CHECKBOX",
+      "page": 1,
+      "x": 391,
+      "y": 515.8,
+      "size": 9,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "equipos_moviles_controles",
+        "includes": "Licencia vigente"
+      }
+    },
+    "equipos_moviles_otro": {
+      "type": "TEXT",
+      "page": 1,
+      "x": 276.3,
+      "y": 460.5,
+      "width": 197.7,
+      "height": 8,
+      "fontSize": 8,
+      "minFontSize": 5,
+      "align": "left",
+      "overflow": "truncate",
+      "maxLines": 1
+    },
+    "caida_objetos_riesgo_1": {
+      "type": "CHECKBOX",
+      "page": 1,
+      "x": 143.6,
+      "y": 421.5,
+      "size": 9,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "caida_objetos_riesgos",
+        "includes": "Muerte"
+      }
+    },
+    "caida_objetos_riesgo_2": {
+      "type": "CHECKBOX",
+      "page": 1,
+      "x": 143.6,
+      "y": 409.5,
+      "size": 9,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "caida_objetos_riesgos",
+        "includes": "Fracturas"
+      }
+    },
+    "caida_objetos_riesgo_3": {
+      "type": "CHECKBOX",
+      "page": 1,
+      "x": 143.6,
+      "y": 395.3,
+      "size": 9,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "caida_objetos_riesgos",
+        "includes": "Atrapamiento"
+      }
+    },
+    "caida_objetos_control_1": {
+      "type": "CHECKBOX",
+      "page": 1,
+      "x": 143.6,
+      "y": 356.7,
+      "size": 9,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "caida_objetos_controles",
+        "includes": "Mantener distancia igual a la altura de cargas"
+      }
+    },
+    "caida_objetos_control_2": {
+      "type": "CHECKBOX",
+      "page": 1,
+      "x": 143.6,
+      "y": 330.4,
+      "size": 9,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "caida_objetos_controles",
+        "includes": "Asegurar estabilidad de carga"
+      }
+    },
+    "caida_objetos_control_3": {
+      "type": "CHECKBOX",
+      "page": 1,
+      "x": 143.6,
+      "y": 307.5,
+      "size": 9,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "caida_objetos_controles",
+        "includes": "Check-list de eslingas"
+      }
+    },
+    "caida_objetos_control_4": {
+      "type": "CHECKBOX",
+      "page": 1,
+      "x": 143.6,
+      "y": 296,
+      "size": 9,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "caida_objetos_controles",
+        "includes": "Venteos para guiar cargas"
+      }
+    },
+    "caida_objetos_control_5": {
+      "type": "CHECKBOX",
+      "page": 1,
+      "x": 143.6,
+      "y": 281.8,
+      "size": 9,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "caida_objetos_controles",
+        "includes": "Vigilar el traslado de la carga"
+      }
+    },
+    "caida_objetos_otro": {
+      "type": "TEXT",
+      "page": 1,
+      "x": 38,
+      "y": 250.5,
+      "width": 197.7,
+      "height": 8,
+      "fontSize": 8,
+      "minFontSize": 5,
+      "align": "left",
+      "overflow": "truncate",
+      "maxLines": 1
+    },
+    "incendio_riesgo_1": {
+      "type": "CHECKBOX",
+      "page": 1,
+      "x": 391.8,
+      "y": 421.5,
+      "size": 9,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "incendio_riesgos",
+        "includes": "Muerte"
+      }
+    },
+    "incendio_riesgo_2": {
+      "type": "CHECKBOX",
+      "page": 1,
+      "x": 391.8,
+      "y": 409.5,
+      "size": 9,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "incendio_riesgos",
+        "includes": "Asfixia"
+      }
+    },
+    "incendio_riesgo_3": {
+      "type": "CHECKBOX",
+      "page": 1,
+      "x": 391.8,
+      "y": 393.9,
+      "size": 9,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "incendio_riesgos",
+        "includes": "Quemadura"
+      }
+    },
+    "incendio_control_1": {
+      "type": "CHECKBOX",
+      "page": 1,
+      "x": 391,
+      "y": 354.8,
+      "size": 9,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "incendio_controles",
+        "includes": "Retirar, proteger y limpiar materiales combustibles"
+      }
+    },
+    "incendio_control_2": {
+      "type": "CHECKBOX",
+      "page": 1,
+      "x": 391,
+      "y": 330.7,
+      "size": 9,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "incendio_controles",
+        "includes": "Permiso de fuego, vigía"
+      }
+    },
+    "incendio_control_3": {
+      "type": "CHECKBOX",
+      "page": 1,
+      "x": 391,
+      "y": 317.7,
+      "size": 9,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "incendio_controles",
+        "includes": "Vigía en zonas de alto riesgo"
+      }
+    },
+    "incendio_control_4": {
+      "type": "CHECKBOX",
+      "page": 1,
+      "x": 391,
+      "y": 305.5,
+      "size": 9,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "incendio_controles",
+        "includes": "Extintor"
+      }
+    },
+    "incendio_control_5": {
+      "type": "CHECKBOX",
+      "page": 1,
+      "x": 391,
+      "y": 292.8,
+      "size": 9,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "incendio_controles",
+        "includes": "Analizador de gas"
+      }
+    },
+    "incendio_otro": {
+      "type": "TEXT",
+      "page": 1,
+      "x": 276.3,
+      "y": 250.5,
+      "width": 197.7,
+      "height": 8,
+      "fontSize": 8,
+      "minFontSize": 5,
+      "align": "left",
+      "overflow": "truncate",
+      "maxLines": 1
+    },
+    "sustancias_riesgo_1": {
+      "type": "CHECKBOX",
+      "page": 1,
+      "x": 143.6,
+      "y": 222.5,
+      "size": 9,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "sustancias_riesgos",
+        "includes": "Muerte"
+      }
+    },
+    "sustancias_riesgo_2": {
+      "type": "CHECKBOX",
+      "page": 1,
+      "x": 143.6,
+      "y": 210.5,
+      "size": 9,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "sustancias_riesgos",
+        "includes": "Quemadura química"
+      }
+    },
+    "sustancias_riesgo_3": {
+      "type": "CHECKBOX",
+      "page": 1,
+      "x": 143.6,
+      "y": 196.3,
+      "size": 9,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "sustancias_riesgos",
+        "includes": "Intoxicación"
+      }
+    },
+    "sustancias_control_1": {
+      "type": "CHECKBOX",
+      "page": 1,
+      "x": 143.6,
+      "y": 157.7,
+      "size": 9,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "sustancias_controles",
+        "includes": "Guantes para sustancias químicas"
+      }
+    },
+    "sustancias_control_2": {
+      "type": "CHECKBOX",
+      "page": 1,
+      "x": 143.6,
+      "y": 131.4,
+      "size": 9,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "sustancias_controles",
+        "includes": "Ropa para sustancias peligrosas"
+      }
+    },
+    "sustancias_control_3": {
+      "type": "CHECKBOX",
+      "page": 1,
+      "x": 143.6,
+      "y": 108.5,
+      "size": 9,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "sustancias_controles",
+        "includes": "Careta facial"
+      }
+    },
+    "sustancias_control_4": {
+      "type": "CHECKBOX",
+      "page": 1,
+      "x": 143.6,
+      "y": 95.7,
+      "size": 9,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "sustancias_controles",
+        "includes": "Leer hojas de seguridad"
+      }
+    },
+    "sustancias_control_5": {
+      "type": "CHECKBOX",
+      "page": 1,
+      "x": 143.6,
+      "y": 82.8,
+      "size": 9,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "sustancias_controles",
+        "includes": "Evitar mezclar sustancias"
+      }
+    },
+    "sustancias_otro": {
+      "type": "TEXT",
+      "page": 2,
+      "x": 38,
+      "y": 683.5,
+      "width": 197.7,
+      "height": 8,
+      "fontSize": 8,
+      "minFontSize": 5,
+      "align": "left",
+      "overflow": "truncate",
+      "maxLines": 1
+    },
+    "calor_riesgo_1": {
+      "type": "CHECKBOX",
+      "page": 1,
+      "x": 391.8,
+      "y": 222.5,
+      "size": 9,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "calor_riesgos",
+        "includes": "Golpe de calor"
+      }
+    },
+    "calor_riesgo_2": {
+      "type": "CHECKBOX",
+      "page": 1,
+      "x": 391.8,
+      "y": 210.5,
+      "size": 9,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "calor_riesgos",
+        "includes": "Deshidratación"
+      }
+    },
+    "calor_riesgo_3": {
+      "type": "CHECKBOX",
+      "page": 1,
+      "x": 391.8,
+      "y": 194.9,
+      "size": 9,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "calor_riesgos",
+        "includes": "Quemaduras"
+      }
+    },
+    "calor_control_1": {
+      "type": "CHECKBOX",
+      "page": 1,
+      "x": 391,
+      "y": 155.7,
+      "size": 9,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "calor_controles",
+        "includes": "Ventilar el ambiente"
+      }
+    },
+    "calor_control_2": {
+      "type": "CHECKBOX",
+      "page": 1,
+      "x": 391,
+      "y": 143.9,
+      "size": 9,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "calor_controles",
+        "includes": "Descansos periódicos"
+      }
+    },
+    "calor_control_3": {
+      "type": "CHECKBOX",
+      "page": 1,
+      "x": 391,
+      "y": 130.9,
+      "size": 9,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "calor_controles",
+        "includes": "Hidratación"
+      }
+    },
+    "calor_control_4": {
+      "type": "CHECKBOX",
+      "page": 1,
+      "x": 391,
+      "y": 118.2,
+      "size": 9,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "calor_controles",
+        "includes": "Chamarra anti-flama"
+      }
+    },
+    "calor_otro": {
+      "type": "TEXT",
+      "page": 2,
+      "x": 276.3,
+      "y": 683.5,
+      "width": 197.7,
+      "height": 8,
+      "fontSize": 8,
+      "minFontSize": 5,
+      "align": "left",
+      "overflow": "truncate",
+      "maxLines": 1
+    },
+    "otro_peligro_metal_fundido_si": {
+      "type": "CHECKBOX",
+      "page": 2,
+      "x": 179.2,
+      "y": 621.5,
+      "size": 10,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "otro_peligro_metal_fundido",
+        "equals": "SI"
+      }
+    },
+    "otro_peligro_metal_fundido_no": {
+      "type": "CHECKBOX",
+      "page": 2,
+      "x": 206.2,
+      "y": 621.5,
+      "size": 10,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "otro_peligro_metal_fundido",
+        "equals": "NO"
+      }
+    },
+    "otro_peligro_punzantes_si": {
+      "type": "CHECKBOX",
+      "page": 2,
+      "x": 179.2,
+      "y": 610.1,
+      "size": 10,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "otro_peligro_punzantes",
+        "equals": "SI"
+      }
+    },
+    "otro_peligro_punzantes_no": {
+      "type": "CHECKBOX",
+      "page": 2,
+      "x": 206.9,
+      "y": 609.5,
+      "size": 10,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "otro_peligro_punzantes",
+        "equals": "NO"
+      }
+    },
+    "otro_peligro_derrumbes_si": {
+      "type": "CHECKBOX",
+      "page": 2,
+      "x": 179.2,
+      "y": 597.1,
+      "size": 10,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "otro_peligro_derrumbes",
+        "equals": "SI"
+      }
+    },
+    "otro_peligro_derrumbes_no": {
+      "type": "CHECKBOX",
+      "page": 2,
+      "x": 206.2,
+      "y": 597.1,
+      "size": 10,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "otro_peligro_derrumbes",
+        "equals": "NO"
+      }
+    },
+    "otro_peligro_tanque_liquidos_si": {
+      "type": "CHECKBOX",
+      "page": 2,
+      "x": 179.2,
+      "y": 585.9,
+      "size": 10,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "otro_peligro_tanque_liquidos",
+        "equals": "SI"
+      }
+    },
+    "otro_peligro_tanque_liquidos_no": {
+      "type": "CHECKBOX",
+      "page": 2,
+      "x": 206.2,
+      "y": 585.9,
+      "size": 10,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "otro_peligro_tanque_liquidos",
+        "equals": "NO"
+      }
+    },
+    "otro_peligro_otros_si": {
+      "type": "CHECKBOX",
+      "page": 2,
+      "x": 179.2,
+      "y": 573.6,
+      "size": 10,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "otro_peligro_otros",
+        "equals": "SI"
+      }
+    },
+    "otro_peligro_otros_no": {
+      "type": "CHECKBOX",
+      "page": 2,
+      "x": 206.2,
+      "y": 572.9,
+      "size": 10,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "otro_peligro_otros",
+        "equals": "NO"
+      }
+    },
+    "otro_peligro_radiaciones_si": {
+      "type": "CHECKBOX",
+      "page": 2,
+      "x": 418.5,
+      "y": 621.5,
+      "size": 10,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "otro_peligro_radiaciones",
+        "equals": "SI"
+      }
+    },
+    "otro_peligro_radiaciones_no": {
+      "type": "CHECKBOX",
+      "page": 2,
+      "x": 444.7,
+      "y": 621.5,
+      "size": 10,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "otro_peligro_radiaciones",
+        "equals": "NO"
+      }
+    },
+    "otro_peligro_particulas_si": {
+      "type": "CHECKBOX",
+      "page": 2,
+      "x": 418.5,
+      "y": 609.3,
+      "size": 10,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "otro_peligro_particulas",
+        "equals": "SI"
+      }
+    },
+    "otro_peligro_particulas_no": {
+      "type": "CHECKBOX",
+      "page": 2,
+      "x": 444.7,
+      "y": 609.3,
+      "size": 10,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "otro_peligro_particulas",
+        "equals": "NO"
+      }
+    },
+    "otro_peligro_desniveles_si": {
+      "type": "CHECKBOX",
+      "page": 2,
+      "x": 418.5,
+      "y": 597.1,
+      "size": 10,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "otro_peligro_desniveles",
+        "equals": "SI"
+      }
+    },
+    "otro_peligro_desniveles_no": {
+      "type": "CHECKBOX",
+      "page": 2,
+      "x": 444.7,
+      "y": 597.1,
+      "size": 10,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "otro_peligro_desniveles",
+        "equals": "NO"
+      }
+    },
+    "otro_peligro_polvos_si": {
+      "type": "CHECKBOX",
+      "page": 2,
+      "x": 418.5,
+      "y": 584.9,
+      "size": 10,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "otro_peligro_polvos",
+        "equals": "SI"
+      }
+    },
+    "otro_peligro_polvos_no": {
+      "type": "CHECKBOX",
+      "page": 2,
+      "x": 444.7,
+      "y": 584.9,
+      "size": 10,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "otro_peligro_polvos",
+        "equals": "NO"
+      }
+    },
+    "controles_otros_peligros": {
+      "type": "MULTILINE_TEXT",
+      "page": 2,
+      "x": 38,
+      "y": 524.8,
+      "width": 533.7,
+      "height": 33.4,
+      "fontSize": 9,
+      "minFontSize": 6,
+      "align": "left",
+      "overflow": "truncate",
+      "lineHeight": 12.2
+    },
+    "epp_01": {
+      "type": "CHECKBOX",
+      "page": 2,
+      "x": 36.7,
+      "y": 447.6,
+      "size": 10,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "epp",
+        "includes": "Protección respiratoria"
+      }
+    },
+    "epp_02": {
+      "type": "CHECKBOX",
+      "page": 2,
+      "x": 224.2,
+      "y": 443.8,
+      "size": 10,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "epp",
+        "includes": "Polainas de seguridad"
+      }
+    },
+    "epp_03": {
+      "type": "CHECKBOX",
+      "page": 2,
+      "x": 336.7,
+      "y": 443.8,
+      "size": 10,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "epp",
+        "includes": "Pechera de protección"
+      }
+    },
+    "epp_04": {
+      "type": "CHECKBOX",
+      "page": 2,
+      "x": 447.7,
+      "y": 443.1,
+      "size": 10,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "epp",
+        "includes": "Mangas de seguridad"
+      }
+    },
+    "epp_05": {
+      "type": "CHECKBOX",
+      "page": 2,
+      "x": 566.2,
+      "y": 443.4,
+      "size": 10,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "epp",
+        "includes": "Capucha"
+      }
+    },
+    "epp_06": {
+      "type": "CHECKBOX",
+      "page": 2,
+      "x": 92.2,
+      "y": 377.4,
+      "size": 10,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "epp",
+        "includes": "Ropa antiflama"
+      }
+    },
+    "epp_07": {
+      "type": "CHECKBOX",
+      "page": 2,
+      "x": 216,
+      "y": 379.6,
+      "size": 10,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "epp",
+        "includes": "Arc flash"
+      }
+    },
+    "epp_08": {
+      "type": "CHECKBOX",
+      "page": 2,
+      "x": 339,
+      "y": 381.9,
+      "size": 10,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "epp",
+        "includes": "Careta de protección"
+      }
+    },
+    "epp_09": {
+      "type": "CHECKBOX",
+      "page": 2,
+      "x": 450.7,
+      "y": 378.1,
+      "size": 10,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "epp",
+        "includes": "Arnés de seguridad"
+      }
+    },
+    "epp_10": {
+      "type": "CHECKBOX",
+      "page": 2,
+      "x": 546.7,
+      "y": 380.4,
+      "size": 10,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "epp",
+        "includes": "Ropa antiquímicos"
+      }
+    },
+    "bloqueo_requerido_si": {
+      "type": "CHECKBOX",
+      "page": 2,
+      "x": 444.7,
+      "y": 319.4,
+      "size": 10,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "bloqueo_requerido",
+        "equals": "SI"
+      }
+    },
+    "bloqueo_requerido_no": {
+      "type": "CHECKBOX",
+      "page": 2,
+      "x": 486.7,
+      "y": 319.4,
+      "size": 10,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "bloqueo_requerido",
+        "equals": "NO"
+      }
+    },
+    "bloqueo_efectivo_si": {
+      "type": "CHECKBOX",
+      "page": 2,
+      "x": 473.2,
+      "y": 276.2,
+      "size": 10,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "bloqueo_efectivo",
+        "equals": "SI"
+      }
+    },
+    "bloqueo_efectivo_no": {
+      "type": "CHECKBOX",
+      "page": 2,
+      "x": 501,
+      "y": 276.2,
+      "size": 10,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "bloqueo_efectivo",
+        "equals": "NO"
+      }
+    },
+    "bloqueo_tarjeta": {
+      "type": "TEXT",
+      "page": 2,
+      "x": 514,
+      "y": 276.5,
+      "width": 62,
+      "height": 9,
+      "fontSize": 9,
+      "minFontSize": 6,
+      "align": "left",
+      "overflow": "truncate",
+      "maxLines": 1
+    },
+    "energia_remanente_si": {
+      "type": "CHECKBOX",
+      "page": 2,
+      "x": 387.7,
+      "y": 235.2,
+      "size": 10,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "energia_remanente",
+        "equals": "SI"
+      }
+    },
+    "energia_remanente_no": {
+      "type": "CHECKBOX",
+      "page": 2,
+      "x": 418.4,
+      "y": 235.2,
+      "size": 10,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "energia_remanente",
+        "equals": "NO"
+      }
+    },
+    "energia_remanente_cual": {
+      "type": "TEXT",
+      "page": 2,
+      "x": 38,
+      "y": 222,
+      "width": 518.7,
+      "height": 9,
+      "fontSize": 9,
+      "minFontSize": 6,
+      "align": "left",
+      "overflow": "truncate",
+      "maxLines": 1
+    },
+    "novedades": {
+      "type": "MULTILINE_TEXT",
+      "page": 2,
+      "x": 38,
+      "y": 88.9,
+      "width": 532.5,
+      "height": 90.6,
+      "fontSize": 10,
+      "minFontSize": 7,
+      "align": "left",
+      "overflow": "truncate",
+      "lineHeight": 13.4
+    },
+    "responsable_nombre": {
+      "type": "TEXT",
+      "page": 3,
+      "x": 234.1,
+      "y": 681.1,
+      "width": 138.3,
+      "height": 10,
+      "fontSize": 10,
+      "minFontSize": 7,
+      "align": "left",
+      "overflow": "truncate",
+      "maxLines": 1
+    },
+    "responsable_firma": {
+      "type": "SIGNATURE",
+      "page": 3,
+      "x": 415,
+      "y": 678,
+      "width": 142,
+      "height": 22,
+      "fit": "contain",
+      "align": "center",
+      "fieldKey": "responsable_firma"
+    },
+    "coordinacion_nombre": {
+      "type": "TEXT",
+      "page": 3,
+      "x": 232.4,
+      "y": 654.2,
+      "width": 138.4,
+      "height": 10,
+      "fontSize": 10,
+      "minFontSize": 7,
+      "align": "left",
+      "overflow": "truncate",
+      "maxLines": 1
+    },
+    "coordinacion_firma": {
+      "type": "SIGNATURE",
+      "page": 3,
+      "x": 414,
+      "y": 651,
+      "width": 142,
+      "height": 22,
+      "fit": "contain",
+      "align": "center",
+      "fieldKey": "coordinacion_firma"
+    },
+    "integrante_01_nombre": {
+      "type": "TEXT",
+      "page": 3,
+      "x": 59,
+      "y": 594.9,
+      "width": 164,
+      "height": 8,
+      "fontSize": 8,
+      "minFontSize": 5,
+      "align": "left",
+      "overflow": "truncate",
+      "maxLines": 1
+    },
+    "integrante_01_cedula": {
+      "type": "TEXT",
+      "page": 3,
+      "x": 227,
+      "y": 594.9,
+      "width": 89,
+      "height": 8,
+      "fontSize": 8,
+      "minFontSize": 5,
+      "align": "center",
+      "overflow": "truncate",
+      "maxLines": 1
+    },
+    "integrante_01_firma": {
+      "type": "SIGNATURE",
+      "page": 3,
+      "x": 320,
+      "y": 593,
+      "width": 96,
+      "height": 11.7,
+      "fit": "contain",
+      "align": "center",
+      "memberIndex": 0
+    },
+    "integrante_01_dia_1": {
+      "type": "CHECKBOX",
+      "page": 3,
+      "x": 432,
+      "y": 595.4,
+      "size": 8,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "integrante_01_dia",
+        "equals": "1"
+      }
+    },
+    "integrante_01_dia_2": {
+      "type": "CHECKBOX",
+      "page": 3,
+      "x": 454,
+      "y": 595.4,
+      "size": 8,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "integrante_01_dia",
+        "equals": "2"
+      }
+    },
+    "integrante_01_dia_3": {
+      "type": "CHECKBOX",
+      "page": 3,
+      "x": 475.6,
+      "y": 595.4,
+      "size": 8,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "integrante_01_dia",
+        "equals": "3"
+      }
+    },
+    "integrante_01_dia_4": {
+      "type": "CHECKBOX",
+      "page": 3,
+      "x": 496.5,
+      "y": 595.4,
+      "size": 8,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "integrante_01_dia",
+        "equals": "4"
+      }
+    },
+    "integrante_01_dia_5": {
+      "type": "CHECKBOX",
+      "page": 3,
+      "x": 518.2,
+      "y": 595.4,
+      "size": 8,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "integrante_01_dia",
+        "equals": "5"
+      }
+    },
+    "integrante_01_dia_6": {
+      "type": "CHECKBOX",
+      "page": 3,
+      "x": 539,
+      "y": 595.4,
+      "size": 8,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "integrante_01_dia",
+        "equals": "6"
+      }
+    },
+    "integrante_01_dia_7": {
+      "type": "CHECKBOX",
+      "page": 3,
+      "x": 560.6,
+      "y": 595.4,
+      "size": 8,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "integrante_01_dia",
+        "equals": "7"
+      }
+    },
+    "integrante_02_nombre": {
+      "type": "TEXT",
+      "page": 3,
+      "x": 59,
+      "y": 582.1,
+      "width": 164,
+      "height": 8,
+      "fontSize": 8,
+      "minFontSize": 5,
+      "align": "left",
+      "overflow": "truncate",
+      "maxLines": 1
+    },
+    "integrante_02_cedula": {
+      "type": "TEXT",
+      "page": 3,
+      "x": 227,
+      "y": 582.1,
+      "width": 89,
+      "height": 8,
+      "fontSize": 8,
+      "minFontSize": 5,
+      "align": "center",
+      "overflow": "truncate",
+      "maxLines": 1
+    },
+    "integrante_02_firma": {
+      "type": "SIGNATURE",
+      "page": 3,
+      "x": 320,
+      "y": 580.2,
+      "width": 96,
+      "height": 12,
+      "fit": "contain",
+      "align": "center",
+      "memberIndex": 1
+    },
+    "integrante_02_dia_1": {
+      "type": "CHECKBOX",
+      "page": 3,
+      "x": 432,
+      "y": 582.6,
+      "size": 8,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "integrante_02_dia",
+        "equals": "1"
+      }
+    },
+    "integrante_02_dia_2": {
+      "type": "CHECKBOX",
+      "page": 3,
+      "x": 454,
+      "y": 582.6,
+      "size": 8,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "integrante_02_dia",
+        "equals": "2"
+      }
+    },
+    "integrante_02_dia_3": {
+      "type": "CHECKBOX",
+      "page": 3,
+      "x": 475.6,
+      "y": 582.6,
+      "size": 8,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "integrante_02_dia",
+        "equals": "3"
+      }
+    },
+    "integrante_02_dia_4": {
+      "type": "CHECKBOX",
+      "page": 3,
+      "x": 496.5,
+      "y": 582.6,
+      "size": 8,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "integrante_02_dia",
+        "equals": "4"
+      }
+    },
+    "integrante_02_dia_5": {
+      "type": "CHECKBOX",
+      "page": 3,
+      "x": 518.2,
+      "y": 582.6,
+      "size": 8,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "integrante_02_dia",
+        "equals": "5"
+      }
+    },
+    "integrante_02_dia_6": {
+      "type": "CHECKBOX",
+      "page": 3,
+      "x": 539,
+      "y": 582.6,
+      "size": 8,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "integrante_02_dia",
+        "equals": "6"
+      }
+    },
+    "integrante_02_dia_7": {
+      "type": "CHECKBOX",
+      "page": 3,
+      "x": 560.6,
+      "y": 582.6,
+      "size": 8,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "integrante_02_dia",
+        "equals": "7"
+      }
+    },
+    "integrante_03_nombre": {
+      "type": "TEXT",
+      "page": 3,
+      "x": 59,
+      "y": 569.5,
+      "width": 164,
+      "height": 8,
+      "fontSize": 8,
+      "minFontSize": 5,
+      "align": "left",
+      "overflow": "truncate",
+      "maxLines": 1
+    },
+    "integrante_03_cedula": {
+      "type": "TEXT",
+      "page": 3,
+      "x": 227,
+      "y": 569.5,
+      "width": 89,
+      "height": 8,
+      "fontSize": 8,
+      "minFontSize": 5,
+      "align": "center",
+      "overflow": "truncate",
+      "maxLines": 1
+    },
+    "integrante_03_firma": {
+      "type": "SIGNATURE",
+      "page": 3,
+      "x": 320,
+      "y": 567.6,
+      "width": 96,
+      "height": 11.8,
+      "fit": "contain",
+      "align": "center",
+      "memberIndex": 2
+    },
+    "integrante_03_dia_1": {
+      "type": "CHECKBOX",
+      "page": 3,
+      "x": 432,
+      "y": 570,
+      "size": 8,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "integrante_03_dia",
+        "equals": "1"
+      }
+    },
+    "integrante_03_dia_2": {
+      "type": "CHECKBOX",
+      "page": 3,
+      "x": 454,
+      "y": 570,
+      "size": 8,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "integrante_03_dia",
+        "equals": "2"
+      }
+    },
+    "integrante_03_dia_3": {
+      "type": "CHECKBOX",
+      "page": 3,
+      "x": 475.6,
+      "y": 570,
+      "size": 8,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "integrante_03_dia",
+        "equals": "3"
+      }
+    },
+    "integrante_03_dia_4": {
+      "type": "CHECKBOX",
+      "page": 3,
+      "x": 496.5,
+      "y": 570,
+      "size": 8,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "integrante_03_dia",
+        "equals": "4"
+      }
+    },
+    "integrante_03_dia_5": {
+      "type": "CHECKBOX",
+      "page": 3,
+      "x": 518.2,
+      "y": 570,
+      "size": 8,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "integrante_03_dia",
+        "equals": "5"
+      }
+    },
+    "integrante_03_dia_6": {
+      "type": "CHECKBOX",
+      "page": 3,
+      "x": 539,
+      "y": 570,
+      "size": 8,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "integrante_03_dia",
+        "equals": "6"
+      }
+    },
+    "integrante_03_dia_7": {
+      "type": "CHECKBOX",
+      "page": 3,
+      "x": 560.6,
+      "y": 570,
+      "size": 8,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "integrante_03_dia",
+        "equals": "7"
+      }
+    },
+    "integrante_04_nombre": {
+      "type": "TEXT",
+      "page": 3,
+      "x": 59,
+      "y": 556.9,
+      "width": 164,
+      "height": 8,
+      "fontSize": 8,
+      "minFontSize": 5,
+      "align": "left",
+      "overflow": "truncate",
+      "maxLines": 1
+    },
+    "integrante_04_cedula": {
+      "type": "TEXT",
+      "page": 3,
+      "x": 227,
+      "y": 556.9,
+      "width": 89,
+      "height": 8,
+      "fontSize": 8,
+      "minFontSize": 5,
+      "align": "center",
+      "overflow": "truncate",
+      "maxLines": 1
+    },
+    "integrante_04_firma": {
+      "type": "SIGNATURE",
+      "page": 3,
+      "x": 320,
+      "y": 555,
+      "width": 96,
+      "height": 11.8,
+      "fit": "contain",
+      "align": "center",
+      "memberIndex": 3
+    },
+    "integrante_04_dia_1": {
+      "type": "CHECKBOX",
+      "page": 3,
+      "x": 432,
+      "y": 557.4,
+      "size": 8,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "integrante_04_dia",
+        "equals": "1"
+      }
+    },
+    "integrante_04_dia_2": {
+      "type": "CHECKBOX",
+      "page": 3,
+      "x": 454,
+      "y": 557.4,
+      "size": 8,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "integrante_04_dia",
+        "equals": "2"
+      }
+    },
+    "integrante_04_dia_3": {
+      "type": "CHECKBOX",
+      "page": 3,
+      "x": 475.6,
+      "y": 557.4,
+      "size": 8,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "integrante_04_dia",
+        "equals": "3"
+      }
+    },
+    "integrante_04_dia_4": {
+      "type": "CHECKBOX",
+      "page": 3,
+      "x": 496.5,
+      "y": 557.4,
+      "size": 8,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "integrante_04_dia",
+        "equals": "4"
+      }
+    },
+    "integrante_04_dia_5": {
+      "type": "CHECKBOX",
+      "page": 3,
+      "x": 518.2,
+      "y": 557.4,
+      "size": 8,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "integrante_04_dia",
+        "equals": "5"
+      }
+    },
+    "integrante_04_dia_6": {
+      "type": "CHECKBOX",
+      "page": 3,
+      "x": 539,
+      "y": 557.4,
+      "size": 8,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "integrante_04_dia",
+        "equals": "6"
+      }
+    },
+    "integrante_04_dia_7": {
+      "type": "CHECKBOX",
+      "page": 3,
+      "x": 560.6,
+      "y": 557.4,
+      "size": 8,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "integrante_04_dia",
+        "equals": "7"
+      }
+    },
+    "integrante_05_nombre": {
+      "type": "TEXT",
+      "page": 3,
+      "x": 59,
+      "y": 543.9,
+      "width": 164,
+      "height": 8,
+      "fontSize": 8,
+      "minFontSize": 5,
+      "align": "left",
+      "overflow": "truncate",
+      "maxLines": 1
+    },
+    "integrante_05_cedula": {
+      "type": "TEXT",
+      "page": 3,
+      "x": 227,
+      "y": 543.9,
+      "width": 89,
+      "height": 8,
+      "fontSize": 8,
+      "minFontSize": 5,
+      "align": "center",
+      "overflow": "truncate",
+      "maxLines": 1
+    },
+    "integrante_05_firma": {
+      "type": "SIGNATURE",
+      "page": 3,
+      "x": 320,
+      "y": 542,
+      "width": 96,
+      "height": 12.2,
+      "fit": "contain",
+      "align": "center",
+      "memberIndex": 4
+    },
+    "integrante_05_dia_1": {
+      "type": "CHECKBOX",
+      "page": 3,
+      "x": 432,
+      "y": 544.4,
+      "size": 8,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "integrante_05_dia",
+        "equals": "1"
+      }
+    },
+    "integrante_05_dia_2": {
+      "type": "CHECKBOX",
+      "page": 3,
+      "x": 454,
+      "y": 544.4,
+      "size": 8,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "integrante_05_dia",
+        "equals": "2"
+      }
+    },
+    "integrante_05_dia_3": {
+      "type": "CHECKBOX",
+      "page": 3,
+      "x": 475.6,
+      "y": 544.4,
+      "size": 8,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "integrante_05_dia",
+        "equals": "3"
+      }
+    },
+    "integrante_05_dia_4": {
+      "type": "CHECKBOX",
+      "page": 3,
+      "x": 496.5,
+      "y": 544.4,
+      "size": 8,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "integrante_05_dia",
+        "equals": "4"
+      }
+    },
+    "integrante_05_dia_5": {
+      "type": "CHECKBOX",
+      "page": 3,
+      "x": 518.2,
+      "y": 544.4,
+      "size": 8,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "integrante_05_dia",
+        "equals": "5"
+      }
+    },
+    "integrante_05_dia_6": {
+      "type": "CHECKBOX",
+      "page": 3,
+      "x": 539,
+      "y": 544.4,
+      "size": 8,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "integrante_05_dia",
+        "equals": "6"
+      }
+    },
+    "integrante_05_dia_7": {
+      "type": "CHECKBOX",
+      "page": 3,
+      "x": 560.6,
+      "y": 544.4,
+      "size": 8,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "integrante_05_dia",
+        "equals": "7"
+      }
+    },
+    "integrante_06_nombre": {
+      "type": "TEXT",
+      "page": 3,
+      "x": 59,
+      "y": 531.6,
+      "width": 164,
+      "height": 8,
+      "fontSize": 8,
+      "minFontSize": 5,
+      "align": "left",
+      "overflow": "truncate",
+      "maxLines": 1
+    },
+    "integrante_06_cedula": {
+      "type": "TEXT",
+      "page": 3,
+      "x": 227,
+      "y": 531.6,
+      "width": 89,
+      "height": 8,
+      "fontSize": 8,
+      "minFontSize": 5,
+      "align": "center",
+      "overflow": "truncate",
+      "maxLines": 1
+    },
+    "integrante_06_firma": {
+      "type": "SIGNATURE",
+      "page": 3,
+      "x": 320,
+      "y": 529.7,
+      "width": 96,
+      "height": 11.5,
+      "fit": "contain",
+      "align": "center",
+      "memberIndex": 5
+    },
+    "integrante_06_dia_1": {
+      "type": "CHECKBOX",
+      "page": 3,
+      "x": 432,
+      "y": 532.1,
+      "size": 8,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "integrante_06_dia",
+        "equals": "1"
+      }
+    },
+    "integrante_06_dia_2": {
+      "type": "CHECKBOX",
+      "page": 3,
+      "x": 454,
+      "y": 532.1,
+      "size": 8,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "integrante_06_dia",
+        "equals": "2"
+      }
+    },
+    "integrante_06_dia_3": {
+      "type": "CHECKBOX",
+      "page": 3,
+      "x": 475.6,
+      "y": 532.1,
+      "size": 8,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "integrante_06_dia",
+        "equals": "3"
+      }
+    },
+    "integrante_06_dia_4": {
+      "type": "CHECKBOX",
+      "page": 3,
+      "x": 496.5,
+      "y": 532.1,
+      "size": 8,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "integrante_06_dia",
+        "equals": "4"
+      }
+    },
+    "integrante_06_dia_5": {
+      "type": "CHECKBOX",
+      "page": 3,
+      "x": 518.2,
+      "y": 532.1,
+      "size": 8,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "integrante_06_dia",
+        "equals": "5"
+      }
+    },
+    "integrante_06_dia_6": {
+      "type": "CHECKBOX",
+      "page": 3,
+      "x": 539,
+      "y": 532.1,
+      "size": 8,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "integrante_06_dia",
+        "equals": "6"
+      }
+    },
+    "integrante_06_dia_7": {
+      "type": "CHECKBOX",
+      "page": 3,
+      "x": 560.6,
+      "y": 532.1,
+      "size": 8,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "integrante_06_dia",
+        "equals": "7"
+      }
+    },
+    "integrante_07_nombre": {
+      "type": "TEXT",
+      "page": 3,
+      "x": 59,
+      "y": 518.6,
+      "width": 164,
+      "height": 8,
+      "fontSize": 8,
+      "minFontSize": 5,
+      "align": "left",
+      "overflow": "truncate",
+      "maxLines": 1
+    },
+    "integrante_07_cedula": {
+      "type": "TEXT",
+      "page": 3,
+      "x": 227,
+      "y": 518.6,
+      "width": 89,
+      "height": 8,
+      "fontSize": 8,
+      "minFontSize": 5,
+      "align": "center",
+      "overflow": "truncate",
+      "maxLines": 1
+    },
+    "integrante_07_firma": {
+      "type": "SIGNATURE",
+      "page": 3,
+      "x": 320,
+      "y": 516.7,
+      "width": 96,
+      "height": 12.2,
+      "fit": "contain",
+      "align": "center",
+      "memberIndex": 6
+    },
+    "integrante_07_dia_1": {
+      "type": "CHECKBOX",
+      "page": 3,
+      "x": 432,
+      "y": 519.1,
+      "size": 8,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "integrante_07_dia",
+        "equals": "1"
+      }
+    },
+    "integrante_07_dia_2": {
+      "type": "CHECKBOX",
+      "page": 3,
+      "x": 454,
+      "y": 519.1,
+      "size": 8,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "integrante_07_dia",
+        "equals": "2"
+      }
+    },
+    "integrante_07_dia_3": {
+      "type": "CHECKBOX",
+      "page": 3,
+      "x": 475.6,
+      "y": 519.1,
+      "size": 8,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "integrante_07_dia",
+        "equals": "3"
+      }
+    },
+    "integrante_07_dia_4": {
+      "type": "CHECKBOX",
+      "page": 3,
+      "x": 496.5,
+      "y": 519.1,
+      "size": 8,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "integrante_07_dia",
+        "equals": "4"
+      }
+    },
+    "integrante_07_dia_5": {
+      "type": "CHECKBOX",
+      "page": 3,
+      "x": 518.2,
+      "y": 519.1,
+      "size": 8,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "integrante_07_dia",
+        "equals": "5"
+      }
+    },
+    "integrante_07_dia_6": {
+      "type": "CHECKBOX",
+      "page": 3,
+      "x": 539,
+      "y": 519.1,
+      "size": 8,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "integrante_07_dia",
+        "equals": "6"
+      }
+    },
+    "integrante_07_dia_7": {
+      "type": "CHECKBOX",
+      "page": 3,
+      "x": 560.6,
+      "y": 519.1,
+      "size": 8,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "integrante_07_dia",
+        "equals": "7"
+      }
+    },
+    "integrante_08_nombre": {
+      "type": "TEXT",
+      "page": 3,
+      "x": 59,
+      "y": 506.1,
+      "width": 164,
+      "height": 8,
+      "fontSize": 8,
+      "minFontSize": 5,
+      "align": "left",
+      "overflow": "truncate",
+      "maxLines": 1
+    },
+    "integrante_08_cedula": {
+      "type": "TEXT",
+      "page": 3,
+      "x": 227,
+      "y": 506.1,
+      "width": 89,
+      "height": 8,
+      "fontSize": 8,
+      "minFontSize": 5,
+      "align": "center",
+      "overflow": "truncate",
+      "maxLines": 1
+    },
+    "integrante_08_firma": {
+      "type": "SIGNATURE",
+      "page": 3,
+      "x": 320,
+      "y": 504.2,
+      "width": 96,
+      "height": 11.7,
+      "fit": "contain",
+      "align": "center",
+      "memberIndex": 7
+    },
+    "integrante_08_dia_1": {
+      "type": "CHECKBOX",
+      "page": 3,
+      "x": 432,
+      "y": 506.6,
+      "size": 8,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "integrante_08_dia",
+        "equals": "1"
+      }
+    },
+    "integrante_08_dia_2": {
+      "type": "CHECKBOX",
+      "page": 3,
+      "x": 454,
+      "y": 506.6,
+      "size": 8,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "integrante_08_dia",
+        "equals": "2"
+      }
+    },
+    "integrante_08_dia_3": {
+      "type": "CHECKBOX",
+      "page": 3,
+      "x": 475.6,
+      "y": 506.6,
+      "size": 8,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "integrante_08_dia",
+        "equals": "3"
+      }
+    },
+    "integrante_08_dia_4": {
+      "type": "CHECKBOX",
+      "page": 3,
+      "x": 496.5,
+      "y": 506.6,
+      "size": 8,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "integrante_08_dia",
+        "equals": "4"
+      }
+    },
+    "integrante_08_dia_5": {
+      "type": "CHECKBOX",
+      "page": 3,
+      "x": 518.2,
+      "y": 506.6,
+      "size": 8,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "integrante_08_dia",
+        "equals": "5"
+      }
+    },
+    "integrante_08_dia_6": {
+      "type": "CHECKBOX",
+      "page": 3,
+      "x": 539,
+      "y": 506.6,
+      "size": 8,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "integrante_08_dia",
+        "equals": "6"
+      }
+    },
+    "integrante_08_dia_7": {
+      "type": "CHECKBOX",
+      "page": 3,
+      "x": 560.6,
+      "y": 506.6,
+      "size": 8,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "integrante_08_dia",
+        "equals": "7"
+      }
+    },
+    "integrante_09_nombre": {
+      "type": "TEXT",
+      "page": 3,
+      "x": 59,
+      "y": 493.4,
+      "width": 164,
+      "height": 8,
+      "fontSize": 8,
+      "minFontSize": 5,
+      "align": "left",
+      "overflow": "truncate",
+      "maxLines": 1
+    },
+    "integrante_09_cedula": {
+      "type": "TEXT",
+      "page": 3,
+      "x": 227,
+      "y": 493.4,
+      "width": 89,
+      "height": 8,
+      "fontSize": 8,
+      "minFontSize": 5,
+      "align": "center",
+      "overflow": "truncate",
+      "maxLines": 1
+    },
+    "integrante_09_firma": {
+      "type": "SIGNATURE",
+      "page": 3,
+      "x": 320,
+      "y": 491.5,
+      "width": 96,
+      "height": 11.9,
+      "fit": "contain",
+      "align": "center",
+      "memberIndex": 8
+    },
+    "integrante_09_dia_1": {
+      "type": "CHECKBOX",
+      "page": 3,
+      "x": 432,
+      "y": 493.9,
+      "size": 8,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "integrante_09_dia",
+        "equals": "1"
+      }
+    },
+    "integrante_09_dia_2": {
+      "type": "CHECKBOX",
+      "page": 3,
+      "x": 454,
+      "y": 493.9,
+      "size": 8,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "integrante_09_dia",
+        "equals": "2"
+      }
+    },
+    "integrante_09_dia_3": {
+      "type": "CHECKBOX",
+      "page": 3,
+      "x": 475.6,
+      "y": 493.9,
+      "size": 8,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "integrante_09_dia",
+        "equals": "3"
+      }
+    },
+    "integrante_09_dia_4": {
+      "type": "CHECKBOX",
+      "page": 3,
+      "x": 496.5,
+      "y": 493.9,
+      "size": 8,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "integrante_09_dia",
+        "equals": "4"
+      }
+    },
+    "integrante_09_dia_5": {
+      "type": "CHECKBOX",
+      "page": 3,
+      "x": 518.2,
+      "y": 493.9,
+      "size": 8,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "integrante_09_dia",
+        "equals": "5"
+      }
+    },
+    "integrante_09_dia_6": {
+      "type": "CHECKBOX",
+      "page": 3,
+      "x": 539,
+      "y": 493.9,
+      "size": 8,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "integrante_09_dia",
+        "equals": "6"
+      }
+    },
+    "integrante_09_dia_7": {
+      "type": "CHECKBOX",
+      "page": 3,
+      "x": 560.6,
+      "y": 493.9,
+      "size": 8,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "integrante_09_dia",
+        "equals": "7"
+      }
+    },
+    "integrante_10_nombre": {
+      "type": "TEXT",
+      "page": 3,
+      "x": 59,
+      "y": 480.9,
+      "width": 164,
+      "height": 8,
+      "fontSize": 8,
+      "minFontSize": 5,
+      "align": "left",
+      "overflow": "truncate",
+      "maxLines": 1
+    },
+    "integrante_10_cedula": {
+      "type": "TEXT",
+      "page": 3,
+      "x": 227,
+      "y": 480.9,
+      "width": 89,
+      "height": 8,
+      "fontSize": 8,
+      "minFontSize": 5,
+      "align": "center",
+      "overflow": "truncate",
+      "maxLines": 1
+    },
+    "integrante_10_firma": {
+      "type": "SIGNATURE",
+      "page": 3,
+      "x": 320,
+      "y": 479,
+      "width": 96,
+      "height": 11.7,
+      "fit": "contain",
+      "align": "center",
+      "memberIndex": 9
+    },
+    "integrante_10_dia_1": {
+      "type": "CHECKBOX",
+      "page": 3,
+      "x": 432,
+      "y": 481.4,
+      "size": 8,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "integrante_10_dia",
+        "equals": "1"
+      }
+    },
+    "integrante_10_dia_2": {
+      "type": "CHECKBOX",
+      "page": 3,
+      "x": 454,
+      "y": 481.4,
+      "size": 8,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "integrante_10_dia",
+        "equals": "2"
+      }
+    },
+    "integrante_10_dia_3": {
+      "type": "CHECKBOX",
+      "page": 3,
+      "x": 475.6,
+      "y": 481.4,
+      "size": 8,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "integrante_10_dia",
+        "equals": "3"
+      }
+    },
+    "integrante_10_dia_4": {
+      "type": "CHECKBOX",
+      "page": 3,
+      "x": 496.5,
+      "y": 481.4,
+      "size": 8,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "integrante_10_dia",
+        "equals": "4"
+      }
+    },
+    "integrante_10_dia_5": {
+      "type": "CHECKBOX",
+      "page": 3,
+      "x": 518.2,
+      "y": 481.4,
+      "size": 8,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "integrante_10_dia",
+        "equals": "5"
+      }
+    },
+    "integrante_10_dia_6": {
+      "type": "CHECKBOX",
+      "page": 3,
+      "x": 539,
+      "y": 481.4,
+      "size": 8,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "integrante_10_dia",
+        "equals": "6"
+      }
+    },
+    "integrante_10_dia_7": {
+      "type": "CHECKBOX",
+      "page": 3,
+      "x": 560.6,
+      "y": 481.4,
+      "size": 8,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "integrante_10_dia",
+        "equals": "7"
+      }
+    },
+    "integrante_11_nombre": {
+      "type": "TEXT",
+      "page": 3,
+      "x": 59,
+      "y": 468.1,
+      "width": 164,
+      "height": 8,
+      "fontSize": 8,
+      "minFontSize": 5,
+      "align": "left",
+      "overflow": "truncate",
+      "maxLines": 1
+    },
+    "integrante_11_cedula": {
+      "type": "TEXT",
+      "page": 3,
+      "x": 227,
+      "y": 468.1,
+      "width": 89,
+      "height": 8,
+      "fontSize": 8,
+      "minFontSize": 5,
+      "align": "center",
+      "overflow": "truncate",
+      "maxLines": 1
+    },
+    "integrante_11_firma": {
+      "type": "SIGNATURE",
+      "page": 3,
+      "x": 320,
+      "y": 466.2,
+      "width": 96,
+      "height": 12,
+      "fit": "contain",
+      "align": "center",
+      "memberIndex": 10
+    },
+    "integrante_11_dia_1": {
+      "type": "CHECKBOX",
+      "page": 3,
+      "x": 432,
+      "y": 468.6,
+      "size": 8,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "integrante_11_dia",
+        "equals": "1"
+      }
+    },
+    "integrante_11_dia_2": {
+      "type": "CHECKBOX",
+      "page": 3,
+      "x": 454,
+      "y": 468.6,
+      "size": 8,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "integrante_11_dia",
+        "equals": "2"
+      }
+    },
+    "integrante_11_dia_3": {
+      "type": "CHECKBOX",
+      "page": 3,
+      "x": 475.6,
+      "y": 468.6,
+      "size": 8,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "integrante_11_dia",
+        "equals": "3"
+      }
+    },
+    "integrante_11_dia_4": {
+      "type": "CHECKBOX",
+      "page": 3,
+      "x": 496.5,
+      "y": 468.6,
+      "size": 8,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "integrante_11_dia",
+        "equals": "4"
+      }
+    },
+    "integrante_11_dia_5": {
+      "type": "CHECKBOX",
+      "page": 3,
+      "x": 518.2,
+      "y": 468.6,
+      "size": 8,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "integrante_11_dia",
+        "equals": "5"
+      }
+    },
+    "integrante_11_dia_6": {
+      "type": "CHECKBOX",
+      "page": 3,
+      "x": 539,
+      "y": 468.6,
+      "size": 8,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "integrante_11_dia",
+        "equals": "6"
+      }
+    },
+    "integrante_11_dia_7": {
+      "type": "CHECKBOX",
+      "page": 3,
+      "x": 560.6,
+      "y": 468.6,
+      "size": 8,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "integrante_11_dia",
+        "equals": "7"
+      }
+    },
+    "integrante_12_nombre": {
+      "type": "TEXT",
+      "page": 3,
+      "x": 59,
+      "y": 455.4,
+      "width": 164,
+      "height": 8,
+      "fontSize": 8,
+      "minFontSize": 5,
+      "align": "left",
+      "overflow": "truncate",
+      "maxLines": 1
+    },
+    "integrante_12_cedula": {
+      "type": "TEXT",
+      "page": 3,
+      "x": 227,
+      "y": 455.4,
+      "width": 89,
+      "height": 8,
+      "fontSize": 8,
+      "minFontSize": 5,
+      "align": "center",
+      "overflow": "truncate",
+      "maxLines": 1
+    },
+    "integrante_12_firma": {
+      "type": "SIGNATURE",
+      "page": 3,
+      "x": 320,
+      "y": 453.5,
+      "width": 96,
+      "height": 11.9,
+      "fit": "contain",
+      "align": "center",
+      "memberIndex": 11
+    },
+    "integrante_12_dia_1": {
+      "type": "CHECKBOX",
+      "page": 3,
+      "x": 432,
+      "y": 455.9,
+      "size": 8,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "integrante_12_dia",
+        "equals": "1"
+      }
+    },
+    "integrante_12_dia_2": {
+      "type": "CHECKBOX",
+      "page": 3,
+      "x": 454,
+      "y": 455.9,
+      "size": 8,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "integrante_12_dia",
+        "equals": "2"
+      }
+    },
+    "integrante_12_dia_3": {
+      "type": "CHECKBOX",
+      "page": 3,
+      "x": 475.6,
+      "y": 455.9,
+      "size": 8,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "integrante_12_dia",
+        "equals": "3"
+      }
+    },
+    "integrante_12_dia_4": {
+      "type": "CHECKBOX",
+      "page": 3,
+      "x": 496.5,
+      "y": 455.9,
+      "size": 8,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "integrante_12_dia",
+        "equals": "4"
+      }
+    },
+    "integrante_12_dia_5": {
+      "type": "CHECKBOX",
+      "page": 3,
+      "x": 518.2,
+      "y": 455.9,
+      "size": 8,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "integrante_12_dia",
+        "equals": "5"
+      }
+    },
+    "integrante_12_dia_6": {
+      "type": "CHECKBOX",
+      "page": 3,
+      "x": 539,
+      "y": 455.9,
+      "size": 8,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "integrante_12_dia",
+        "equals": "6"
+      }
+    },
+    "integrante_12_dia_7": {
+      "type": "CHECKBOX",
+      "page": 3,
+      "x": 560.6,
+      "y": 455.9,
+      "size": 8,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "integrante_12_dia",
+        "equals": "7"
+      }
+    },
+    "entrega_operacion_segura_si": {
+      "type": "CHECKBOX",
+      "page": 3,
+      "x": 260.2,
+      "y": 273.4,
+      "size": 10,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "entrega_operacion_segura",
+        "equals": "SI"
+      }
+    },
+    "entrega_operacion_segura_no": {
+      "type": "CHECKBOX",
+      "page": 3,
+      "x": 294,
+      "y": 273.4,
+      "size": 10,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "entrega_operacion_segura",
+        "equals": "NO"
+      }
+    },
+    "entrega_medidas": {
+      "type": "MULTILINE_TEXT",
+      "page": 3,
+      "x": 38,
+      "y": 232.1,
+      "width": 543.5,
+      "height": 23.4,
+      "fontSize": 10,
+      "minFontSize": 7,
+      "align": "left",
+      "overflow": "truncate",
+      "lineHeight": 13.4
+    },
+    "entrega_orden_limpieza_si": {
+      "type": "CHECKBOX",
+      "page": 3,
+      "x": 273.7,
+      "y": 204.7,
+      "size": 10,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "entrega_orden_limpieza",
+        "equals": "SI"
+      }
+    },
+    "entrega_orden_limpieza_no": {
+      "type": "CHECKBOX",
+      "page": 3,
+      "x": 305.2,
+      "y": 204,
+      "size": 10,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "entrega_orden_limpieza",
+        "equals": "NO"
+      }
+    }
+  }
+}

@@ -10,6 +10,7 @@ import { businessDate } from '../common/business-date';
 import { SubmissionsService } from '../submissions/submissions.service';
 import { CustodyQueryDto } from './dto/custody-query.dto';
 import { NotificationsService } from '../notifications/notifications.service';
+import { perfilFormato } from '../forms/form-profiles';
 
 @Injectable()
 export class ApprovalsService {
@@ -198,14 +199,39 @@ export class ApprovalsService {
     if (dto.decision === 'REJECTED' && !dto.reason?.trim())
       throw new ConflictException('El rechazo requiere un motivo.');
     const decision = await this.prisma.$transaction(async (tx) => {
-      const submission = await tx.formSubmission.findUnique({ where: { id } });
+      const submission = await tx.formSubmission.findUnique({
+        where: { id },
+        include: { formVersion: { select: { form: { select: { code: true } } } } },
+      });
       if (!submission) throw new NotFoundException('Envío no encontrado.');
       if (submission.status !== 'PENDING_APPROVAL')
         throw new ConflictException('Este envío ya fue decidido y no puede modificarse.');
-      const newStatus = dto.decision === 'APPROVED' ? 'APPROVED' : 'REJECTED';
+      const perfil = perfilFormato(submission.formVersion.form.code);
+      const aprobado = dto.decision === 'APPROVED';
+
+      // Los formatos que llevan la firma de Coordinación no se aprueban sin
+      // ella: el documento quedaría con el espacio de autorización vacío.
+      let firma: { signerName: string; signatureFileId: string } | null = null;
+      if (aprobado && perfil?.firmaCoordinacion) {
+        const aprobador = await tx.user.findUnique({
+          where: { id: actorUserId },
+          select: { fullName: true, signatureFileId: true },
+        });
+        if (!aprobador?.fullName?.trim() || !aprobador.signatureFileId) {
+          throw new ConflictException(
+            'Registra tu nombre y firma en "Mi firma" antes de aprobar este formato: se estampan en el documento.',
+          );
+        }
+        firma = { signerName: aprobador.fullName.trim(), signatureFileId: aprobador.signatureFileId };
+      }
+
+      // Sin jornada (la inspección), aprobar es lo último: queda archivado.
+      const sinJornada = aprobado && perfil?.jornada === false;
+      const ahora = new Date();
+      const newStatus = !aprobado ? 'REJECTED' : sinJornada ? 'CLOSED' : 'APPROVED';
       const changed = await tx.formSubmission.updateMany({
         where: { id, status: 'PENDING_APPROVAL' },
-        data: { status: newStatus },
+        data: { status: newStatus, ...(sinJornada ? { closedAt: ahora } : {}) },
       });
       if (changed.count !== 1) throw new ConflictException('El envío fue actualizado por otra operación.');
       const approval = await tx.approval.create({
@@ -213,7 +239,9 @@ export class ApprovalsService {
           submissionId: id,
           decision: dto.decision,
           decidedById: actorUserId,
+          decidedAt: ahora,
           reason: dto.decision === 'REJECTED' ? dto.reason!.trim() : dto.observation?.trim(),
+          ...(firma ?? {}),
         },
       });
       await tx.auditEvent.create({
@@ -222,7 +250,11 @@ export class ApprovalsService {
           action: dto.decision === 'APPROVED' ? 'APPROVE_SUBMISSION' : 'REJECT_SUBMISSION',
           entityType: 'FORM_SUBMISSION',
           entityId: id,
-          afterJson: { status: newStatus, decision: dto.decision },
+          afterJson: {
+            status: newStatus,
+            decision: dto.decision,
+            ...(firma ? { signerName: firma.signerName, signatureFileId: firma.signatureFileId } : {}),
+          },
           reason: approval.reason,
           ip: request.ip,
           userAgent: request.header('user-agent'),
@@ -235,17 +267,21 @@ export class ApprovalsService {
         decision: approval.decision,
         decidedAt: approval.decidedAt,
         collaboratorId: submission.collaboratorId,
+        ruta: perfil?.ruta ?? '/mis-permisos',
+        sinJornada,
       };
     });
-    const { collaboratorId, ...respuesta } = decision;
+    const { collaboratorId, ruta, sinJornada, ...respuesta } = decision;
     void this.notifications.notify(
       [{ collaboratorId }],
       dto.decision === 'APPROVED'
         ? {
             type: 'SUBMISSION_APPROVED',
-            title: 'Permiso autorizado',
-            body: 'Coordinación autorizó tu permiso. Registra el inicio de la jornada al comenzar a trabajar.',
-            link: '/formulario/alturas',
+            title: sinJornada ? 'Formato aprobado' : 'Permiso autorizado',
+            body: sinJornada
+              ? 'Coordinación aprobó tu formato y quedó archivado con su documento final.'
+              : 'Coordinación autorizó tu permiso. Registra el inicio de la jornada al comenzar a trabajar.',
+            link: sinJornada ? '/mis-permisos' : ruta,
             entityType: 'FORM_SUBMISSION',
             entityId: id,
           }
@@ -260,13 +296,14 @@ export class ApprovalsService {
     );
     // El PDF final se genera al cerrar la jornada, no aquí: hasta que la
     // cuadrilla no registre su hora de finalización el documento estaría
-    // incompleto. Un rechazo sí cierra el proceso y se documenta de una vez.
-    if (dto.decision === 'REJECTED') {
+    // incompleto. Un rechazo, o la aprobación de un formato sin jornada, sí
+    // cierra el proceso y se documenta de una vez.
+    if (dto.decision === 'REJECTED' || sinJornada) {
       try {
         const pdfFileId = await this.pdf.generateFinalPdf(id, { kind: 'USER', id: actorUserId });
         return { ...respuesta, pdfFileId };
       } catch (error) {
-        this.logger.error(`No fue posible generar el PDF del envío rechazado ${id}`, error as Error);
+        this.logger.error(`No fue posible generar el PDF del envío decidido ${id}`, error as Error);
         return { ...respuesta, pdfFileId: null };
       }
     }

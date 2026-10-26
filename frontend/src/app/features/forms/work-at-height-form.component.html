@@ -3,7 +3,7 @@
     <span class="identidad">
       <img src="assets/marca/marca-clara.png" alt="" width="36" height="36" />
       <span class="titulo">
-        Permiso de trabajo en altura
+        {{ titulo }}
         <span class="contador">{{ rotuloEtapa() }}</span>
       </span>
     </span>
@@ -29,7 +29,7 @@
         <div class="mensaje alerta" role="status">
           <strong>Estás corrigiendo un permiso rechazado.</strong>
           Motivo: {{ anterior.reason || 'sin motivo registrado' }}. Tus respuestas y tu cuadrilla ya están cargadas;
-          revisa lo señalado, mira la charla y vuelvan a firmar.
+          revisa lo señalado{{ perfil()?.charla ? ', mira la charla' : '' }} y vuelvan a firmar.
           @if (omitidosCorreccion() > 0) {
             {{ omitidosCorreccion() }}
             {{ omitidosCorreccion() === 1 ? 'integrante ya no cumple' : 'integrantes ya no cumplen' }} los requisitos y
@@ -67,7 +67,10 @@
           }
         </dl>
 
-        <p class="secundario"><a routerLink="/mis-permisos">Ver mis permisos anteriores</a></p>
+        <p class="secundario">
+          <a routerLink="/formatos">Elegir otro formato</a> ·
+          <a routerLink="/mis-permisos">Ver mis permisos anteriores</a>
+        </p>
         @if (!datos.canContinue) {
           <p class="mensaje error">
             No puedes continuar porque falta actualizar: {{ requisitosPendientes() }}. Comunícate con tu coordinadora.
@@ -127,61 +130,72 @@
 
   <!-- ═══ 3. Cuadrilla ═══ -->
   @if (etapa() === 'cuadrilla') {
-    <h1 class="paso-titulo">¿Quiénes trabajan hoy?</h1>
-    <p class="paso-ayuda">Elige a los integrantes de tu cuadrilla. Cada uno firmará su permiso antes de enviar.</p>
+    @if (maxIntegrantes() > 1) {
+      <h1 class="paso-titulo">¿Quiénes trabajan hoy?</h1>
+      <p class="paso-ayuda">Elige a los integrantes de tu cuadrilla. Cada uno firmará antes de enviar.</p>
 
-    @if (excluidos() > 0) {
-      <p class="mensaje alerta">
-        {{ excluidos() }}
-        {{ excluidos() === 1 ? 'colaborador no aparece' : 'colaboradores no aparecen' }} en la lista porque tienen
-        vencida la ARL, la seguridad social o el certificado de alturas. Avisa a tu coordinadora.
-      </p>
-    }
-
-    <div class="bloque">
-      <div class="titulo-seccion">
-        <h2>
-          Integrantes <span class="conteo">({{ integrantes().length }} de {{ maxIntegrantes }})</span>
-        </h2>
-      </div>
-
-      @if (cuadrillaCompleta()) {
-        <p class="secundario" role="status">
-          El formato admite hasta {{ maxIntegrantes }} integrantes. Quita a alguien para elegir a otra persona.
+      @if (excluidos() > 0) {
+        <p class="mensaje alerta">
+          {{ excluidos() }}
+          {{ excluidos() === 1 ? 'colaborador no aparece' : 'colaboradores no aparecen' }} en la lista porque tienen
+          vencida la ARL{{
+            perfil()?.certificadoAlturas
+              ? ', la seguridad social o el certificado de alturas'
+              : ' o la seguridad social'
+          }}. Avisa a tu coordinadora.
         </p>
       }
+    } @else {
+      <h1 class="paso-titulo">¿Quién realiza la inspección?</h1>
+      <p class="paso-ayuda">Tú diligencias y firmas este formato. Confirma tu cargo.</p>
+    }
 
-      @if (candidatos().length) {
-        <div class="casillas">
-          @for (persona of candidatos(); track persona.id) {
-            <label class="casilla">
-              <input
-                type="checkbox"
-                [checked]="estaEnCuadrilla(persona.id)"
-                [disabled]="persona.id === yoId() || (cuadrillaCompleta() && !estaEnCuadrilla(persona.id))"
-                (change)="alternarIntegrante(persona)"
-              />
-              <span>
-                {{ persona.firstName }} {{ persona.lastName }}
-                <span class="secundario">
-                  {{ persona.documentNumber }}
-                  @if (persona.id === yoId()) {
-                    · tú diligencias este permiso
-                  }
-                </span>
-              </span>
-            </label>
-          }
+    @if (maxIntegrantes() > 1) {
+      <div class="bloque">
+        <div class="titulo-seccion">
+          <h2>
+            Integrantes <span class="conteo">({{ integrantes().length }} de {{ maxIntegrantes() }})</span>
+          </h2>
         </div>
-      } @else {
-        <p class="secundario">No hay colaboradores disponibles hoy. Comunícate con tu coordinadora.</p>
-      }
-    </div>
+
+        @if (cuadrillaCompleta()) {
+          <p class="secundario" role="status">
+            El formato admite hasta {{ maxIntegrantes() }} integrantes. Quita a alguien para elegir a otra persona.
+          </p>
+        }
+
+        @if (candidatos().length) {
+          <div class="casillas">
+            @for (persona of candidatos(); track persona.id) {
+              <label class="casilla">
+                <input
+                  type="checkbox"
+                  [checked]="estaEnCuadrilla(persona.id)"
+                  [disabled]="persona.id === yoId() || (cuadrillaCompleta() && !estaEnCuadrilla(persona.id))"
+                  (change)="alternarIntegrante(persona)"
+                />
+                <span>
+                  {{ persona.firstName }} {{ persona.lastName }}
+                  <span class="secundario">
+                    {{ persona.documentNumber }}
+                    @if (persona.id === yoId()) {
+                      · tú diligencias este permiso
+                    }
+                  </span>
+                </span>
+              </label>
+            }
+          </div>
+        } @else {
+          <p class="secundario">No hay colaboradores disponibles hoy. Comunícate con tu coordinadora.</p>
+        }
+      </div>
+    }
 
     @if (integrantes().length) {
       <div class="bloque">
         <div class="titulo-seccion">
-          <h2>Cargo de cada integrante</h2>
+          <h2>{{ maxIntegrantes() > 1 ? 'Cargo de cada integrante' : 'Tu cargo' }}</h2>
         </div>
         @for (integrante of integrantes(); track integrante.candidato.id) {
           <label class="campo">
@@ -250,8 +264,8 @@
                   <button
                     type="button"
                     class="opcion"
-                    [class.negativa]="opcion === 'NO'"
-                    [class.neutra]="opcion === 'N/A'"
+                    [class.negativa]="opcion === 'NO' || opcion === 'Incorrecto'"
+                    [class.neutra]="opcion === 'N/A' || opcion === 'No aplica'"
                     [attr.aria-pressed]="valor(campo.id) === opcion"
                     (click)="elegir(campo.id, opcion)"
                   >
@@ -338,9 +352,8 @@
 
     @if (negativas().length) {
       <p class="mensaje alerta">
-        Respondiste <strong>NO</strong> en {{ negativas().length }}
-        {{ negativas().length === 1 ? 'punto' : 'puntos' }} de la lista de verificación. Coordinación lo verá al
-        revisar.
+        Respondiste <strong>NO</strong> o <strong>Incorrecto</strong> en {{ negativas().length }}
+        {{ negativas().length === 1 ? 'punto' : 'puntos' }}. Coordinación lo verá al revisar.
       </p>
     }
 
@@ -354,7 +367,7 @@
           <table class="datos">
             <tbody>
               @for (campo of bloque.campos; track campo.id) {
-                <tr [class.fila-alerta]="valor(campo.id) === 'NO'">
+                <tr [class.fila-alerta]="valor(campo.id) === 'NO' || valor(campo.id) === 'Incorrecto'">
                   <th scope="row" class="campo-nombre">{{ campo.label }}</th>
                   <td>{{ textoValor(campo.id) }}</td>
                 </tr>
@@ -441,6 +454,51 @@
               Inició a las {{ hora(resultado.startedAt) }}. La hora de finalización se registra al cerrar y el permiso
               queda completo con su documento final.
             </p>
+            @if (camposCierre().length) {
+              <form [formGroup]="respuestasCierre" class="cierre">
+                <h3>Entrega de la tarea</h3>
+                @for (campo of camposCierre(); track campo.id) {
+                  @if (campo.type === 'yes_no') {
+                    <div class="pregunta" [class.invalido]="invalidoCierre(campo)">
+                      <span class="enunciado" [id]="campo.id + '-etiqueta'">
+                        {{ campo.label }}
+                        @if (campo.required) {
+                          <span aria-hidden="true">*</span>
+                        }
+                      </span>
+                      <div class="opciones" role="group" [attr.aria-labelledby]="campo.id + '-etiqueta'">
+                        @for (opcion of ['SI', 'NO']; track opcion) {
+                          <button
+                            type="button"
+                            class="opcion"
+                            [class.negativa]="opcion === 'NO'"
+                            [attr.aria-pressed]="valorCierre(campo.id) === opcion"
+                            (click)="elegirCierre(campo.id, opcion)"
+                          >
+                            {{ textoOpcion(opcion) }}
+                          </button>
+                        }
+                      </div>
+                      @if (invalidoCierre(campo)) {
+                        <span class="error-campo">Selecciona una opción.</span>
+                      }
+                    </div>
+                  } @else {
+                    <label class="campo" [class.invalido]="invalidoCierre(campo)">
+                      <span [id]="campo.id + '-etiqueta'">{{ campo.label }}</span>
+                      @if (campo.type === 'textarea') {
+                        <textarea rows="2" [formControlName]="campo.id"></textarea>
+                      } @else {
+                        <input type="text" [formControlName]="campo.id" />
+                      }
+                      @if (invalidoCierre(campo)) {
+                        <span class="error-campo">Este campo es obligatorio.</span>
+                      }
+                    </label>
+                  }
+                }
+              </form>
+            }
             <label class="campo">
               <span>Novedades de la jornada</span>
               <textarea
@@ -450,8 +508,65 @@
                 placeholder="Opcional. Queda en el documento final."
               ></textarea>
             </label>
+            @if (firmantesCierre().length) {
+              <div class="firmas-cierre">
+                <h3>Firma de término</h3>
+                @if (firmanteCierre(); as persona) {
+                  @if (!firmasCierreCompletas()) {
+                    <p class="secundario">
+                      Firma {{ persona.firstName }} {{ persona.lastName }} ({{ indiceFirmaCierre() + 1 }} de
+                      {{ firmantesCierre().length }}). Pásale el dispositivo.
+                    </p>
+                    <canvas
+                      #lienzo
+                      class="lienzo"
+                      [class.firmado]="hayFirma()"
+                      (pointerdown)="iniciarTrazo($event)"
+                      (pointermove)="trazar($event)"
+                      (pointerup)="terminarTrazo($event)"
+                      (pointercancel)="terminarTrazo($event)"
+                    ></canvas>
+                    <div class="acciones">
+                      <button
+                        class="boton secundario compacto"
+                        type="button"
+                        (click)="limpiarFirma()"
+                        [disabled]="!hayFirma()"
+                      >
+                        Borrar
+                      </button>
+                      <button
+                        class="boton compacto"
+                        type="button"
+                        (click)="confirmarFirmaCierre()"
+                        [disabled]="!hayFirma()"
+                      >
+                        Guardar firma
+                      </button>
+                    </div>
+                  }
+                }
+                @if (firmasCierreCompletas()) {
+                  <p class="secundario" role="status">
+                    {{
+                      firmantesCierre().length === 1
+                        ? 'Firma de término registrada.'
+                        : 'Firmaron los ' + firmantesCierre().length + ' integrantes.'
+                    }}
+                    <button class="boton secundario compacto" type="button" (click)="repetirFirmasCierre()">
+                      Volver a firmar
+                    </button>
+                  </p>
+                }
+              </div>
+            }
             <div class="acciones">
-              <button class="boton" type="button" [disabled]="cerrando()" (click)="cerrarJornada(resultado.id)">
+              <button
+                class="boton"
+                type="button"
+                [disabled]="cerrando() || !firmasCierreCompletas()"
+                (click)="cerrarJornada(resultado.id)"
+              >
                 {{ cerrando() ? 'Cerrando…' : 'Terminamos: cerrar jornada' }}
               </button>
             </div>
@@ -462,10 +577,16 @@
           <span class="simbolo" aria-hidden="true"
             ><svg viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5" /></svg
           ></span>
-          <h2>Jornada cerrada</h2>
-          <p>
-            De {{ hora(resultado.startedAt) }} a {{ hora(resultado.closedAt) }}. El permiso quedó completo y archivado.
-          </p>
+          @if (perfil()?.jornada === false) {
+            <h2>Formato aprobado</h2>
+            <p>Coordinación lo aprobó y quedó archivado con su documento final.</p>
+          } @else {
+            <h2>Jornada cerrada</h2>
+            <p>
+              De {{ hora(resultado.startedAt) }} a {{ hora(resultado.closedAt) }}. El permiso quedó completo y
+              archivado.
+            </p>
+          }
         </div>
       } @else if (resultado.status === 'REJECTED') {
         <div class="resultado rechazado">
@@ -496,7 +617,13 @@
               <path d="M12 8v4.5l3 2" /></svg
           ></span>
           <h2>Enviado. Espera la autorización</h2>
-          <p>Tu coordinadora debe revisarlo. No inicies labores hasta ver la luz verde.</p>
+          <p>
+            {{
+              perfil()?.jornada === false
+                ? 'Tu coordinadora debe revisarlo. No uses la escalera hasta que sea aprobada.'
+                : 'Tu coordinadora debe revisarlo. No inicies labores hasta ver la luz verde.'
+            }}
+          </p>
         </div>
       }
 
@@ -508,7 +635,10 @@
       @if (resultado.status === 'PENDING_APPROVAL') {
         <p class="secundario centrado">El estado se actualiza solo cada 20 segundos.</p>
       }
-      <p class="centrado"><a routerLink="/mis-permisos">Ver mis permisos anteriores</a></p>
+      <p class="centrado">
+        <a routerLink="/formatos">Elegir otro formato</a> ·
+        <a routerLink="/mis-permisos">Ver mis permisos anteriores</a>
+      </p>
     }
   }
 </main>

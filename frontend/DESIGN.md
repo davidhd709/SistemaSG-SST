@@ -243,11 +243,11 @@ Tres familias de tres tonos (texto, fondo, borde): `ok`, `alerta`, `error`. Se u
 ## Layout
 
 - **Contenedores:** consola interna a 1200px máx. con 24px laterales (16px bajo 640px); flujo del colaborador a 760px con 20px laterales y 128px de reserva inferior para la barra de acción fija; acceso a 1040px.
-- **Bandas a sangre:** la banda de área vive dentro del contenedor pero se extiende a todo el ancho con `box-shadow: 0 0 0 100vmax` + `clip-path: inset(0 -100vmax)`; el `body` recorta con `overflow-x: clip`.
+- **Bandas a sangre:** la banda de área vive dentro del contenedor pero se extiende a todo el ancho con `box-shadow: 0 0 0 100vmax` + `clip-path: inset(0 -100vmax)`; el recorte está en `sg-root` (`overflow-x: clip`), no en `body`: allí se propagaba a la ventana y el celular alejaba la página.
 - **Ritmo:** pasos de 4/8/16/24/32px; separaciones de campos 18px, entre bloques 22px, márgenes de sección 24–32px.
 - **Acceso (primer viewport):** de 860px en adelante, tarjeta partida (panel marino 0.95fr con logo completo, titular y lista de garantías | formulario blanco 1fr, contenido a 400px). Bajo 859px, la banda marina lleva solo el logo y la tarjeta del formulario la monta con −60px, acción primaria a todo el ancho.
 - **Portada:** banda marina con escudo; dos "puertas" (tarjetas) que suben −72 a −96px sobre la banda, en dos columnas desde 680px.
-- **Celular (≤640px):** la banda de área apila texto y pestañas, las pestañas se desplazan en horizontal sin partirse; la franja de indicadores pasa a 2 columnas y el último segmento impar ocupa la fila completa; las tablas se convierten en fichas apiladas (encabezado oculto accesible, celdas en bloque, acción de fila a todo el ancho).
+- **Celular (≤640px), comportamiento de app instalada:** la cabecera es una sola barra (escudo + acciones; bajo 480px se oculta el sello y "Mi cuenta" queda como ícono), con objetivos de 44px y `safe-area-inset-top`; la banda de área apila texto y pestañas, las pestañas se desplazan en horizontal sin partirse; la franja de indicadores pasa a 2 columnas y el último segmento impar ocupa la fila completa; las tablas se convierten en fichas apiladas: la primera celda es el título, cada dato lleva su rótulo (`data-label` puesto por `core/tablas-en-fichas.ts`, rótulo de dato a la izquierda y valor a la derecha) y la acción de fila va a todo el ancho; las acciones del contenido ocupan el ancho para el pulgar.
 - **Rejilla de formulario:** una columna; `.dos` pasa a dos columnas desde 640px.
 
 ## Elevation & Depth
@@ -282,8 +282,8 @@ Sólidos, táctiles y con peso: Montserrat 700, sombra de color propio.
 - **Hover / Focus:** fondo `azul-oscuro`, sube 1px y la sombra crece; `:active` baja 1px con sombra interior. Foco: contorno 3px `azul` a 2px (sobre marino, `teal-claro`).
 - **Secundario:** blanco con `borde-fuerte`; hover borde `marino-600`, texto marino. Sobre bandas marinas se vuelve vidrio: blanco al 6 % con borde blanco al 22 %.
 - **Peligro:** `error` con borde `#8f1c13`.
-- **Compacto:** 40px, radio 10px, 0.875rem (36px en la cabecera móvil).
-- **Bloque:** ancho completo (acción primaria en móvil y en barra al pie).
+- **Compacto:** 40px, radio 10px, 0.875rem (44px en la cabecera móvil y en las fichas, por el pulgar).
+- **Completo** (`.boton.completo`): ancho completo (acción primaria en móvil y en barra al pie). No usar `.bloque` en un botón: es la tarjeta blanca y le tapa el color.
 
 ### Chips
 

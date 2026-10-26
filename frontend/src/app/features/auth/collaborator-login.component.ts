@@ -83,7 +83,7 @@ import { AuthSessionService } from '../../core/auth-session.service';
             <p class="mensaje error" role="alert">{{ error() }}</p>
           }
 
-          <button class="boton bloque" [disabled]="form.invalid || loading()">
+          <button class="boton completo" [disabled]="form.invalid || loading()">
             {{ loading() ? 'Validando…' : 'Ingresar' }}
           </button>
         </form>
@@ -121,7 +121,7 @@ export class CollaboratorLoginComponent {
         next: (result) => {
           this.session.setSession(result.accessToken, 'COLLABORATOR');
           this.loading.set(false);
-          void this.router.navigateByUrl('/formulario/alturas');
+          void this.router.navigateByUrl('/formatos');
         },
         error: () => {
           this.error.set('Documento o PIN incorrecto. Verifica los datos e intenta de nuevo.');

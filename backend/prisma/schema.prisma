@@ -56,8 +56,14 @@ model User {
   forcePasswordChange    Boolean                 @default(false)
   failedLoginAttempts    Int                     @default(0)
   lockedUntil            DateTime?
+  // Nombre y firma que Coordinación registra una sola vez y que se estampan
+  // en los formatos que aprueba. Cambiarla no altera aprobaciones pasadas.
+  fullName               String?
+  signatureFileId        String?                 @unique @db.Uuid
+  signatureUpdatedAt     DateTime?
   createdAt              DateTime                @default(now())
   updatedAt              DateTime                @updatedAt
+  signatureFile          FileObject?             @relation("UserSignature", fields: [signatureFileId], references: [id], onDelete: Restrict)
   roles                  UserRole[]
   refreshSessions        RefreshSession[]
   auditEvents            AuditEvent[]            @relation("AuditActorUser")
@@ -210,6 +216,8 @@ model FileObject {
   payrolls           SocialSecurityPayroll[] @relation("PayrollFile")
   heightCertificates HeightCertificate[]     @relation("HeightCertificateFile")
   finalPdfFor        FormSubmission?         @relation("SubmissionPdf")
+  userSignature      User?                   @relation("UserSignature")
+  approvalSignatures Approval[]              @relation("ApprovalSignature")
 
   @@map("file_objects")
 }
@@ -310,17 +318,21 @@ model FormSubmission {
 /// de cada persona en el momento del envío: dentro de seis meses hay que poder
 /// demostrar que quien subió estaba al día, no solo el oficial.
 model SubmissionMember {
-  id             String         @id @default(uuid()) @db.Uuid
-  submissionId   String         @db.Uuid
-  collaboratorId String         @db.Uuid
-  jobPositionId  String?        @db.Uuid
-  isLead         Boolean        @default(false)
-  complianceJson Json
-  createdAt      DateTime       @default(now())
-  submission     FormSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
-  collaborator   Collaborator   @relation(fields: [collaboratorId], references: [id], onDelete: Restrict)
-  jobPosition    JobPosition?   @relation(fields: [jobPositionId], references: [id], onDelete: Restrict)
-  signature      Signature?
+  id                 String         @id @default(uuid()) @db.Uuid
+  submissionId       String         @db.Uuid
+  collaboratorId     String         @db.Uuid
+  jobPositionId      String?        @db.Uuid
+  isLead             Boolean        @default(false)
+  complianceJson     Json
+  createdAt          DateTime       @default(now())
+  submission         FormSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  collaborator       Collaborator   @relation(fields: [collaboratorId], references: [id], onDelete: Restrict)
+  jobPosition        JobPosition?   @relation(fields: [jobPositionId], references: [id], onDelete: Restrict)
+  signature          Signature?
+  // Firma de término: algunos formatos exigen que cada integrante firme
+  // también al cerrar la jornada.
+  closingSignatureId String?        @unique @db.Uuid
+  closingSignature   Signature?     @relation("MemberClosingSignature", fields: [closingSignatureId], references: [id], onDelete: Restrict)
 
   @@unique([submissionId, collaboratorId])
   @@index([collaboratorId])
@@ -328,14 +340,19 @@ model SubmissionMember {
 }
 
 model Approval {
-  id           String           @id @default(uuid()) @db.Uuid
-  submissionId String           @unique @db.Uuid
-  decision     ApprovalDecision
-  decidedById  String           @db.Uuid
-  decidedAt    DateTime         @default(now())
-  reason       String?
-  submission   FormSubmission   @relation(fields: [submissionId], references: [id], onDelete: Restrict)
-  decidedBy    User             @relation("ApprovalDecidedBy", fields: [decidedById], references: [id], onDelete: Restrict)
+  id              String           @id @default(uuid()) @db.Uuid
+  submissionId    String           @unique @db.Uuid
+  decision        ApprovalDecision
+  decidedById     String           @db.Uuid
+  decidedAt       DateTime         @default(now())
+  reason          String?
+  // Nombre y firma de quien aprobó, fijados al decidir: el documento final
+  // muestra los de ese momento aunque Coordinación cambie su firma después.
+  signerName      String?
+  signatureFileId String?          @db.Uuid
+  submission      FormSubmission   @relation(fields: [submissionId], references: [id], onDelete: Restrict)
+  decidedBy       User             @relation("ApprovalDecidedBy", fields: [decidedById], references: [id], onDelete: Restrict)
+  signatureFile   FileObject?      @relation("ApprovalSignature", fields: [signatureFileId], references: [id], onDelete: Restrict)
 
   @@index([decidedById, decidedAt])
   @@map("approvals")
@@ -355,6 +372,7 @@ model Signature {
   submission   FormSubmission    @relation(fields: [submissionId], references: [id], onDelete: Restrict)
   member       SubmissionMember? @relation(fields: [memberId], references: [id], onDelete: Cascade)
   file         FileObject        @relation(fields: [fileId], references: [id], onDelete: Restrict)
+  closingFor   SubmissionMember? @relation("MemberClosingSignature")
 
   @@index([submissionId])
   @@map("signatures")

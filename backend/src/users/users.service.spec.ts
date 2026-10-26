@@ -21,7 +21,7 @@ describe('UsersService.changeOwnPassword (AUD-012)', () => {
       user: { findUnique: jest.fn().mockResolvedValue({ id: 'user-1', status: 'ACTIVE', passwordHash }) },
       $transaction: jest.fn((callback: (client: typeof tx) => Promise<unknown>) => callback(tx)),
     };
-    return { service: new UsersService(prisma as never), tx, prisma };
+    return { service: new UsersService(prisma as never, {} as never), tx, prisma };
   }
 
   it('cambia su propia contraseña, desactiva el cambio forzado, revoca sesiones y audita sin guardar claves', async () => {
@@ -115,7 +115,7 @@ describe('UsersService.changeOwnPassword (AUD-012)', () => {
         },
         $transaction: jest.fn((callback: (client: typeof tx) => Promise<unknown>) => callback(tx)),
       };
-      return { service: new UsersService(prisma as never), tx };
+      return { service: new UsersService(prisma as never, {} as never), tx };
     }
 
     it('rechaza inactivar o retirar el rol ADMIN cuando es el último administrador activo', async () => {
@@ -160,7 +160,7 @@ describe('UsersService.changeOwnPassword (AUD-012)', () => {
       role: { findMany: jest.fn() },
       $transaction: jest.fn((callback: (client: typeof tx) => Promise<unknown>) => callback(tx)),
     };
-    const service = new UsersService(prisma as never);
+    const service = new UsersService(prisma as never, {} as never);
 
     await service.update('user-2', { password: 'Temporal-segura-2026' }, request as never);
 

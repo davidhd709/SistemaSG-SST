@@ -30,7 +30,7 @@ type Afiliacion = {
 
 type Envio = {
   id: string;
-  status: 'DRAFT' | 'PENDING_APPROVAL' | 'APPROVED' | 'REJECTED';
+  status: 'DRAFT' | 'PENDING_APPROVAL' | 'APPROVED' | 'CLOSED' | 'REJECTED' | 'EXPIRED';
   submittedAt: string | null;
   safetyTalkConfirmedAt: string | null;
   arlSnapshotJson: { providerName?: string; endDate?: string; status?: string };
@@ -58,7 +58,9 @@ const ESTADOS: Record<string, string> = {
   DRAFT: 'Borrador',
   PENDING_APPROVAL: 'Pendiente de aprobación',
   APPROVED: 'Autorizado',
+  CLOSED: 'Cerrado',
   REJECTED: 'Rechazado',
+  EXPIRED: 'Vencido sin iniciar',
 };
 
 /**
@@ -558,14 +560,14 @@ export class LegalSearchComponent {
   }
 
   claseExpediente(status: string): string {
-    if (status === 'APPROVED') return 'expediente autorizado';
+    if (status === 'APPROVED' || status === 'CLOSED') return 'expediente autorizado';
     if (status === 'REJECTED') return 'expediente rechazado';
     if (status === 'PENDING_APPROVAL') return 'expediente pendiente';
     return 'expediente';
   }
 
   claseEstado(status: string): string {
-    if (status === 'APPROVED') return 'vigente';
+    if (status === 'APPROVED' || status === 'CLOSED') return 'vigente';
     if (status === 'REJECTED') return 'vencida';
     if (status === 'PENDING_APPROVAL') return 'por-vencer';
     return 'neutro';

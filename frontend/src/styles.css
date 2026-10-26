@@ -88,14 +88,34 @@
 
 body {
   margin: 0;
-  /* Las bandas marinas se extienden a todo el ancho desde su contenedor. */
-  overflow-x: clip;
+  /* Al tocar, la respuesta la dan los estados propios del control, no el
+     recuadro gris del navegador. */
+  -webkit-tap-highlight-color: transparent;
   background: var(--fondo);
   color: var(--tinta);
   line-height: 1.55;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
   caret-color: var(--azul);
+}
+
+button,
+a,
+input,
+select,
+textarea,
+label {
+  touch-action: manipulation;
+}
+
+/*
+ * Las bandas marinas se extienden a todo el ancho desde su contenedor y se
+ * recortan aquí. En `body` el recorte se propagaba a la ventana y el navegador
+ * del celular seguía contando ese ancho: la página se veía alejada.
+ */
+sg-root {
+  display: block;
+  overflow-x: clip;
 }
 
 ::selection {
@@ -196,7 +216,7 @@ a:hover {
   display: grid;
   min-height: 100dvh;
   align-content: center;
-  padding: 24px 20px 40px;
+  padding: calc(24px + env(safe-area-inset-top)) 20px calc(40px + env(safe-area-inset-bottom));
   background: var(--fondo);
 }
 .pantalla > * {
@@ -521,7 +541,8 @@ input.numerico {
   transform: none;
   cursor: not-allowed;
 }
-.boton.bloque {
+/* Botón a todo el ancho. No usa `.bloque`, que es la tarjeta blanca y le taparía el color. */
+.boton.completo {
   width: 100%;
 }
 .boton.secundario {
@@ -628,6 +649,9 @@ input.numerico {
   background: var(--marino-900);
   color: #fff;
   box-shadow: inset 0 -1px 0 rgb(255 255 255 / 0.08);
+}
+.app-cabecera {
+  padding-top: env(safe-area-inset-top);
 }
 .app-cabecera .fila {
   display: flex;
@@ -1110,6 +1134,9 @@ table.datos .fila-alerta,
   color: #fff;
   box-shadow: 0 8px 20px -10px rgb(8 33 58 / 0.6);
 }
+.paso-cabecera {
+  padding-top: env(safe-area-inset-top);
+}
 .paso-cabecera .fila {
   display: flex;
   align-items: center;
@@ -1479,7 +1506,7 @@ table.datos .fila-alerta,
 /* ── Celular ───────────────────────────────────────────────── */
 @media (max-width: 640px) {
   .pantalla {
-    padding: 20px 16px 32px;
+    padding: calc(20px + env(safe-area-inset-top)) 16px calc(32px + env(safe-area-inset-bottom));
   }
   .tarjeta {
     padding: 26px 20px;
@@ -1531,8 +1558,9 @@ table.datos .fila-alerta,
   .modulos {
     margin-top: -16px;
   }
-  .app-cabecera .boton.compacto {
-    min-height: 36px;
+  .app-cabecera .boton.compacto,
+  .paso-cabecera .boton.compacto {
+    min-height: 44px;
     padding: 5px 12px;
     font-size: 0.8125rem;
   }
@@ -1570,5 +1598,64 @@ table.datos .fila-alerta,
   table.datos td > .editar-cuenta {
     width: 100%;
     margin-top: 8px;
+  }
+  /* El encabezado oculto vuelve como rótulo de cada dato (core/tablas-en-fichas.ts):
+     sin él, "No" o "5" no dicen a qué columna pertenecen. */
+  table.datos td[data-label] {
+    display: grid;
+    grid-template-columns: minmax(96px, 38%) minmax(0, 1fr);
+    gap: 2px 12px;
+    align-items: baseline;
+    padding: 5px 0;
+  }
+  table.datos td[data-label]::before {
+    content: attr(data-label);
+    color: var(--tinta-suave);
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    line-height: 1.35;
+    text-transform: uppercase;
+  }
+  /* Todo el contenido va en la columna del valor, aunque tenga varias líneas. */
+  table.datos td[data-label] > * {
+    grid-column: 2;
+    min-width: 0;
+    justify-self: start;
+  }
+  table.datos .boton.compacto {
+    min-height: 44px;
+  }
+  /* La primera celda identifica la fila: es el título de la ficha. */
+  table.datos td:first-child {
+    padding-bottom: 6px;
+  }
+
+  /* Cabecera de app en una sola barra, como en una app instalada: el escudo
+     identifica y las acciones quedan al alcance del pulgar. */
+  .app-cabecera .fila {
+    flex-wrap: nowrap;
+    gap: 10px;
+  }
+  .app-cabecera .marca {
+    flex: none;
+  }
+  .app-cabecera .acciones,
+  .app-cabecera sg-logout-button {
+    flex-wrap: nowrap;
+    gap: 6px;
+  }
+
+  /* Las acciones del contenido se toman con el pulgar: ocupan el ancho. */
+  .app-contenido .acciones > .boton:not(.compacto) {
+    flex: 1 1 auto;
+  }
+}
+
+@media (max-width: 479px) {
+  /* En los celulares angostos el escudo basta como marca; el nombre del área
+     ya está en la banda. */
+  .app-cabecera .marca .sello {
+    display: none;
   }
 }

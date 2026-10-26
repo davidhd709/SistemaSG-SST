@@ -14,11 +14,18 @@ export const routes: Routes = [
   { path: 'administracion', component: AdminLoginComponent, pathMatch: 'full', title: 'Acceso administrativo' },
 
   {
-    path: 'formulario/alturas',
+    path: 'formatos',
+    loadComponent: () => import('./features/forms/form-picker.component').then((m) => m.FormPickerComponent),
+    canActivate: [sesionRequerida('COLLABORATOR')],
+    title: 'Formatos',
+  },
+  {
+    // alturas, ats, electrico o escalera: el mismo flujo, guiado por el perfil del formato.
+    path: 'formulario/:formato',
     loadComponent: () =>
       import('./features/forms/work-at-height-form.component').then((m) => m.WorkAtHeightFormComponent),
     canActivate: [sesionRequerida('COLLABORATOR')],
-    title: 'Permiso de trabajo en altura',
+    title: 'Formato SG-SST',
   },
   {
     path: 'mis-permisos',
@@ -38,6 +45,12 @@ export const routes: Routes = [
     loadComponent: () => import('./features/coordination/coordination.component').then((m) => m.CoordinationComponent),
     canActivate: interna,
     title: 'Coordinación',
+  },
+  {
+    path: 'administracion/mi-firma',
+    loadComponent: () => import('./features/auth/my-signature.component').then((m) => m.MySignatureComponent),
+    canActivate: interna,
+    title: 'Mi firma',
   },
   {
     path: 'administracion/mi-contrasena',

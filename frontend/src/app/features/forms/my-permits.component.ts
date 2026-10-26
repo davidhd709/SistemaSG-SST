@@ -3,6 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { RouterLink } from '@angular/router';
 import { fechaCalendario } from '../../core/fechas';
 import { LogoutButtonComponent } from '../../core/logout-button.component';
+import { rutaFormato } from './formatos';
 
 type EstadoPermiso = 'PENDING_APPROVAL' | 'APPROVED' | 'CLOSED' | 'REJECTED' | 'EXPIRED';
 
@@ -49,7 +50,7 @@ type Pagina = { items: Permiso[]; page: number; totalPages: number; total: numbe
 
     <main class="flujo">
       <div class="acciones">
-        <a class="boton secundario compacto" routerLink="/formulario/alturas">Volver al permiso de hoy</a>
+        <a class="boton secundario compacto" routerLink="/formatos">Volver a los formatos</a>
       </div>
 
       @if (error()) {
@@ -88,7 +89,7 @@ type Pagina = { items: Permiso[]; page: number; totalPages: number; total: numbe
 
           <div class="acciones">
             @if (permiso.correctable) {
-              <a class="boton compacto" routerLink="/formulario/alturas" [queryParams]="{ corregir: permiso.id }">
+              <a class="boton compacto" [routerLink]="ruta(permiso)" [queryParams]="{ corregir: permiso.id }">
                 Corregir y reenviar
               </a>
             }
@@ -168,7 +169,7 @@ export class MyPermitsComponent {
         const url = URL.createObjectURL(blob);
         const enlace = document.createElement('a');
         enlace.href = url;
-        enlace.download = `permiso-${(permiso.workDate || permiso.submittedAt || '').slice(0, 10)}.pdf`;
+        enlace.download = `${permiso.form.code}-${(permiso.workDate || permiso.submittedAt || '').slice(0, 10)}.pdf`;
         enlace.click();
         URL.revokeObjectURL(url);
         this.descargando.set(null);
@@ -178,6 +179,10 @@ export class MyPermitsComponent {
         this.descargando.set(null);
       },
     });
+  }
+
+  ruta(permiso: Permiso): string {
+    return rutaFormato(permiso.form.code);
   }
 
   cuadrilla(permiso: Permiso): string {

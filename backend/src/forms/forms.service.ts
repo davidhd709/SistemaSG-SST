@@ -11,6 +11,7 @@ import {
   isAutoFieldSource,
   isReservedNonAutomaticFieldId,
   isReservedSystemFieldId,
+  requeridoSi,
 } from './form-schema-policy';
 import { compatibilidadConPdf, vinculosDelPdf, type CampoEsquema, type Compatibilidad } from './pdf-compatibility';
 
@@ -26,6 +27,8 @@ type FormSchema = {
     source?: unknown;
     section?: unknown;
     maxLength?: unknown;
+    stage?: unknown;
+    requiredWhen?: unknown;
   }>;
 };
 
@@ -256,7 +259,9 @@ export class FormsService {
         !Number.isInteger(field.order) ||
         (field.section !== undefined && (typeof field.section !== 'string' || field.section.length > 200)) ||
         (field.maxLength !== undefined &&
-          (typeof field.maxLength !== 'number' || !Number.isInteger(field.maxLength) || field.maxLength < 1))
+          (typeof field.maxLength !== 'number' || !Number.isInteger(field.maxLength) || field.maxLength < 1)) ||
+        (field.stage !== undefined && field.stage !== 'open' && field.stage !== 'close') ||
+        (field.requiredWhen !== undefined && !requeridoSi(field.requiredWhen))
       )
         throw new BadRequestException(`Definición inválida del campo ${field.id}.`);
       if (isAuto && (!isAutoFieldSource(field.source) || isReservedNonAutomaticFieldId(field.id))) {

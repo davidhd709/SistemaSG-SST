@@ -18,8 +18,8 @@ function dtoWithMembers(count: number): SubmitFormDto {
 }
 
 describe('SubmitFormDto — tamaño de cuadrilla (TEC-008)', () => {
-  it('admite tantos integrantes como filas tiene el formato HSE-FO-016', async () => {
-    expect(MAX_CREW_SIZE).toBe(5);
+  it('admite tantos integrantes como filas tiene el formato más grande (ATS HSE-FO-018)', async () => {
+    expect(MAX_CREW_SIZE).toBe(12);
     expect(await validate(dtoWithMembers(MAX_CREW_SIZE))).toHaveLength(0);
   });
 
@@ -27,7 +27,7 @@ describe('SubmitFormDto — tamaño de cuadrilla (TEC-008)', () => {
     const errors = await validate(dtoWithMembers(MAX_CREW_SIZE + 1));
     expect(errors.map((error) => error.property)).toEqual(['members']);
     expect(Object.values(errors[0].constraints ?? {})).toEqual([
-      'El formato HSE-FO-016 admite hasta 5 integrantes por permiso.',
+      'Los formatos admiten hasta 12 integrantes por envío.',
     ]);
   });
 });

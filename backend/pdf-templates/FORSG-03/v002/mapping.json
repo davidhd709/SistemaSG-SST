@@ -1,0 +1,1744 @@
+{
+  "meta": {
+    "formCode": "FORSG-03",
+    "templateVersion": "v002",
+    "pageCount": 1,
+    "pageSize": {
+      "width": 595,
+      "height": 842
+    },
+    "orientation": "portrait",
+    "templateSha256": "79358915a31130f4996a43a69b601fb5af82a7cd1797a6b6659c2c3f4f2efbd0",
+    "_calibration": "v002 — coordenadas medidas sobre el PDF oficial FORSG-03 (texto y líneas vectoriales)."
+  },
+  "fields": {
+    "trabajo": {
+      "type": "TEXT",
+      "page": 0,
+      "x": 70,
+      "y": 741.3,
+      "width": 255,
+      "height": 5.5,
+      "fontSize": 5.5,
+      "minFontSize": 4,
+      "align": "left",
+      "overflow": "truncate",
+      "maxLines": 1
+    },
+    "ubicacion": {
+      "type": "TEXT",
+      "page": 0,
+      "x": 74,
+      "y": 730.5,
+      "width": 251,
+      "height": 5.5,
+      "fontSize": 5.5,
+      "minFontSize": 4,
+      "align": "left",
+      "overflow": "truncate",
+      "maxLines": 1
+    },
+    "actividad": {
+      "type": "TEXT",
+      "page": 0,
+      "x": 73,
+      "y": 720.7,
+      "width": 252,
+      "height": 5.5,
+      "fontSize": 5.5,
+      "minFontSize": 4,
+      "align": "left",
+      "overflow": "truncate",
+      "maxLines": 1
+    },
+    "fecha_trabajo": {
+      "type": "DATE",
+      "page": 0,
+      "x": 401,
+      "y": 741.3,
+      "width": 135,
+      "height": 5.5,
+      "fontSize": 5.5,
+      "minFontSize": 4,
+      "align": "left",
+      "overflow": "truncate",
+      "maxLines": 1
+    },
+    "hora_inicio": {
+      "type": "TIME",
+      "page": 0,
+      "x": 421,
+      "y": 730.5,
+      "width": 115,
+      "height": 5.5,
+      "fontSize": 5.5,
+      "minFontSize": 4,
+      "align": "left",
+      "overflow": "truncate",
+      "maxLines": 1
+    },
+    "hora_fin": {
+      "type": "TIME",
+      "page": 0,
+      "x": 421,
+      "y": 720.7,
+      "width": 115,
+      "height": 5.5,
+      "fontSize": 5.5,
+      "minFontSize": 4,
+      "align": "left",
+      "overflow": "truncate",
+      "maxLines": 1
+    },
+    "verif_d01_correcto": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 351.4,
+      "y": 627.2,
+      "size": 6.5,
+      "mark": "√",
+      "checkedWhen": {
+        "field": "verif_d01",
+        "equals": "Correcto"
+      }
+    },
+    "verif_d01_incorrecto": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 352.4,
+      "y": 627.7,
+      "size": 6.5,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "verif_d01",
+        "equals": "Incorrecto"
+      }
+    },
+    "verif_d01_na": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 350.4,
+      "y": 627.7,
+      "size": 6.5,
+      "mark": "NA",
+      "checkedWhen": {
+        "field": "verif_d01",
+        "equals": "No aplica"
+      }
+    },
+    "verif_d01_obs": {
+      "type": "TEXT",
+      "page": 0,
+      "x": 381,
+      "y": 627.9,
+      "width": 150,
+      "height": 5.4,
+      "fontSize": 5,
+      "minFontSize": 4,
+      "align": "left",
+      "overflow": "truncate",
+      "maxLines": 1
+    },
+    "verif_d02_correcto": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 351.4,
+      "y": 616.4,
+      "size": 6.5,
+      "mark": "√",
+      "checkedWhen": {
+        "field": "verif_d02",
+        "equals": "Correcto"
+      }
+    },
+    "verif_d02_incorrecto": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 352.4,
+      "y": 616.8,
+      "size": 6.5,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "verif_d02",
+        "equals": "Incorrecto"
+      }
+    },
+    "verif_d02_na": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 350.4,
+      "y": 616.8,
+      "size": 6.5,
+      "mark": "NA",
+      "checkedWhen": {
+        "field": "verif_d02",
+        "equals": "No aplica"
+      }
+    },
+    "verif_d02_obs": {
+      "type": "TEXT",
+      "page": 0,
+      "x": 381,
+      "y": 617.1,
+      "width": 150,
+      "height": 5.4,
+      "fontSize": 5,
+      "minFontSize": 4,
+      "align": "left",
+      "overflow": "truncate",
+      "maxLines": 1
+    },
+    "verif_d03_correcto": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 351.4,
+      "y": 605.5,
+      "size": 6.5,
+      "mark": "√",
+      "checkedWhen": {
+        "field": "verif_d03",
+        "equals": "Correcto"
+      }
+    },
+    "verif_d03_incorrecto": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 352.4,
+      "y": 606,
+      "size": 6.5,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "verif_d03",
+        "equals": "Incorrecto"
+      }
+    },
+    "verif_d03_na": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 350.4,
+      "y": 606,
+      "size": 6.5,
+      "mark": "NA",
+      "checkedWhen": {
+        "field": "verif_d03",
+        "equals": "No aplica"
+      }
+    },
+    "verif_d03_obs": {
+      "type": "TEXT",
+      "page": 0,
+      "x": 381,
+      "y": 606.3,
+      "width": 150,
+      "height": 5.4,
+      "fontSize": 5,
+      "minFontSize": 4,
+      "align": "left",
+      "overflow": "truncate",
+      "maxLines": 1
+    },
+    "verif_d04_correcto": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 351.4,
+      "y": 594.6,
+      "size": 6.5,
+      "mark": "√",
+      "checkedWhen": {
+        "field": "verif_d04",
+        "equals": "Correcto"
+      }
+    },
+    "verif_d04_incorrecto": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 352.4,
+      "y": 595.1,
+      "size": 6.5,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "verif_d04",
+        "equals": "Incorrecto"
+      }
+    },
+    "verif_d04_na": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 350.4,
+      "y": 595.1,
+      "size": 6.5,
+      "mark": "NA",
+      "checkedWhen": {
+        "field": "verif_d04",
+        "equals": "No aplica"
+      }
+    },
+    "verif_d04_obs": {
+      "type": "TEXT",
+      "page": 0,
+      "x": 381,
+      "y": 595.3,
+      "width": 150,
+      "height": 5.4,
+      "fontSize": 5,
+      "minFontSize": 4,
+      "align": "left",
+      "overflow": "truncate",
+      "maxLines": 1
+    },
+    "verif_d05_correcto": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 351.4,
+      "y": 583.7,
+      "size": 6.5,
+      "mark": "√",
+      "checkedWhen": {
+        "field": "verif_d05",
+        "equals": "Correcto"
+      }
+    },
+    "verif_d05_incorrecto": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 352.4,
+      "y": 584.2,
+      "size": 6.5,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "verif_d05",
+        "equals": "Incorrecto"
+      }
+    },
+    "verif_d05_na": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 350.4,
+      "y": 584.2,
+      "size": 6.5,
+      "mark": "NA",
+      "checkedWhen": {
+        "field": "verif_d05",
+        "equals": "No aplica"
+      }
+    },
+    "verif_d05_obs": {
+      "type": "TEXT",
+      "page": 0,
+      "x": 381,
+      "y": 584.4,
+      "width": 150,
+      "height": 5.4,
+      "fontSize": 5,
+      "minFontSize": 4,
+      "align": "left",
+      "overflow": "truncate",
+      "maxLines": 1
+    },
+    "verif_d06_correcto": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 351.4,
+      "y": 572.9,
+      "size": 6.5,
+      "mark": "√",
+      "checkedWhen": {
+        "field": "verif_d06",
+        "equals": "Correcto"
+      }
+    },
+    "verif_d06_incorrecto": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 352.4,
+      "y": 573.3,
+      "size": 6.5,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "verif_d06",
+        "equals": "Incorrecto"
+      }
+    },
+    "verif_d06_na": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 350.4,
+      "y": 573.3,
+      "size": 6.5,
+      "mark": "NA",
+      "checkedWhen": {
+        "field": "verif_d06",
+        "equals": "No aplica"
+      }
+    },
+    "verif_d06_obs": {
+      "type": "TEXT",
+      "page": 0,
+      "x": 381,
+      "y": 573.6,
+      "width": 150,
+      "height": 5.4,
+      "fontSize": 5,
+      "minFontSize": 4,
+      "align": "left",
+      "overflow": "truncate",
+      "maxLines": 1
+    },
+    "verif_d07_correcto": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 351.4,
+      "y": 562,
+      "size": 6.5,
+      "mark": "√",
+      "checkedWhen": {
+        "field": "verif_d07",
+        "equals": "Correcto"
+      }
+    },
+    "verif_d07_incorrecto": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 352.4,
+      "y": 562.5,
+      "size": 6.5,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "verif_d07",
+        "equals": "Incorrecto"
+      }
+    },
+    "verif_d07_na": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 350.4,
+      "y": 562.5,
+      "size": 6.5,
+      "mark": "NA",
+      "checkedWhen": {
+        "field": "verif_d07",
+        "equals": "No aplica"
+      }
+    },
+    "verif_d07_obs": {
+      "type": "TEXT",
+      "page": 0,
+      "x": 381,
+      "y": 562.8,
+      "width": 150,
+      "height": 5.4,
+      "fontSize": 5,
+      "minFontSize": 4,
+      "align": "left",
+      "overflow": "truncate",
+      "maxLines": 1
+    },
+    "verif_d08_correcto": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 351.4,
+      "y": 551.1,
+      "size": 6.5,
+      "mark": "√",
+      "checkedWhen": {
+        "field": "verif_d08",
+        "equals": "Correcto"
+      }
+    },
+    "verif_d08_incorrecto": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 352.4,
+      "y": 551.6,
+      "size": 6.5,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "verif_d08",
+        "equals": "Incorrecto"
+      }
+    },
+    "verif_d08_na": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 350.4,
+      "y": 551.6,
+      "size": 6.5,
+      "mark": "NA",
+      "checkedWhen": {
+        "field": "verif_d08",
+        "equals": "No aplica"
+      }
+    },
+    "verif_d08_obs": {
+      "type": "TEXT",
+      "page": 0,
+      "x": 381,
+      "y": 551.8,
+      "width": 150,
+      "height": 5.4,
+      "fontSize": 5,
+      "minFontSize": 4,
+      "align": "left",
+      "overflow": "truncate",
+      "maxLines": 1
+    },
+    "verif_d09_correcto": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 351.4,
+      "y": 540.2,
+      "size": 6.5,
+      "mark": "√",
+      "checkedWhen": {
+        "field": "verif_d09",
+        "equals": "Correcto"
+      }
+    },
+    "verif_d09_incorrecto": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 352.4,
+      "y": 540.7,
+      "size": 6.5,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "verif_d09",
+        "equals": "Incorrecto"
+      }
+    },
+    "verif_d09_na": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 350.4,
+      "y": 540.7,
+      "size": 6.5,
+      "mark": "NA",
+      "checkedWhen": {
+        "field": "verif_d09",
+        "equals": "No aplica"
+      }
+    },
+    "verif_d09_obs": {
+      "type": "TEXT",
+      "page": 0,
+      "x": 381,
+      "y": 540.9,
+      "width": 150,
+      "height": 5.4,
+      "fontSize": 5,
+      "minFontSize": 4,
+      "align": "left",
+      "overflow": "truncate",
+      "maxLines": 1
+    },
+    "verif_e01_correcto": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 351.4,
+      "y": 508.4,
+      "size": 6.5,
+      "mark": "√",
+      "checkedWhen": {
+        "field": "verif_e01",
+        "equals": "Correcto"
+      }
+    },
+    "verif_e01_incorrecto": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 352.4,
+      "y": 508.8,
+      "size": 6.5,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "verif_e01",
+        "equals": "Incorrecto"
+      }
+    },
+    "verif_e01_na": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 350.4,
+      "y": 508.8,
+      "size": 6.5,
+      "mark": "NA",
+      "checkedWhen": {
+        "field": "verif_e01",
+        "equals": "No aplica"
+      }
+    },
+    "verif_e01_obs": {
+      "type": "TEXT",
+      "page": 0,
+      "x": 381,
+      "y": 509.1,
+      "width": 150,
+      "height": 5.4,
+      "fontSize": 5,
+      "minFontSize": 4,
+      "align": "left",
+      "overflow": "truncate",
+      "maxLines": 1
+    },
+    "verif_e02_correcto": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 351.4,
+      "y": 497.5,
+      "size": 6.5,
+      "mark": "√",
+      "checkedWhen": {
+        "field": "verif_e02",
+        "equals": "Correcto"
+      }
+    },
+    "verif_e02_incorrecto": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 352.4,
+      "y": 498,
+      "size": 6.5,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "verif_e02",
+        "equals": "Incorrecto"
+      }
+    },
+    "verif_e02_na": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 350.4,
+      "y": 498,
+      "size": 6.5,
+      "mark": "NA",
+      "checkedWhen": {
+        "field": "verif_e02",
+        "equals": "No aplica"
+      }
+    },
+    "verif_e02_obs": {
+      "type": "TEXT",
+      "page": 0,
+      "x": 381,
+      "y": 498.3,
+      "width": 150,
+      "height": 5.4,
+      "fontSize": 5,
+      "minFontSize": 4,
+      "align": "left",
+      "overflow": "truncate",
+      "maxLines": 1
+    },
+    "verif_e03_correcto": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 351.4,
+      "y": 486.6,
+      "size": 6.5,
+      "mark": "√",
+      "checkedWhen": {
+        "field": "verif_e03",
+        "equals": "Correcto"
+      }
+    },
+    "verif_e03_incorrecto": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 352.4,
+      "y": 487.1,
+      "size": 6.5,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "verif_e03",
+        "equals": "Incorrecto"
+      }
+    },
+    "verif_e03_na": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 350.4,
+      "y": 487.1,
+      "size": 6.5,
+      "mark": "NA",
+      "checkedWhen": {
+        "field": "verif_e03",
+        "equals": "No aplica"
+      }
+    },
+    "verif_e03_obs": {
+      "type": "TEXT",
+      "page": 0,
+      "x": 381,
+      "y": 487.4,
+      "width": 150,
+      "height": 5.4,
+      "fontSize": 5,
+      "minFontSize": 4,
+      "align": "left",
+      "overflow": "truncate",
+      "maxLines": 1
+    },
+    "verif_r01_correcto": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 351.4,
+      "y": 454.7,
+      "size": 6.5,
+      "mark": "√",
+      "checkedWhen": {
+        "field": "verif_r01",
+        "equals": "Correcto"
+      }
+    },
+    "verif_r01_incorrecto": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 352.4,
+      "y": 455.2,
+      "size": 6.5,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "verif_r01",
+        "equals": "Incorrecto"
+      }
+    },
+    "verif_r01_na": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 350.4,
+      "y": 455.2,
+      "size": 6.5,
+      "mark": "NA",
+      "checkedWhen": {
+        "field": "verif_r01",
+        "equals": "No aplica"
+      }
+    },
+    "verif_r01_obs": {
+      "type": "TEXT",
+      "page": 0,
+      "x": 381,
+      "y": 455.5,
+      "width": 150,
+      "height": 5.4,
+      "fontSize": 5,
+      "minFontSize": 4,
+      "align": "left",
+      "overflow": "truncate",
+      "maxLines": 1
+    },
+    "verif_r02_correcto": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 351.4,
+      "y": 443.9,
+      "size": 6.5,
+      "mark": "√",
+      "checkedWhen": {
+        "field": "verif_r02",
+        "equals": "Correcto"
+      }
+    },
+    "verif_r02_incorrecto": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 352.4,
+      "y": 444.3,
+      "size": 6.5,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "verif_r02",
+        "equals": "Incorrecto"
+      }
+    },
+    "verif_r02_na": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 350.4,
+      "y": 444.3,
+      "size": 6.5,
+      "mark": "NA",
+      "checkedWhen": {
+        "field": "verif_r02",
+        "equals": "No aplica"
+      }
+    },
+    "verif_r02_obs": {
+      "type": "TEXT",
+      "page": 0,
+      "x": 381,
+      "y": 444.6,
+      "width": 150,
+      "height": 5.4,
+      "fontSize": 5,
+      "minFontSize": 4,
+      "align": "left",
+      "overflow": "truncate",
+      "maxLines": 1
+    },
+    "verif_r03_correcto": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 351.4,
+      "y": 433,
+      "size": 6.5,
+      "mark": "√",
+      "checkedWhen": {
+        "field": "verif_r03",
+        "equals": "Correcto"
+      }
+    },
+    "verif_r03_incorrecto": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 352.4,
+      "y": 433.5,
+      "size": 6.5,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "verif_r03",
+        "equals": "Incorrecto"
+      }
+    },
+    "verif_r03_na": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 350.4,
+      "y": 433.5,
+      "size": 6.5,
+      "mark": "NA",
+      "checkedWhen": {
+        "field": "verif_r03",
+        "equals": "No aplica"
+      }
+    },
+    "verif_r03_obs": {
+      "type": "TEXT",
+      "page": 0,
+      "x": 381,
+      "y": 433.8,
+      "width": 150,
+      "height": 5.4,
+      "fontSize": 5,
+      "minFontSize": 4,
+      "align": "left",
+      "overflow": "truncate",
+      "maxLines": 1
+    },
+    "verif_r04_correcto": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 351.4,
+      "y": 422.1,
+      "size": 6.5,
+      "mark": "√",
+      "checkedWhen": {
+        "field": "verif_r04",
+        "equals": "Correcto"
+      }
+    },
+    "verif_r04_incorrecto": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 352.4,
+      "y": 422.6,
+      "size": 6.5,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "verif_r04",
+        "equals": "Incorrecto"
+      }
+    },
+    "verif_r04_na": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 350.4,
+      "y": 422.6,
+      "size": 6.5,
+      "mark": "NA",
+      "checkedWhen": {
+        "field": "verif_r04",
+        "equals": "No aplica"
+      }
+    },
+    "verif_r04_obs": {
+      "type": "TEXT",
+      "page": 0,
+      "x": 381,
+      "y": 422.9,
+      "width": 150,
+      "height": 5.4,
+      "fontSize": 5,
+      "minFontSize": 4,
+      "align": "left",
+      "overflow": "truncate",
+      "maxLines": 1
+    },
+    "verif_r05_correcto": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 351.4,
+      "y": 411.2,
+      "size": 6.5,
+      "mark": "√",
+      "checkedWhen": {
+        "field": "verif_r05",
+        "equals": "Correcto"
+      }
+    },
+    "verif_r05_incorrecto": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 352.4,
+      "y": 411.7,
+      "size": 6.5,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "verif_r05",
+        "equals": "Incorrecto"
+      }
+    },
+    "verif_r05_na": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 350.4,
+      "y": 411.7,
+      "size": 6.5,
+      "mark": "NA",
+      "checkedWhen": {
+        "field": "verif_r05",
+        "equals": "No aplica"
+      }
+    },
+    "verif_r05_obs": {
+      "type": "TEXT",
+      "page": 0,
+      "x": 381,
+      "y": 412,
+      "width": 150,
+      "height": 5.4,
+      "fontSize": 5,
+      "minFontSize": 4,
+      "align": "left",
+      "overflow": "truncate",
+      "maxLines": 1
+    },
+    "descripcion": {
+      "type": "MULTILINE_TEXT",
+      "page": 0,
+      "x": 53,
+      "y": 377,
+      "width": 485,
+      "height": 20,
+      "fontSize": 6,
+      "minFontSize": 4.5,
+      "align": "left",
+      "overflow": "truncate"
+    },
+    "integrante_01_cargo": {
+      "type": "TEXT",
+      "page": 0,
+      "x": 39,
+      "y": 346.3,
+      "width": 162,
+      "height": 5.5,
+      "fontSize": 5.5,
+      "minFontSize": 4,
+      "align": "left",
+      "overflow": "truncate",
+      "maxLines": 1
+    },
+    "integrante_01_nombre": {
+      "type": "TEXT",
+      "page": 0,
+      "x": 205,
+      "y": 346.3,
+      "width": 123,
+      "height": 5.5,
+      "fontSize": 5.5,
+      "minFontSize": 4,
+      "align": "left",
+      "overflow": "truncate",
+      "maxLines": 1
+    },
+    "integrante_01_firma": {
+      "type": "SIGNATURE",
+      "page": 0,
+      "x": 331,
+      "y": 344.4,
+      "width": 88,
+      "height": 9.1,
+      "fit": "contain",
+      "align": "center",
+      "memberIndex": 0
+    },
+    "integrante_01_firma_cierre": {
+      "type": "SIGNATURE",
+      "page": 0,
+      "x": 421,
+      "y": 344.4,
+      "width": 111,
+      "height": 9.1,
+      "fit": "contain",
+      "align": "center",
+      "fieldKey": "integrante_01_firma_cierre"
+    },
+    "integrante_02_cargo": {
+      "type": "TEXT",
+      "page": 0,
+      "x": 39,
+      "y": 336.1,
+      "width": 162,
+      "height": 5.5,
+      "fontSize": 5.5,
+      "minFontSize": 4,
+      "align": "left",
+      "overflow": "truncate",
+      "maxLines": 1
+    },
+    "integrante_02_nombre": {
+      "type": "TEXT",
+      "page": 0,
+      "x": 205,
+      "y": 336.1,
+      "width": 123,
+      "height": 5.5,
+      "fontSize": 5.5,
+      "minFontSize": 4,
+      "align": "left",
+      "overflow": "truncate",
+      "maxLines": 1
+    },
+    "integrante_02_firma": {
+      "type": "SIGNATURE",
+      "page": 0,
+      "x": 331,
+      "y": 334.2,
+      "width": 88,
+      "height": 9.2,
+      "fit": "contain",
+      "align": "center",
+      "memberIndex": 1
+    },
+    "integrante_02_firma_cierre": {
+      "type": "SIGNATURE",
+      "page": 0,
+      "x": 421,
+      "y": 334.2,
+      "width": 111,
+      "height": 9.2,
+      "fit": "contain",
+      "align": "center",
+      "fieldKey": "integrante_02_firma_cierre"
+    },
+    "integrante_03_cargo": {
+      "type": "TEXT",
+      "page": 0,
+      "x": 39,
+      "y": 326,
+      "width": 162,
+      "height": 5.5,
+      "fontSize": 5.5,
+      "minFontSize": 4,
+      "align": "left",
+      "overflow": "truncate",
+      "maxLines": 1
+    },
+    "integrante_03_nombre": {
+      "type": "TEXT",
+      "page": 0,
+      "x": 205,
+      "y": 326,
+      "width": 123,
+      "height": 5.5,
+      "fontSize": 5.5,
+      "minFontSize": 4,
+      "align": "left",
+      "overflow": "truncate",
+      "maxLines": 1
+    },
+    "integrante_03_firma": {
+      "type": "SIGNATURE",
+      "page": 0,
+      "x": 331,
+      "y": 324.1,
+      "width": 88,
+      "height": 9.1,
+      "fit": "contain",
+      "align": "center",
+      "memberIndex": 2
+    },
+    "integrante_03_firma_cierre": {
+      "type": "SIGNATURE",
+      "page": 0,
+      "x": 421,
+      "y": 324.1,
+      "width": 111,
+      "height": 9.1,
+      "fit": "contain",
+      "align": "center",
+      "fieldKey": "integrante_03_firma_cierre"
+    },
+    "integrante_04_cargo": {
+      "type": "TEXT",
+      "page": 0,
+      "x": 39,
+      "y": 315.9,
+      "width": 162,
+      "height": 5.5,
+      "fontSize": 5.5,
+      "minFontSize": 4,
+      "align": "left",
+      "overflow": "truncate",
+      "maxLines": 1
+    },
+    "integrante_04_nombre": {
+      "type": "TEXT",
+      "page": 0,
+      "x": 205,
+      "y": 315.9,
+      "width": 123,
+      "height": 5.5,
+      "fontSize": 5.5,
+      "minFontSize": 4,
+      "align": "left",
+      "overflow": "truncate",
+      "maxLines": 1
+    },
+    "integrante_04_firma": {
+      "type": "SIGNATURE",
+      "page": 0,
+      "x": 331,
+      "y": 314,
+      "width": 88,
+      "height": 9.1,
+      "fit": "contain",
+      "align": "center",
+      "memberIndex": 3
+    },
+    "integrante_04_firma_cierre": {
+      "type": "SIGNATURE",
+      "page": 0,
+      "x": 421,
+      "y": 314,
+      "width": 111,
+      "height": 9.1,
+      "fit": "contain",
+      "align": "center",
+      "fieldKey": "integrante_04_firma_cierre"
+    },
+    "integrante_05_cargo": {
+      "type": "TEXT",
+      "page": 0,
+      "x": 39,
+      "y": 305.8,
+      "width": 162,
+      "height": 5.5,
+      "fontSize": 5.5,
+      "minFontSize": 4,
+      "align": "left",
+      "overflow": "truncate",
+      "maxLines": 1
+    },
+    "integrante_05_nombre": {
+      "type": "TEXT",
+      "page": 0,
+      "x": 205,
+      "y": 305.8,
+      "width": 123,
+      "height": 5.5,
+      "fontSize": 5.5,
+      "minFontSize": 4,
+      "align": "left",
+      "overflow": "truncate",
+      "maxLines": 1
+    },
+    "integrante_05_firma": {
+      "type": "SIGNATURE",
+      "page": 0,
+      "x": 331,
+      "y": 303.9,
+      "width": 88,
+      "height": 9.1,
+      "fit": "contain",
+      "align": "center",
+      "memberIndex": 4
+    },
+    "integrante_05_firma_cierre": {
+      "type": "SIGNATURE",
+      "page": 0,
+      "x": 421,
+      "y": 303.9,
+      "width": 111,
+      "height": 9.1,
+      "fit": "contain",
+      "align": "center",
+      "fieldKey": "integrante_05_firma_cierre"
+    },
+    "integrante_06_cargo": {
+      "type": "TEXT",
+      "page": 0,
+      "x": 39,
+      "y": 295.6,
+      "width": 162,
+      "height": 5.5,
+      "fontSize": 5.5,
+      "minFontSize": 4,
+      "align": "left",
+      "overflow": "truncate",
+      "maxLines": 1
+    },
+    "integrante_06_nombre": {
+      "type": "TEXT",
+      "page": 0,
+      "x": 205,
+      "y": 295.6,
+      "width": 123,
+      "height": 5.5,
+      "fontSize": 5.5,
+      "minFontSize": 4,
+      "align": "left",
+      "overflow": "truncate",
+      "maxLines": 1
+    },
+    "integrante_06_firma": {
+      "type": "SIGNATURE",
+      "page": 0,
+      "x": 331,
+      "y": 293.7,
+      "width": 88,
+      "height": 9.2,
+      "fit": "contain",
+      "align": "center",
+      "memberIndex": 5
+    },
+    "integrante_06_firma_cierre": {
+      "type": "SIGNATURE",
+      "page": 0,
+      "x": 421,
+      "y": 293.7,
+      "width": 111,
+      "height": 9.2,
+      "fit": "contain",
+      "align": "center",
+      "fieldKey": "integrante_06_firma_cierre"
+    },
+    "integrante_07_cargo": {
+      "type": "TEXT",
+      "page": 0,
+      "x": 39,
+      "y": 285.5,
+      "width": 162,
+      "height": 5.5,
+      "fontSize": 5.5,
+      "minFontSize": 4,
+      "align": "left",
+      "overflow": "truncate",
+      "maxLines": 1
+    },
+    "integrante_07_nombre": {
+      "type": "TEXT",
+      "page": 0,
+      "x": 205,
+      "y": 285.5,
+      "width": 123,
+      "height": 5.5,
+      "fontSize": 5.5,
+      "minFontSize": 4,
+      "align": "left",
+      "overflow": "truncate",
+      "maxLines": 1
+    },
+    "integrante_07_firma": {
+      "type": "SIGNATURE",
+      "page": 0,
+      "x": 331,
+      "y": 283.6,
+      "width": 88,
+      "height": 9.1,
+      "fit": "contain",
+      "align": "center",
+      "memberIndex": 6
+    },
+    "integrante_07_firma_cierre": {
+      "type": "SIGNATURE",
+      "page": 0,
+      "x": 421,
+      "y": 283.6,
+      "width": 111,
+      "height": 9.1,
+      "fit": "contain",
+      "align": "center",
+      "fieldKey": "integrante_07_firma_cierre"
+    },
+    "integrante_08_cargo": {
+      "type": "TEXT",
+      "page": 0,
+      "x": 39,
+      "y": 275.4,
+      "width": 162,
+      "height": 5.5,
+      "fontSize": 5.5,
+      "minFontSize": 4,
+      "align": "left",
+      "overflow": "truncate",
+      "maxLines": 1
+    },
+    "integrante_08_nombre": {
+      "type": "TEXT",
+      "page": 0,
+      "x": 205,
+      "y": 275.4,
+      "width": 123,
+      "height": 5.5,
+      "fontSize": 5.5,
+      "minFontSize": 4,
+      "align": "left",
+      "overflow": "truncate",
+      "maxLines": 1
+    },
+    "integrante_08_firma": {
+      "type": "SIGNATURE",
+      "page": 0,
+      "x": 331,
+      "y": 273.5,
+      "width": 88,
+      "height": 9.1,
+      "fit": "contain",
+      "align": "center",
+      "memberIndex": 7
+    },
+    "integrante_08_firma_cierre": {
+      "type": "SIGNATURE",
+      "page": 0,
+      "x": 421,
+      "y": 273.5,
+      "width": 111,
+      "height": 9.1,
+      "fit": "contain",
+      "align": "center",
+      "fieldKey": "integrante_08_firma_cierre"
+    },
+    "integrante_09_cargo": {
+      "type": "TEXT",
+      "page": 0,
+      "x": 39,
+      "y": 265.3,
+      "width": 162,
+      "height": 5.5,
+      "fontSize": 5.5,
+      "minFontSize": 4,
+      "align": "left",
+      "overflow": "truncate",
+      "maxLines": 1
+    },
+    "integrante_09_nombre": {
+      "type": "TEXT",
+      "page": 0,
+      "x": 205,
+      "y": 265.3,
+      "width": 123,
+      "height": 5.5,
+      "fontSize": 5.5,
+      "minFontSize": 4,
+      "align": "left",
+      "overflow": "truncate",
+      "maxLines": 1
+    },
+    "integrante_09_firma": {
+      "type": "SIGNATURE",
+      "page": 0,
+      "x": 331,
+      "y": 263.4,
+      "width": 88,
+      "height": 9.1,
+      "fit": "contain",
+      "align": "center",
+      "memberIndex": 8
+    },
+    "integrante_09_firma_cierre": {
+      "type": "SIGNATURE",
+      "page": 0,
+      "x": 421,
+      "y": 263.4,
+      "width": 111,
+      "height": 9.1,
+      "fit": "contain",
+      "align": "center",
+      "fieldKey": "integrante_09_firma_cierre"
+    },
+    "integrante_10_cargo": {
+      "type": "TEXT",
+      "page": 0,
+      "x": 39,
+      "y": 254.9,
+      "width": 162,
+      "height": 5.5,
+      "fontSize": 5.5,
+      "minFontSize": 4,
+      "align": "left",
+      "overflow": "truncate",
+      "maxLines": 1
+    },
+    "integrante_10_nombre": {
+      "type": "TEXT",
+      "page": 0,
+      "x": 205,
+      "y": 254.9,
+      "width": 123,
+      "height": 5.5,
+      "fontSize": 5.5,
+      "minFontSize": 4,
+      "align": "left",
+      "overflow": "truncate",
+      "maxLines": 1
+    },
+    "integrante_10_firma": {
+      "type": "SIGNATURE",
+      "page": 0,
+      "x": 331,
+      "y": 253,
+      "width": 88,
+      "height": 9.4,
+      "fit": "contain",
+      "align": "center",
+      "memberIndex": 9
+    },
+    "integrante_10_firma_cierre": {
+      "type": "SIGNATURE",
+      "page": 0,
+      "x": 421,
+      "y": 253,
+      "width": 111,
+      "height": 9.4,
+      "fit": "contain",
+      "align": "center",
+      "fieldKey": "integrante_10_firma_cierre"
+    },
+    "epp_01": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 65.9,
+      "y": 230.5,
+      "size": 7,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "epp",
+        "includes": "Botas dieléctricas"
+      }
+    },
+    "epp_02": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 65.9,
+      "y": 221.9,
+      "size": 7,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "epp",
+        "includes": "Gafas de seguridad"
+      }
+    },
+    "epp_03": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 65.9,
+      "y": 213.3,
+      "size": 7,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "epp",
+        "includes": "Casco dieléctrico"
+      }
+    },
+    "epp_04": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 65.9,
+      "y": 204.6,
+      "size": 7,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "epp",
+        "includes": "Tarjeta de identificación (para bloqueo)"
+      }
+    },
+    "epp_05": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 65.9,
+      "y": 196,
+      "size": 7,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "epp",
+        "includes": "Candado de seguridad"
+      }
+    },
+    "epp_06": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 65.9,
+      "y": 187.4,
+      "size": 7,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "epp",
+        "includes": "Delantales"
+      }
+    },
+    "epp_07": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 65.9,
+      "y": 178.8,
+      "size": 7,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "epp",
+        "includes": "Balaclava dieléctrica"
+      }
+    },
+    "epp_08": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 238,
+      "y": 230.5,
+      "size": 7,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "epp",
+        "includes": "Tapete dieléctrico"
+      }
+    },
+    "epp_09": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 238,
+      "y": 221.9,
+      "size": 7,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "epp",
+        "includes": "Guantes de cuero / badana"
+      }
+    },
+    "epp_10": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 238,
+      "y": 213.3,
+      "size": 7,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "epp",
+        "includes": "Guantes dieléctrico"
+      }
+    },
+    "epp_11": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 238,
+      "y": 204.6,
+      "size": 7,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "epp",
+        "includes": "Guante de cuero cromado"
+      }
+    },
+    "epp_12": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 238,
+      "y": 196,
+      "size": 7,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "epp",
+        "includes": "Overol FR"
+      }
+    },
+    "epp_13": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 238,
+      "y": 187.4,
+      "size": 7,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "epp",
+        "includes": "Arnés de seguridad especial Riesgo Electrico"
+      }
+    },
+    "epp_14": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 238,
+      "y": 178.8,
+      "size": 7,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "epp",
+        "includes": "Vestido de neopreno/ignifugo"
+      }
+    },
+    "epp_15": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 238,
+      "y": 170.1,
+      "size": 7,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "epp",
+        "includes": "Línea de anclaje sin absorbedor de impacto"
+      }
+    },
+    "epp_16": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 403.7,
+      "y": 230.5,
+      "size": 7,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "epp",
+        "includes": "Orejeras"
+      }
+    },
+    "epp_17": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 403.7,
+      "y": 221.9,
+      "size": 7,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "epp",
+        "includes": "Tapón auditivo"
+      }
+    },
+    "epp_18": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 403.7,
+      "y": 213.3,
+      "size": 7,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "epp",
+        "includes": "Full face"
+      }
+    },
+    "epp_19": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 403.7,
+      "y": 204.6,
+      "size": 7,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "epp",
+        "includes": "Respirador"
+      }
+    },
+    "epp_20": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 403.7,
+      "y": 196,
+      "size": 7,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "epp",
+        "includes": "Capuchas"
+      }
+    },
+    "epp_21": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 403.7,
+      "y": 187.4,
+      "size": 7,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "epp",
+        "includes": "Visor pantalla"
+      }
+    },
+    "epp_22": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 403.7,
+      "y": 178.8,
+      "size": 7,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "epp",
+        "includes": "Megger"
+      }
+    },
+    "epp_23": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 403.7,
+      "y": 170.1,
+      "size": 7,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "epp",
+        "includes": "Multimetro"
+      }
+    },
+    "epp_otros": {
+      "type": "TEXT",
+      "page": 0,
+      "x": 53,
+      "y": 159.4,
+      "width": 185,
+      "height": 5.5,
+      "fontSize": 5.5,
+      "minFontSize": 4,
+      "align": "left",
+      "overflow": "truncate",
+      "maxLines": 1
+    },
+    "herramientas": {
+      "type": "MULTILINE_TEXT",
+      "page": 0,
+      "x": 53,
+      "y": 127,
+      "width": 485,
+      "height": 15.5,
+      "fontSize": 6,
+      "minFontSize": 4.5,
+      "align": "left",
+      "overflow": "truncate"
+    },
+    "coordinacion_nombre": {
+      "type": "TEXT",
+      "page": 0,
+      "x": 205,
+      "y": 103.6,
+      "width": 213,
+      "height": 6,
+      "fontSize": 5.5,
+      "minFontSize": 4,
+      "align": "center",
+      "overflow": "truncate",
+      "maxLines": 1
+    },
+    "coordinacion_firma": {
+      "type": "SIGNATURE",
+      "page": 0,
+      "x": 422,
+      "y": 102,
+      "width": 118,
+      "height": 9.5,
+      "fit": "contain",
+      "align": "center",
+      "fieldKey": "coordinacion_firma"
+    }
+  }
+}

@@ -20,7 +20,7 @@ export function sesionRequerida(kind?: 'ADMIN' | 'COLLABORATOR'): CanActivateFn 
       }
       // Un colaborador no debe caer en las pantallas internas ni al revés.
       if (kind && session.kind() !== kind) {
-        return router.parseUrl(session.kind() === 'COLLABORATOR' ? '/formulario/alturas' : '/administracion/panel');
+        return router.parseUrl(session.kind() === 'COLLABORATOR' ? '/formatos' : '/administracion/panel');
       }
       return true;
     };
