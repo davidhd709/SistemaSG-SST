@@ -40,3 +40,13 @@
 - El **Oficial eléctrico** (`JobPosition.canLead = true`) es el único rol que asciende y se expone directamente al riesgo de trabajo en alturas; además es quien diligencia el formato `HSE-FO-016` y registra a los ayudantes/auxiliares de la cuadrilla.
 - Por lo tanto, el certificado vigente de trabajo seguro en alturas (`HeightCertificate`) se exige exclusivamente al cargo **Oficial eléctrico** (`VIGENTE` requerido para habilitar el envío).
 - Los demás integrantes de la cuadrilla (`Ayudante`, `Auxiliar eléctrico`, `Supervisor`) realizan labores de apoyo desde piso sin exposición a riesgo de altura, por lo que su estado de certificado de alturas se evalúa como `NO_APLICA`, manteniendo obligatorias la afiliación ARL y la seguridad social vigentes para todos los miembros.
+
+## 2026-10-23 — Formatos ATS, riesgo eléctrico e inspección de escaleras
+
+- Se incorporan `HSE-FO-018` (ATS, v02), `FORSG-03` (permiso de trabajo riesgo eléctrico, v002) y `HSE-FO-023` (inspección de escaleras, v00). Sus PDF oficiales se copian byte a byte en `backend/pdf-templates/<código>/<versión>/template.pdf`; el `mapping.json` guarda su SHA-256 y una prueba verifica que la plantilla no cambie. El documento final solo superpone datos: no se altera diseño, código, fecha ni versión del formato.
+- Los formatos se diligencian sueltos y cada uno pasa por Coordinación. Solo bloquea un envío del **mismo** formato pendiente o con jornada abierta.
+- `backend/src/forms/form-profiles.ts` define el flujo de cada formato: charla de seguridad (solo alturas), cuadrilla máxima según las filas del PDF, si tiene jornada, si exige firma de término y si lleva la firma de Coordinación. El certificado de alturas solo es requisito en `HSE-FO-016`.
+- El ATS es uno por día: fecha de elaboración y de vigencia son la fecha de trabajo, y en "Día que ejecutó la actividad" se marca el día de la semana (1 = lunes … 7 = domingo). La "Entrega de la tarea" se diligencia al cerrar la jornada (`stage: 'close'` en el esquema).
+- El permiso eléctrico pide firma de inicio al enviar y firma de término de cada integrante al cerrar. Quien diligencia se marca con `(*)` como supervisor que permanece en la labor.
+- La inspección de escaleras no tiene jornada: al aprobarla queda cerrada y se genera su documento.
+- Coordinación registra una sola vez su nombre y firma ("Mi firma"). Al aprobar un ATS o un permiso eléctrico se fijan en la `Approval` (`signerName`, `signatureFileId`) y se estampan como Responsable SST / Supervisor del trabajo; sin firma registrada la aprobación se rechaza. Cambiar la firma no altera aprobaciones pasadas.

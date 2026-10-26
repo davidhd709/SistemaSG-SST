@@ -7,6 +7,8 @@ import { TemplateLoader, type CheckboxField, type TemplateMapping } from './temp
 import { FieldRenderer, ResolvedSignature } from './field-renderer';
 import { CrewMemberRow } from './renderers/crew-table.renderer';
 import { PDFDocument, type PDFFont, StandardFonts, rgb } from 'pdf-lib';
+import { isReservedSystemFieldId } from '../forms/form-schema-policy';
+import { perfilFormato } from '../forms/form-profiles';
 
 export type PdfGenerationActor = { kind: 'USER' | 'COLLABORATOR'; id: string };
 
@@ -86,10 +88,11 @@ export class PdfService {
             collaborator: true,
             jobPosition: true,
             signature: { include: { file: true } },
+            closingSignature: { include: { file: true } },
           },
           orderBy: [{ isLead: 'desc' }, { createdAt: 'asc' }],
         },
-        approval: true,
+        approval: { include: { signatureFile: true } },
         closedBy: true,
         closedByUser: { select: { email: true } },
         finalPdfFile: true,
@@ -150,6 +153,13 @@ export class PdfService {
       answers.hora_fin = formattedCloseTime;
       answers.hora_finalizacion = formattedCloseTime;
     }
+    if (submission.submittedAt) {
+      // Formatos de un solo momento (la inspección): fecha y hora del envío.
+      answers.fecha_hora = `${this.formatDate(submission.submittedAt, BUSINESS_TIME_ZONE)} ${this.formatTime(submission.submittedAt)}`;
+    }
+    // Columna del día en que se ejecutó la actividad (1 = lunes … 7 = domingo).
+    const diaSemana = submission.workDate ? String(((submission.workDate.getUTCDay() + 6) % 7) + 1) : undefined;
+    const perfil = perfilFormato(formCode);
 
     // 3. Procesar cuadrilla y firmas exclusivamente desde registros de base de datos.
     // TEC-008: un integrante sin fila en la plantilla desaparecería del documento sin aviso.
@@ -185,24 +195,30 @@ export class PdfService {
       answers[`ejecutor_${idx}_cargo`] = cargo;
       answers[`ejecutor_${idx}_seg_social`] = segSocial;
 
+      // Filas genéricas de los demás formatos oficiales.
+      answers[`integrante_${idx}_nombre`] =
+        member.isLead && perfil?.marcaLider ? `${nombre}${perfil.marcaLider}` : nombre;
+      answers[`integrante_${idx}_cedula`] = cedula;
+      answers[`integrante_${idx}_cargo`] = cargo;
+      if (diaSemana) answers[`integrante_${idx}_dia`] = diaSemana;
+
       // Una firma ausente o ilegible invalida el documento completo.
-      const signatureKey = member.signature?.file?.objectKey;
-      if (!signatureKey) {
-        this.logger.error(`Falta la firma del integrante ${member.id} en el permiso ${submission.id}.`);
-        throw new Error(`Falta la firma del integrante ${member.id}.`);
-      }
-      let signatureBytes: Buffer;
-      try {
-        signatureBytes = await this.storage.getObject(signatureKey);
-      } catch (error) {
-        this.logger.error(`No se pudo cargar la firma del integrante ${member.id}: ${String(error)}`);
-        throw new Error(`No se pudo cargar la firma del integrante ${member.id}.`, { cause: error });
-      }
-      if (!signatureBytes.length) {
-        this.logger.error(`La firma del integrante ${member.id} está vacía.`);
-        throw new Error(`La firma del integrante ${member.id} está vacía.`);
-      }
+      const signatureBytes = await this.cargarFirma(member.signature?.file?.objectKey, `del integrante ${member.id}`);
       signatures.push({ memberIndex: i, imageBytes: signatureBytes });
+      if (member.isLead && mapping.fields.responsable_firma) {
+        // Quien diligencia responde por la actividad y firma también en ese espacio.
+        answers.responsable_nombre = nombre;
+        signatures.push({ fieldKey: 'responsable_firma', imageBytes: signatureBytes });
+      }
+      if (member.closingSignature) {
+        signatures.push({
+          fieldKey: `integrante_${idx}_firma_cierre`,
+          imageBytes: await this.cargarFirma(
+            member.closingSignature.file?.objectKey,
+            `de término del integrante ${member.id}`,
+          ),
+        });
+      }
 
       crewMembers.push({
         cedula,
@@ -211,6 +227,16 @@ export class PdfService {
         cargo,
         seguridadSocial: segSocial,
         signatureBytes,
+      });
+    }
+
+    // Nombre y firma de Coordinación fijados al aprobar; un rechazo no se firma.
+    const approval = submission.approval;
+    if (approval.decision === 'APPROVED' && approval.signerName && approval.signatureFile) {
+      answers.coordinacion_nombre = approval.signerName;
+      signatures.push({
+        fieldKey: 'coordinacion_firma',
+        imageBytes: await this.cargarFirma(approval.signatureFile.objectKey, 'de Coordinación'),
       });
     }
 
@@ -271,6 +297,25 @@ export class PdfService {
       await this.storage.deleteObject(stored.objectKey);
       throw error;
     }
+  }
+
+  private async cargarFirma(objectKey: string | undefined, etiqueta: string): Promise<Buffer> {
+    if (!objectKey) {
+      this.logger.error(`Falta la firma ${etiqueta}.`);
+      throw new Error(`Falta la firma ${etiqueta}.`);
+    }
+    let bytes: Buffer;
+    try {
+      bytes = await this.storage.getObject(objectKey);
+    } catch (error) {
+      this.logger.error(`No se pudo cargar la firma ${etiqueta}: ${String(error)}`);
+      throw new Error(`No se pudo cargar la firma ${etiqueta}.`, { cause: error });
+    }
+    if (!bytes.length) {
+      this.logger.error(`La firma ${etiqueta} está vacía.`);
+      throw new Error(`La firma ${etiqueta} está vacía.`);
+    }
+    return bytes;
   }
 
   private async appendClosureRecord(
@@ -503,7 +548,8 @@ export class PdfService {
       RESERVED_AUTOMATIC_FIELD_IDS.has(key) ||
       RESERVED_SIGNATURE_FIELD_IDS.has(key) ||
       RESERVED_IDENTITY_FIELD_IDS.has(key) ||
-      RESERVED_CREW_ROW_PATTERN.test(key)
+      RESERVED_CREW_ROW_PATTERN.test(key) ||
+      isReservedSystemFieldId(key)
     ) {
       return true;
     }

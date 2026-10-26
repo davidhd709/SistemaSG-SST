@@ -1,9 +1,13 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { AuthSessionService } from '../../core/auth-session.service';
 import { fechaCalendario, fechaHora } from '../../core/fechas';
 import { LogoutButtonComponent } from '../../core/logout-button.component';
+import { ExpirationsPanelComponent } from './expirations-panel.component';
+import { ReportsPanelComponent } from '../reports/reports-panel.component';
 
 import {
   agruparRespuestasDetalle,
@@ -29,7 +33,7 @@ import {
  * responsabilidad: revisar y autorizar el inicio de labores.
  */
 @Component({
-  imports: [ReactiveFormsModule, LogoutButtonComponent],
+  imports: [ReactiveFormsModule, RouterLink, LogoutButtonComponent, ExpirationsPanelComponent, ReportsPanelComponent],
   templateUrl: './coordination.component.html',
   styleUrl: './coordination.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -39,7 +43,11 @@ export class CoordinationComponent {
   private readonly session = inject(AuthSessionService);
   private readonly fb = inject(FormBuilder);
 
-  readonly pestana = signal<'bandeja' | 'jornadas' | 'cumplimiento' | 'colaboradores' | 'custodia'>('bandeja');
+  readonly pestana = signal<
+    'bandeja' | 'jornadas' | 'vencimientos' | 'cumplimiento' | 'colaboradores' | 'custodia' | 'reportes'
+  >('bandeja');
+  /** Requisitos vencidos o que vencen en 15 días; se muestra en la pestaña. */
+  readonly vencimientosProximos = signal(0);
   readonly dashboard = signal<Dashboard | null>(null);
   readonly pending = signal<Submission[]>([]);
   readonly detail = signal<Detail | null>(null);
@@ -124,9 +132,9 @@ export class CoordinationComponent {
     this.grupos().flatMap((grupo) => grupo.respuestas.filter((respuesta) => respuesta.alerta)),
   );
 
-  /** Auxiliares, ayudantes y supervisores no requieren el certificado de alturas. */
+  /** Solo los cargos que exigen certificado de alturas (hoy, el Oficial eléctrico). */
   readonly oficialesElectricos = computed(() =>
-    this.cumplimiento().filter((fila) => fila.collaborator.jobTitle === 'Oficial eléctrico'),
+    this.cumplimiento().filter((fila) => fila.cumplimiento.alturas.estado !== 'NO_APLICA'),
   );
   readonly pdfsCustodia = computed(() =>
     this.documentosCustodia().filter((documento) => documento.finalPdfFile !== null),
@@ -140,6 +148,27 @@ export class CoordinationComponent {
 
   constructor() {
     this.cargar();
+    this.contarVencimientos();
+    // Los avisos enlazan a una pestaña concreta (?pestana=jornadas).
+    inject(ActivatedRoute)
+      .queryParamMap.pipe(takeUntilDestroyed())
+      .subscribe((parametros) => this.abrirPestana(parametros.get('pestana')));
+  }
+
+  private abrirPestana(nombre: string | null): void {
+    if (nombre === 'jornadas') this.verJornadas();
+    else if (nombre === 'cumplimiento') this.verCumplimiento();
+    else if (nombre === 'custodia') this.verCustodia();
+    else if (nombre === 'vencimientos' || nombre === 'reportes') this.pestana.set(nombre);
+  }
+
+  contarVencimientos(): void {
+    this.http
+      .get<{ vencidos: number; porVencer: number }>('/api/compliance/expirations', { params: { days: 15 } })
+      .subscribe({
+        next: (respuesta) => this.vencimientosProximos.set(respuesta.vencidos + respuesta.porVencer),
+        error: () => undefined,
+      });
   }
 
   // ── Bandeja ──────────────────────────────────────────────
@@ -441,15 +470,19 @@ export class CoordinationComponent {
           this.ultimoPdf.set(result.pdfFileId);
           this.aviso.set(
             decision === 'APPROVED'
-              ? 'Autorizado. El colaborador ya puede iniciar labores y el PDF quedó generado.'
+              ? result.pdfFileId
+                ? 'Aprobado. El formato quedó archivado con su documento final.'
+                : 'Autorizado. El colaborador ya puede iniciar labores; el PDF se genera al cerrar la jornada.'
               : 'Envío rechazado. El colaborador verá el motivo registrado.',
           );
           this.decidiendo.set(false);
           this.cerrarRevision();
           this.cargar();
         },
-        error: () => {
-          this.error.set('No fue posible registrar la decisión.');
+        error: (respuesta: { error?: { message?: unknown } }) => {
+          // Por ejemplo, falta registrar la firma que se estampa al aprobar.
+          const detalle = respuesta.error?.message;
+          this.error.set(typeof detalle === 'string' ? detalle : 'No fue posible registrar la decisión.');
           this.decidiendo.set(false);
         },
       });

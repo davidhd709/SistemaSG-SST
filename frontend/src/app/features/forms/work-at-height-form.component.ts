@@ -10,6 +10,7 @@ import {
 } from '@angular/core';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { AuthSessionService } from '../../core/auth-session.service';
 import { fechaCalendario } from '../../core/fechas';
 import { LogoutButtonComponent } from '../../core/logout-button.component';
@@ -17,8 +18,9 @@ import { LogoutButtonComponent } from '../../core/logout-button.component';
 import {
   BORRADOR,
   CHARLAS_DE_SEGURIDAD,
-  MAX_INTEGRANTES,
   agruparCamposEnBloques,
+  esCampoDeApertura,
+  esObligatorio,
   calcularPorcentajeAvance,
   normalizarRespuestasFormulario,
   obtenerExplicacionAuto,
@@ -27,22 +29,26 @@ import {
   type Campo,
   type Candidato,
   type Cargo,
+  type Correccion,
   type Definicion,
   type Envio,
   type Etapa,
   type Flujo,
   type Integrante,
 } from './work-at-height-form.models';
+import { formatoPorSlug } from './formatos';
 
 /**
- * Flujo previo al inicio de labores.
+ * Flujo previo al inicio de labores, común a los formatos oficiales: el perfil
+ * que entrega la API decide si hay charla, cuántas personas caben, si hay
+ * jornada y qué firmas se piden.
  *
  * Se recorre de pie, en obra y desde un celular, as? que cada pantalla plantea
  * una sola tarea, el avance est? siempre a la vista y lo diligenciado se guarda
  * en el dispositivo por si la aplicaci?n se cierra a media jornada.
  */
 @Component({
-  imports: [ReactiveFormsModule, LogoutButtonComponent],
+  imports: [ReactiveFormsModule, RouterLink, LogoutButtonComponent],
   templateUrl: './work-at-height-form.component.html',
   styleUrl: './work-at-height-form.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -50,9 +56,14 @@ import {
 export class WorkAtHeightFormComponent implements OnDestroy {
   private readonly http = inject(HttpClient);
   private readonly session = inject(AuthSessionService);
+  private readonly ruta = inject(ActivatedRoute);
   @ViewChild('lienzo') lienzo?: ElementRef<HTMLCanvasElement>;
   @ViewChild('videoCharla') videoCharla?: ElementRef<HTMLVideoElement>;
 
+  /** Formato de la ruta (/formulario/<slug>). */
+  readonly formato = formatoPorSlug(this.ruta.snapshot.paramMap.get('formato'));
+  private readonly codigo = this.formato?.codigo ?? '';
+  readonly titulo = this.formato?.titulo ?? 'Formato';
   readonly etapa = signal<Etapa>('arl');
   readonly flujo = signal<Flujo | null>(null);
   readonly definicion = signal<Definicion | null>(null);
@@ -80,14 +91,31 @@ export class WorkAtHeightFormComponent implements OnDestroy {
 
   // ── Cierre de jornada ──
   readonly novedades = signal('');
+  /** Respuestas que el formato pide una vez terminada la tarea. */
+  readonly respuestasCierre = new FormGroup<Record<string, FormControl<unknown>>>({});
+  readonly faltantesCierre = signal<string[]>([]);
+  /** Firmas de término ya capturadas, por colaborador. */
+  readonly firmasCierre = signal<Record<string, string>>({});
+  readonly indiceFirmaCierre = signal(0);
   readonly cerrando = signal(false);
   readonly iniciando = signal(false);
+
+  // ── Corrección de un permiso rechazado ──
+  /** Permiso rechazado que se está corrigiendo; viaja en el reenvío. */
+  readonly correccion = signal<Correccion | null>(null);
+  /** Último permiso rechazado que el oficial aún puede corregir. */
+  readonly rechazoPendiente = signal<{ id: string; reason: string | null } | null>(null);
+  /** Integrantes del permiso anterior que hoy ya no cumplen y quedaron fuera. */
+  readonly omitidosCorreccion = signal(0);
+  private correccionAplicada = false;
 
   /** A quién le toca firmar ahora. */
   readonly firmante = computed<Integrante | null>(() => this.integrantes()[this.indiceFirma()] ?? null);
   readonly firmadas = computed(() => this.integrantes().filter((persona) => persona.firmaDataUrl).length);
-  readonly maxIntegrantes = MAX_INTEGRANTES;
-  readonly cuadrillaCompleta = computed(() => this.integrantes().length >= MAX_INTEGRANTES);
+  readonly perfil = computed(() => this.flujo()?.perfil ?? null);
+  /** Filas de integrantes que imprime el formato; la API aplica el mismo límite. */
+  readonly maxIntegrantes = computed(() => this.perfil()?.maxIntegrantes ?? 1);
+  readonly cuadrillaCompleta = computed(() => this.integrantes().length >= this.maxIntegrantes());
   readonly esUltimoFirmante = computed(() => this.indiceFirma() >= this.integrantes().length - 1);
 
   readonly respuestas = new FormGroup<Record<string, FormControl<unknown>>>({});
@@ -96,14 +124,33 @@ export class WorkAtHeightFormComponent implements OnDestroy {
   private sondeo?: ReturnType<typeof setInterval>;
 
   /** Cada sección del esquema publicado es un paso del formulario. */
-  readonly bloques = computed<Bloque[]>(() => agruparCamposEnBloques(this.definicion()?.schemaJson.fields));
+  readonly bloques = computed<Bloque[]>(() =>
+    agruparCamposEnBloques(this.definicion()?.schemaJson.fields.filter(esCampoDeApertura)),
+  );
+
+  /** Lo que se diligencia al cerrar (p. ej. la entrega de la tarea del ATS). */
+  readonly camposCierre = computed<Campo[]>(() =>
+    (this.definicion()?.schemaJson.fields ?? [])
+      .filter((campo) => !esCampoDeApertura(campo))
+      .sort((a, b) => a.order - b.order),
+  );
+
+  /** Integrantes que deben firmar el término de la jornada. */
+  readonly firmantesCierre = computed(() =>
+    this.perfil()?.firmaCierre ? (this.envio()?.members ?? []).map((miembro) => miembro.collaborator) : [],
+  );
+  readonly firmanteCierre = computed(() => this.firmantesCierre()[this.indiceFirmaCierre()] ?? null);
+  readonly firmasCierreCompletas = computed(() =>
+    this.firmantesCierre().every((persona) => Boolean(this.firmasCierre()[persona.id])),
+  );
 
   readonly bloqueActual = computed<Bloque | null>(() => this.bloques()[this.indiceBloque()] ?? null);
 
   readonly negativas = computed(() =>
     this.bloques()
       .flatMap((bloque) => bloque.campos)
-      .filter((campo) => this.valor(campo.id) === 'NO'),
+      // Un "NO" o un "Incorrecto" es lo que Coordinación debe mirar primero.
+      .filter((campo) => this.valor(campo.id) === 'NO' || this.valor(campo.id) === 'Incorrecto'),
   );
 
   readonly puedeRetroceder = computed(() => {
@@ -156,7 +203,7 @@ export class WorkAtHeightFormComponent implements OnDestroy {
 
   siguiente(): void {
     const etapa = this.etapa();
-    if (etapa === 'arl') return this.etapa.set('charla');
+    if (etapa === 'arl') return this.etapa.set(this.perfil()?.charla ? 'charla' : 'cuadrilla');
     if (etapa === 'charla') return this.etapa.set('cuadrilla');
     if (etapa === 'cuadrilla') return this.etapa.set('formulario');
     if (etapa !== 'formulario') return;
@@ -183,7 +230,7 @@ export class WorkAtHeightFormComponent implements OnDestroy {
     this.faltantes.set([]);
     const etapa = this.etapa();
     if (etapa === 'charla') return this.etapa.set('arl');
-    if (etapa === 'cuadrilla') return this.etapa.set('charla');
+    if (etapa === 'cuadrilla') return this.etapa.set(this.perfil()?.charla ? 'charla' : 'arl');
     if (etapa === 'firma') {
       if (this.indiceFirma() > 0) {
         this.indiceFirma.update((indice) => indice - 1);
@@ -341,21 +388,75 @@ export class WorkAtHeightFormComponent implements OnDestroy {
 
   cerrarJornada(submissionId: string): void {
     if (this.cerrando()) return;
+    const pendientes = this.camposCierre().filter((campo) => this.faltaValorEn(this.respuestasCierre, campo));
+    this.faltantesCierre.set(pendientes.map((campo) => campo.id));
+    if (pendientes.length) {
+      this.enfocar(pendientes[0].id);
+      return;
+    }
+    if (!this.firmasCierreCompletas()) return;
     this.cerrando.set(true);
     this.error.set('');
+    const firmas = this.firmasCierre();
     this.http
-      .post<Envio>(`/api/submissions/${submissionId}/close`, { notes: this.novedades().trim() || undefined })
+      .post<Envio>(`/api/submissions/${submissionId}/close`, {
+        notes: this.novedades().trim() || undefined,
+        answers: this.camposCierre().length ? this.respuestasCierre.getRawValue() : undefined,
+        signatures: this.firmantesCierre().length
+          ? this.firmantesCierre().map((persona) => ({
+              collaboratorId: persona.id,
+              signatureDataUrl: firmas[persona.id],
+            }))
+          : undefined,
+      })
       .subscribe({
         next: (resultado) => {
           this.envio.set(resultado);
           this.cerrando.set(false);
           globalThis.scrollTo({ top: 0 });
         },
-        error: () => {
-          this.error.set('No fue posible cerrar la jornada. Revisa tu conexión e inténtalo de nuevo.');
+        error: (respuesta: HttpErrorResponse) => {
+          const detalle = respuesta.error?.message;
+          this.error.set(
+            typeof detalle === 'string'
+              ? detalle
+              : 'No fue posible cerrar la jornada. Revisa tu conexión e inténtalo de nuevo.',
+          );
           this.cerrando.set(false);
         },
       });
+  }
+
+  /** Respuesta de un campo de cierre (botones Sí/No). */
+  elegirCierre(id: string, opcion: string): void {
+    this.respuestasCierre.get(id)?.setValue(opcion);
+    if (this.faltantesCierre().includes(id))
+      this.faltantesCierre.update((lista) => lista.filter((otro) => otro !== id));
+  }
+
+  valorCierre(id: string): unknown {
+    return this.respuestasCierre.get(id)?.value;
+  }
+
+  invalidoCierre(campo: Campo): boolean {
+    return this.faltantesCierre().includes(campo.id);
+  }
+
+  /** Guarda la firma de término del integrante actual y pasa al siguiente. */
+  confirmarFirmaCierre(): void {
+    const lienzo = this.lienzo?.nativeElement;
+    const persona = this.firmanteCierre();
+    if (!lienzo || !persona || !this.hayFirma()) return;
+    const dataUrl = this.firmaSobreBlanco(lienzo);
+    this.firmasCierre.update((firmas) => ({ ...firmas, [persona.id]: dataUrl }));
+    this.limpiarFirma();
+    if (this.indiceFirmaCierre() < this.firmantesCierre().length - 1) this.indiceFirmaCierre.update((i) => i + 1);
+  }
+
+  repetirFirmasCierre(): void {
+    this.firmasCierre.set({});
+    this.indiceFirmaCierre.set(0);
+    this.limpiarFirma();
   }
 
   hora(valor: string | null | undefined): string {
@@ -513,14 +614,16 @@ export class WorkAtHeightFormComponent implements OnDestroy {
   // ── Envío ────────────────────────────────────────────────
   enviar(): void {
     const cuadrilla = this.integrantes();
-    if (this.enviando() || !this.charlaToken() || !cuadrilla.every((persona) => persona.firmaDataUrl)) return;
+    const conCharla = this.perfil()?.charla === true;
+    if (this.enviando() || (conCharla && !this.charlaToken()) || !cuadrilla.every((persona) => persona.firmaDataUrl))
+      return;
     this.enviando.set(true);
     this.error.set('');
     this.http
-      .post<Envio>('/api/submissions/forms/HSE-FO-016', {
+      .post<Envio>(`/api/submissions/forms/${this.codigo}`, {
         answers: this.respuestasNormalizadas(),
-        safetyTalkConfirmed: true,
-        safetyTalkToken: this.charlaToken(),
+        ...(conCharla ? { safetyTalkConfirmed: true, safetyTalkToken: this.charlaToken() } : {}),
+        previousSubmissionId: this.correccion()?.id,
         members: cuadrilla.map((persona) => ({
           collaboratorId: persona.candidato.id,
           jobPositionId: persona.jobPositionId || undefined,
@@ -550,7 +653,7 @@ export class WorkAtHeightFormComponent implements OnDestroy {
 
   consultarEstado(): void {
     this.consultando.set(true);
-    this.http.get<Envio>('/api/submissions/mine/latest').subscribe({
+    this.http.get<Envio>('/api/submissions/mine/latest', { params: { form: this.codigo } }).subscribe({
       next: (resultado) => {
         this.envio.set(resultado);
         this.consultando.set(false);
@@ -586,7 +689,11 @@ export class WorkAtHeightFormComponent implements OnDestroy {
 
   // ── Interno ──────────────────────────────────────────────
   private cargar(): void {
-    this.http.get<Flujo>('/api/submissions/workflow').subscribe({
+    if (!this.formato) {
+      this.error.set('Este formato no existe. Vuelve a la lista de formatos.');
+      return;
+    }
+    this.http.get<Flujo>('/api/submissions/workflow', { params: { form: this.codigo } }).subscribe({
       next: (flujo) => {
         this.flujo.set(flujo);
         // Una jornada sin cerrar se retoma donde quedó, no se empieza otra.
@@ -594,6 +701,9 @@ export class WorkAtHeightFormComponent implements OnDestroy {
         if (!flujo.canContinue) return;
         this.cargarDefinicion();
         this.cargarCuadrilla();
+        const corregir = this.ruta.snapshot.queryParamMap.get('corregir');
+        if (corregir) this.cargarCorreccion(corregir);
+        else this.buscarRechazoPendiente();
       },
       error: () => this.error.set('No fue posible validar tu estado. Revisa tu conexión.'),
     });
@@ -604,26 +714,102 @@ export class WorkAtHeightFormComponent implements OnDestroy {
     this.http.get<Cargo[]>('/api/submissions/job-positions').subscribe({
       next: (cargos) => {
         this.cargos.set(cargos);
-        this.http.get<{ candidates: Candidato[]; excluded: number }>('/api/submissions/crew-candidates').subscribe({
-          next: (respuesta) => {
-            this.candidatos.set(respuesta.candidates);
-            this.excluidos.set(respuesta.excluded);
-            const documento = this.flujo()?.collaborator.documentNumber;
-            const yo = respuesta.candidates.find((persona) => persona.documentNumber === documento);
-            if (!yo) return;
-            this.yoId.set(yo.id);
-            this.integrantes.set([{ candidato: yo, jobPositionId: this.cargoPorDefecto(yo), firmaDataUrl: null }]);
-          },
-          error: () => this.error.set('No fue posible cargar los colaboradores disponibles.'),
-        });
+        const params = { form: this.codigo };
+        this.http
+          .get<{ candidates: Candidato[]; excluded: number }>('/api/submissions/crew-candidates', { params })
+          .subscribe({
+            next: (respuesta) => {
+              this.candidatos.set(respuesta.candidates);
+              this.excluidos.set(respuesta.excluded);
+              const documento = this.flujo()?.collaborator.documentNumber;
+              const yo = respuesta.candidates.find((persona) => persona.documentNumber === documento);
+              if (!yo) return;
+              this.yoId.set(yo.id);
+              this.integrantes.set([{ candidato: yo, jobPositionId: this.cargoPorDefecto(yo), firmaDataUrl: null }]);
+              this.aplicarCorreccion();
+            },
+            error: () => this.error.set('No fue posible cargar los colaboradores disponibles.'),
+          });
       },
       error: () => this.error.set('No fue posible cargar los cargos.'),
     });
   }
 
+  /**
+   * Abre el formulario en modo corrección. Se recarga la página a propósito:
+   * el flujo arranca limpio (charla, cuadrilla y firmas nuevas) en vez de
+   * reutilizar el estado del permiso rechazado que se está mostrando.
+   */
+  corregir(submissionId: string): void {
+    globalThis.location.assign(`/formulario/${this.formato?.slug}?corregir=${encodeURIComponent(submissionId)}`);
+  }
+
+  private cargarCorreccion(submissionId: string): void {
+    this.http.get<Correccion>(`/api/submissions/mine/${submissionId}/correction`).subscribe({
+      next: (correccion) => {
+        this.correccion.set(correccion);
+        this.aplicarCorreccion();
+      },
+      error: (respuesta: HttpErrorResponse) => {
+        const detalle = respuesta.error?.message;
+        this.error.set(
+          typeof detalle === 'string'
+            ? `${detalle} Puedes diligenciar un permiso nuevo.`
+            : 'No fue posible recuperar el permiso rechazado. Puedes diligenciar uno nuevo.',
+        );
+      },
+    });
+  }
+
+  private buscarRechazoPendiente(): void {
+    this.http.get<Envio>('/api/submissions/mine/latest', { params: { form: this.codigo } }).subscribe({
+      next: (ultimo) => {
+        if (ultimo?.status === 'REJECTED' && ultimo.correctable) {
+          this.rechazoPendiente.set({ id: ultimo.id, reason: ultimo.approval?.reason ?? null });
+        }
+      },
+      error: () => undefined,
+    });
+  }
+
+  /**
+   * Precarga respuestas y cuadrilla del permiso rechazado. Espera a tener el
+   * formato y los candidatos: sin ellos no hay controles ni personas elegibles.
+   */
+  private aplicarCorreccion(): void {
+    const correccion = this.correccion();
+    if (this.correccionAplicada || !correccion || !this.definicion() || !this.yoId()) return;
+    this.correccionAplicada = true;
+
+    for (const [id, valor] of Object.entries(correccion.answers)) this.respuestas.get(id)?.setValue(valor);
+
+    const cargos = new Set(this.cargos().map((cargo) => cargo.id));
+    const elegibles = new Map(this.candidatos().map((candidato) => [candidato.id, candidato]));
+    const cuadrilla: Integrante[] = [];
+    let omitidos = 0;
+    // El oficial primero, como en un permiso nuevo; luego el resto en su orden.
+    const ordenados = [...correccion.members].sort((a, b) => Number(b.isLead) - Number(a.isLead));
+    for (const integrante of ordenados.slice(0, this.maxIntegrantes())) {
+      const candidato = elegibles.get(integrante.collaboratorId);
+      if (!candidato) {
+        omitidos++;
+        continue;
+      }
+      const jobPositionId =
+        integrante.jobPositionId && cargos.has(integrante.jobPositionId)
+          ? integrante.jobPositionId
+          : this.cargoPorDefecto(candidato);
+      cuadrilla.push({ candidato, jobPositionId, firmaDataUrl: null });
+    }
+    if (cuadrilla.some((persona) => persona.candidato.id === this.yoId())) this.integrantes.set(cuadrilla);
+    this.omitidosCorreccion.set(omitidos);
+  }
+
   /** Salta al resultado para que el colaborador pueda cerrar lo que dejó abierto. */
   private retomarJornada(): void {
-    this.http.get<Envio>('/api/submissions/mine/latest').subscribe({
+    // Los campos de cierre necesitan el formato cargado para tener sus controles.
+    this.cargarDefinicion();
+    this.http.get<Envio>('/api/submissions/mine/latest', { params: { form: this.codigo } }).subscribe({
       next: (resultado) => {
         this.envio.set(resultado);
         this.etapa.set('resultado');
@@ -633,12 +819,13 @@ export class WorkAtHeightFormComponent implements OnDestroy {
   }
 
   private cargarDefinicion(): void {
-    this.http.get<Definicion>('/api/forms/HSE-FO-016/current').subscribe({
+    this.http.get<Definicion>(`/api/forms/${this.codigo}/current`).subscribe({
       next: (definicion) => {
         for (const campo of definicion.schemaJson.fields) {
           // Un campo automático no se diligencia: lo completa el servidor.
           if (campo.type === 'auto') continue;
-          this.respuestas.addControl(
+          const grupo = esCampoDeApertura(campo) ? this.respuestas : this.respuestasCierre;
+          grupo.addControl(
             campo.id,
             new FormControl<unknown>(
               campo.type === 'multi_select' ? [] : '',
@@ -648,6 +835,7 @@ export class WorkAtHeightFormComponent implements OnDestroy {
         }
         this.definicion.set(definicion);
         this.restaurarBorrador();
+        this.aplicarCorreccion();
       },
       error: () => this.error.set('No fue posible cargar el formato vigente.'),
     });
@@ -655,10 +843,14 @@ export class WorkAtHeightFormComponent implements OnDestroy {
 
   private faltaValor(campo: Campo): boolean {
     if (!this.debeMostrarCampo(campo.id)) return false;
-    if (!campo.required || campo.type === 'auto') return false;
-    const valor = this.valor(campo.id);
+    return this.faltaValorEn(this.respuestas, campo);
+  }
+
+  private faltaValorEn(grupo: FormGroup<Record<string, FormControl<unknown>>>, campo: Campo): boolean {
+    if (campo.type === 'auto' || !esObligatorio(campo, (id) => grupo.get(id)?.value)) return false;
+    const valor = grupo.get(campo.id)?.value;
     if (Array.isArray(valor)) return valor.length === 0;
-    return valor === null || valor === undefined || valor === '';
+    return valor === null || valor === undefined || (typeof valor === 'string' && !valor.trim());
   }
 
   private descartarFaltante(id: string): void {
@@ -673,7 +865,10 @@ export class WorkAtHeightFormComponent implements OnDestroy {
   }
 
   private respuestasNormalizadas(): Record<string, unknown> {
-    return normalizarRespuestasFormulario(this.respuestas.getRawValue(), this.definicion()?.schemaJson.fields);
+    return normalizarRespuestasFormulario(
+      this.respuestas.getRawValue(),
+      this.definicion()?.schemaJson.fields.filter(esCampoDeApertura),
+    );
   }
 
   /**
@@ -703,10 +898,15 @@ export class WorkAtHeightFormComponent implements OnDestroy {
   // ── Borrador local ───────────────────────────────────────
   // Protege lo diligenciado si la aplicación se cierra a media jornada. No
   // sustituye a un borrador en servidor, que sigue siendo decisión pendiente.
+  /** Un borrador por formato: diligenciar el ATS no debe pisar el permiso de alturas. */
+  private claveBorrador(): string {
+    return this.codigo === 'HSE-FO-016' ? BORRADOR : `${BORRADOR}.${this.codigo}`;
+  }
+
   private guardarBorrador(): void {
     try {
       const documento = this.flujo()?.collaborator.documentNumber ?? '';
-      localStorage.setItem(BORRADOR, JSON.stringify({ documento, valores: this.respuestas.getRawValue() }));
+      localStorage.setItem(this.claveBorrador(), JSON.stringify({ documento, valores: this.respuestas.getRawValue() }));
     } catch {
       // Modo privado o almacenamiento lleno: el flujo continúa sin borrador.
     }
@@ -714,7 +914,7 @@ export class WorkAtHeightFormComponent implements OnDestroy {
 
   private restaurarBorrador(): void {
     try {
-      const crudo = localStorage.getItem(BORRADOR);
+      const crudo = localStorage.getItem(this.claveBorrador());
       if (!crudo) return;
       const guardado = JSON.parse(crudo) as { documento?: string; valores?: Record<string, unknown> };
       // El borrador de otro colaborador no debe aparecer en este dispositivo.
@@ -727,7 +927,7 @@ export class WorkAtHeightFormComponent implements OnDestroy {
 
   private borrarBorrador(): void {
     try {
-      localStorage.removeItem(BORRADOR);
+      localStorage.removeItem(this.claveBorrador());
     } catch {
       // Sin almacenamiento no hay nada que borrar.
     }

@@ -1,6 +1,8 @@
 import { ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { ApprovalsService } from './approvals.service';
 
+const notifications = { notify: jest.fn().mockResolvedValue(undefined) };
+
 describe('ApprovalsService.custody (AUD-031)', () => {
   it('pagina el archivo completo y devuelve el total sin truncarlo en 500 registros', async () => {
     const prisma = {
@@ -11,7 +13,13 @@ describe('ApprovalsService.custody (AUD-031)', () => {
       $transaction: jest.fn((operations: Promise<unknown>[]) => Promise.all(operations)),
     };
     const submissions = { expireStalePermits: jest.fn().mockResolvedValue(undefined) };
-    const service = new ApprovalsService(prisma as never, {} as never, {} as never, submissions as never);
+    const service = new ApprovalsService(
+      prisma as never,
+      {} as never,
+      {} as never,
+      submissions as never,
+      notifications as never,
+    );
 
     await expect(service.custody({ page: 6, pageSize: 100 })).resolves.toEqual({
       items: [],
@@ -38,7 +46,13 @@ describe('ApprovalsService.generateMissingPdf (AUD-005)', () => {
   function context(submission: unknown) {
     const prisma = { formSubmission: { findUnique: jest.fn().mockResolvedValue(submission) } };
     const pdf = { generateFinalPdf: jest.fn().mockResolvedValue('pdf-file-1') };
-    const service = new ApprovalsService(prisma as never, {} as never, pdf as never, {} as never);
+    const service = new ApprovalsService(
+      prisma as never,
+      {} as never,
+      pdf as never,
+      {} as never,
+      notifications as never,
+    );
     return { service, prisma, pdf };
   }
 
@@ -118,7 +132,13 @@ describe('ApprovalsService.adminCloseWorkday (AUD-025)', () => {
     };
     const prisma = { $transaction: jest.fn((callback: (client: typeof tx) => Promise<unknown>) => callback(tx)) };
     const pdf = { generateFinalPdf: jest.fn().mockResolvedValue('pdf-file-1') };
-    const service = new ApprovalsService(prisma as never, {} as never, pdf as never, {} as never);
+    const service = new ApprovalsService(
+      prisma as never,
+      {} as never,
+      pdf as never,
+      {} as never,
+      notifications as never,
+    );
     return { service, tx, pdf };
   }
 
@@ -197,5 +217,83 @@ describe('ApprovalsService.adminCloseWorkday (AUD-025)', () => {
     const result = await service.adminCloseWorkday('submission-1', { reason: 'motivo' }, request as never);
     expect(result.pdfFileId).toBeNull();
     expect(tx.auditEvent.create).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('ApprovalsService.decide — formatos oficiales', () => {
+  const request = {
+    principal: { kind: 'USER', userId: 'coord-1' },
+    ip: '127.0.0.1',
+    header: () => 'jest',
+    correlationId: 'test',
+  };
+
+  function context(formCode: string, aprobador: { fullName: string | null; signatureFileId: string | null }) {
+    const tx = {
+      formSubmission: {
+        findUnique: jest.fn().mockResolvedValue({
+          id: 'submission-1',
+          status: 'PENDING_APPROVAL',
+          collaboratorId: 'collab-1',
+          formVersion: { form: { code: formCode } },
+        }),
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+      },
+      user: { findUnique: jest.fn().mockResolvedValue(aprobador) },
+      approval: {
+        create: jest.fn().mockImplementation(({ data }: { data: Record<string, unknown> }) => Promise.resolve(data)),
+      },
+      auditEvent: { create: jest.fn().mockResolvedValue({}) },
+    };
+    const prisma = { $transaction: jest.fn((callback: (client: typeof tx) => unknown) => callback(tx)) };
+    const pdf = { generateFinalPdf: jest.fn().mockResolvedValue('pdf-1') };
+    const submissions = { expireStalePermits: jest.fn().mockResolvedValue(undefined) };
+    const service = new ApprovalsService(
+      prisma as never,
+      {} as never,
+      pdf as never,
+      submissions as never,
+      notifications as never,
+    );
+    return { service, tx, pdf };
+  }
+
+  it('no aprueba un ATS si Coordinación no registró su firma', async () => {
+    const { service, tx } = context('HSE-FO-018', { fullName: null, signatureFileId: null });
+    await expect(service.decide('submission-1', { decision: 'APPROVED' } as never, request as never)).rejects.toThrow(
+      ConflictException,
+    );
+    expect(tx.formSubmission.updateMany).not.toHaveBeenCalled();
+  });
+
+  it('fija en la aprobación el nombre y la firma registrados de quien aprueba', async () => {
+    const { service, tx, pdf } = context('FORSG-03', { fullName: 'Ana Coordinadora', signatureFileId: 'file-sig' });
+    await service.decide('submission-1', { decision: 'APPROVED' } as never, request as never);
+    const creada = tx.approval.create.mock.calls[0][0] as { data: Record<string, unknown> };
+    expect(creada.data).toMatchObject({ signerName: 'Ana Coordinadora', signatureFileId: 'file-sig' });
+    expect(tx.formSubmission.updateMany).toHaveBeenCalledWith({
+      where: { id: 'submission-1', status: 'PENDING_APPROVAL' },
+      data: { status: 'APPROVED' },
+    });
+    // Con jornada: el documento se genera al cerrar.
+    expect(pdf.generateFinalPdf).not.toHaveBeenCalled();
+  });
+
+  it('archiva la inspección de escalera al aprobarla y genera su documento', async () => {
+    const { service, tx, pdf } = context('HSE-FO-023', { fullName: null, signatureFileId: null });
+    const result = await service.decide('submission-1', { decision: 'APPROVED' } as never, request as never);
+    const cambio = tx.formSubmission.updateMany.mock.calls[0][0] as { data: { status: string; closedAt: unknown } };
+    expect(cambio.data.status).toBe('CLOSED');
+    expect(cambio.data.closedAt).toBeInstanceOf(Date);
+    expect(pdf.generateFinalPdf).toHaveBeenCalledWith('submission-1', { kind: 'USER', id: 'coord-1' });
+    expect(result).toEqual(expect.objectContaining({ status: 'CLOSED', pdfFileId: 'pdf-1' }));
+  });
+
+  it('el permiso de alturas sigue aprobándose sin firma registrada', async () => {
+    const { service, tx } = context('HSE-FO-016', { fullName: null, signatureFileId: null });
+    await service.decide('submission-1', { decision: 'APPROVED' } as never, request as never);
+    expect(tx.user.findUnique).not.toHaveBeenCalled();
+    const creada = tx.approval.create.mock.calls[0][0] as { data: Record<string, unknown> };
+    expect(creada.data.signerName).toBeUndefined();
   });
 });

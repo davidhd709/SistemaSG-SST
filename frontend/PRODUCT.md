@@ -10,7 +10,7 @@ web
 
 - **Colaboradores:** completan el control previo al inicio de labores exclusivamente desde el celular, normalmente de pie, en campo, con conectividad variable y condiciones de luz difíciles.
 - **Coordinación:** registra colaboradores y revisa/decide permisos desde celular o escritorio.
-- **Gestor de ARL, Legal y Administración:** realizan sus tareas internas exclusivamente desde escritorio.
+- **Gestor de ARL, Legal y Administración:** trabajan sobre todo desde escritorio, pero todas sus vistas también deben funcionar en el celular (app instalada).
 
 ## Product Purpose
 
@@ -29,7 +29,7 @@ Los colaboradores acceden con documento y PIN desde su teléfono antes de comenz
 - PWA Angular online-first: la instalación y caché son apoyo; los envíos oficiales requieren conexión.
 - El colaborador usa solo celular; los controles deben ser táctiles, legibles y claros en exteriores o con poca luz.
 - Coordinación debe funcionar eficazmente tanto en celular como en escritorio.
-- Las áreas de ARL, Legal y Administración se diseñan para escritorio.
+- Todas las vistas, incluidas ARL, Legal y Administración, se adaptan al celular con comportamiento de app instalada (PWA): una columna, cabecera de una sola barra, fichas en lugar de tablas, objetivos táctiles de 44px o más y respeto de la zona segura del dispositivo.
 - No se usan fuentes de terceros: la tipografía de marca (Montserrat) se empaqueta en la app y la PWA la cachea, para no depender de descargas externas en conexiones limitadas.
 - Se preservan los roles, permisos, validaciones de ARL, trazabilidad y contenido funcional existente.
 

@@ -5,6 +5,8 @@ import { RouterLink } from '@angular/router';
 import { AuthSessionService } from '../../core/auth-session.service';
 import { LogoutButtonComponent } from '../../core/logout-button.component';
 import { fechaHora } from '../../core/fechas';
+import { JobPositionsPanelComponent } from './job-positions-panel.component';
+import { FormEditorComponent } from './form-editor.component';
 
 type Rol = { code: string; name: string; permissions: { permission: { code: string } }[] };
 type Cargo = { id: string; code: string; name: string; canLead: boolean };
@@ -71,7 +73,7 @@ type Cuenta = {
   colaborador?: Colaborador;
 };
 
-type Pestana = 'inicio' | 'accesos' | 'auditoria' | 'formularios';
+type Pestana = 'inicio' | 'accesos' | 'cargos' | 'auditoria' | 'formularios';
 
 /** Cómo se lee cada acción registrada, para no mostrar el código en crudo. */
 const ACCIONES: Record<string, string> = {
@@ -106,7 +108,7 @@ const ENTIDADES: Record<string, string> = {
  * cuentas y permisos, la auditoría del sistema y el formato publicado.
  */
 @Component({
-  imports: [ReactiveFormsModule, RouterLink, LogoutButtonComponent],
+  imports: [ReactiveFormsModule, RouterLink, LogoutButtonComponent, JobPositionsPanelComponent, FormEditorComponent],
   template: `
     <header class="app-cabecera">
       <div class="fila">
@@ -150,6 +152,13 @@ const ENTIDADES: Record<string, string> = {
             </svg>
             Cuentas y permisos
           </button>
+          <button role="tab" type="button" [attr.aria-selected]="pestana() === 'cargos'" (click)="ver('cargos')">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <rect x="3" y="7" width="18" height="13" rx="2" />
+              <path d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2M3 13h18" />
+            </svg>
+            Cargos
+          </button>
           <button role="tab" type="button" [attr.aria-selected]="pestana() === 'auditoria'" (click)="ver('auditoria')">
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path d="M4 5h12M4 12h8m-8 7h12" />
@@ -191,6 +200,10 @@ const ENTIDADES: Record<string, string> = {
               <h2 id="accesos-rapidos-titulo">Accesos rápidos</h2>
               <button type="button" (click)="ver('accesos')">
                 Crear usuario
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6" /></svg>
+              </button>
+              <button type="button" (click)="ver('cargos')">
+                Gestionar cargos
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6" /></svg>
               </button>
               <button type="button" (click)="ver('formularios')">
@@ -586,6 +599,11 @@ const ENTIDADES: Record<string, string> = {
         }
       }
 
+      <!-- ══════════ Cargos ══════════ -->
+      @if (pestana() === 'cargos') {
+        <sg-job-positions-panel />
+      }
+
       <!-- ══════════ Formatos ══════════ -->
       @if (pestana() === 'formularios') {
         @if (formato(); as forma) {
@@ -618,43 +636,9 @@ const ENTIDADES: Record<string, string> = {
             <div class="formato-meta">
               <span>{{ forma.schemaJson.fields.length }} campos</span><span class="distintivo vigente">Vigente</span>
             </div>
-            <button class="boton secundario compacto" type="button" (click)="alternarDetalleFormato()">
-              {{ detalleFormato() ? 'Ocultar campos' : 'Ver campos' }}
-            </button>
           </article>
 
-          @if (detalleFormato()) {
-            <section class="formatos-campos">
-              <div class="titulo-seccion"><h3>Campos del formato vigente</h3></div>
-              <div class="tabla-scroll">
-                <table class="datos">
-                  <thead>
-                    <tr>
-                      <th>Campo</th>
-                      <th>Tipo</th>
-                      <th>Obligatorio</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    @for (campo of forma.schemaJson.fields; track campo.id) {
-                      <tr>
-                        <td>
-                          <strong>{{ campo.label }}</strong>
-                          <span class="secundario identificador">{{ campo.id }}</span>
-                        </td>
-                        <td>{{ campo.type }}</td>
-                        <td>{{ campo.required ? 'Sí' : 'No' }}</td>
-                      </tr>
-                    }
-                  </tbody>
-                </table>
-              </div>
-            </section>
-          }
-          <p class="formatos-nota">
-            La publicación de nuevas versiones se administra actualmente desde la API; los permisos firmados conservan
-            su versión original.
-          </p>
+          <sg-form-editor />
         } @else {
           <p class="secundario">Cargando el formato vigente…</p>
         }
@@ -1096,22 +1080,9 @@ const ENTIDADES: Record<string, string> = {
         color: var(--tinta-media);
         font-size: 0.875rem;
       }
-      .formato-tarjeta .boton {
-        width: 100%;
-        margin-top: 18px;
-      }
-      .formatos-campos {
-        margin-top: 26px;
-      }
-      .formatos-campos h3 {
-        margin: 0;
-        font-size: 1.125rem;
-      }
-      .formatos-nota {
-        max-width: 80ch;
-        margin: 20px 0 0;
-        color: var(--tinta-suave);
-        font-size: 0.875rem;
+      .formato-tarjeta + sg-form-editor {
+        display: block;
+        margin-top: 22px;
       }
 
       @media (max-width: 900px) {
@@ -1163,7 +1134,6 @@ export class AdminDashboardComponent {
   readonly seleccionados = signal<string[]>([]);
   readonly busqueda = signal('');
   readonly mostrarCrear = signal(false);
-  readonly detalleFormato = signal(false);
   readonly cuentaEditando = signal<Cuenta | null>(null);
   readonly cuentaRestableciendo = signal<Cuenta | null>(null);
   readonly credencialNueva = signal('');
@@ -1390,10 +1360,6 @@ export class AdminDashboardComponent {
 
   alternarFormularioUsuario(): void {
     this.mostrarCrear.update((valor) => !valor);
-  }
-
-  alternarDetalleFormato(): void {
-    this.detalleFormato.update((valor) => !valor);
   }
 
   crearUsuario(): void {

@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { AuthSessionService } from '../../core/auth-session.service';
 import { LogoutButtonComponent } from '../../core/logout-button.component';
+import { ReportsPanelComponent } from '../reports/reports-panel.component';
 import { diasHasta, fechaCalendario, fechaHora } from '../../core/fechas';
 
 type Resultado = {
@@ -29,7 +30,7 @@ type Afiliacion = {
 
 type Envio = {
   id: string;
-  status: 'DRAFT' | 'PENDING_APPROVAL' | 'APPROVED' | 'REJECTED';
+  status: 'DRAFT' | 'PENDING_APPROVAL' | 'APPROVED' | 'CLOSED' | 'REJECTED' | 'EXPIRED';
   submittedAt: string | null;
   safetyTalkConfirmedAt: string | null;
   arlSnapshotJson: { providerName?: string; endDate?: string; status?: string };
@@ -57,7 +58,9 @@ const ESTADOS: Record<string, string> = {
   DRAFT: 'Borrador',
   PENDING_APPROVAL: 'Pendiente de aprobación',
   APPROVED: 'Autorizado',
+  CLOSED: 'Cerrado',
   REJECTED: 'Rechazado',
+  EXPIRED: 'Vencido sin iniciar',
 };
 
 /**
@@ -66,7 +69,7 @@ const ESTADOS: Record<string, string> = {
  * las evidencias que respaldan cada permiso.
  */
 @Component({
-  imports: [FormsModule, LogoutButtonComponent],
+  imports: [FormsModule, LogoutButtonComponent, ReportsPanelComponent],
   template: `
     <header class="app-cabecera">
       <div class="fila">
@@ -350,6 +353,8 @@ const ESTADOS: Record<string, string> = {
           </p>
         }
       }
+
+      <sg-reports-panel />
     </main>
   `,
   styles: [
@@ -555,14 +560,14 @@ export class LegalSearchComponent {
   }
 
   claseExpediente(status: string): string {
-    if (status === 'APPROVED') return 'expediente autorizado';
+    if (status === 'APPROVED' || status === 'CLOSED') return 'expediente autorizado';
     if (status === 'REJECTED') return 'expediente rechazado';
     if (status === 'PENDING_APPROVAL') return 'expediente pendiente';
     return 'expediente';
   }
 
   claseEstado(status: string): string {
-    if (status === 'APPROVED') return 'vigente';
+    if (status === 'APPROVED' || status === 'CLOSED') return 'vigente';
     if (status === 'REJECTED') return 'vencida';
     if (status === 'PENDING_APPROVAL') return 'por-vencer';
     return 'neutro';

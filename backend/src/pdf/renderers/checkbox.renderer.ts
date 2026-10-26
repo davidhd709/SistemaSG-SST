@@ -31,6 +31,43 @@ export class CheckboxRenderer {
     const isTopLeft = (field as { origin?: string }).origin === 'top-left';
     const baseY = isTopLeft ? pageHeight - y - size : y;
 
+    try {
+      if (mark === '√') {
+        // Helvetica estándar no trae el glifo √: se traza como chulo.
+        const thickness = Math.max(0.8, size * 0.12);
+        const black = rgb(0, 0, 0);
+        page.drawLine({
+          start: { x: x + size * 0.15, y: baseY + size * 0.5 },
+          end: { x: x + size * 0.4, y: baseY + size * 0.15 },
+          thickness,
+          color: black,
+        });
+        page.drawLine({
+          start: { x: x + size * 0.4, y: baseY + size * 0.15 },
+          end: { x: x + size * 0.9, y: baseY + size * 0.9 },
+          thickness,
+          color: black,
+        });
+        return;
+      }
+      if (mark === 'O') {
+        // Encierra una opción impresa, como "(SI)" o "(NO)", igual que en papel.
+        const width = field.width ?? size;
+        page.drawEllipse({
+          x: x + width / 2,
+          y: baseY + size / 2,
+          xScale: width / 2,
+          yScale: size / 2,
+          borderColor: rgb(0, 0, 0),
+          borderWidth: 0.9,
+        });
+        return;
+      }
+    } catch (error) {
+      this.logger.error(`No fue posible renderizar checkbox en (x=${x}, y=${y}): ${String(error)}`);
+      return;
+    }
+
     // Centrar el símbolo dentro del área de la casilla.
     const fontSize = size * 0.85;
     const symbolX = x + size * 0.1;

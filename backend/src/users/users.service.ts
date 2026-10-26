@@ -1,4 +1,5 @@
 import * as argon2 from 'argon2';
+import { randomUUID } from 'node:crypto';
 import {
   BadRequestException,
   ConflictException,
@@ -8,13 +9,96 @@ import {
 } from '@nestjs/common';
 import type { AuthenticatedRequest } from '../common/request-context';
 import { PrismaService } from '../prisma/prisma.service';
+import { StorageService } from '../files/storage.service';
+import { RegisterSignatureDto } from './dto/register-signature.dto';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { ChangeOwnPasswordDto } from './dto/change-own-password.dto';
 
 @Injectable()
 export class UsersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly storage: StorageService,
+  ) {}
+
+  /** Firma registrada del usuario, para mostrarla antes de aprobar. */
+  async mySignature(request: AuthenticatedRequest) {
+    const userId = this.userId(request);
+    const user = await this.prisma.user.findUniqueOrThrow({
+      where: { id: userId },
+      select: { fullName: true, signatureUpdatedAt: true, signatureFile: { select: { objectKey: true } } },
+    });
+    if (!user.signatureFile) return { fullName: user.fullName, updatedAt: null, dataUrl: null };
+    const bytes = await this.storage.getObject(user.signatureFile.objectKey);
+    return {
+      fullName: user.fullName,
+      updatedAt: user.signatureUpdatedAt,
+      dataUrl: `data:image/png;base64,${bytes.toString('base64')}`,
+    };
+  }
+
+  /**
+   * Registra o reemplaza el nombre y la firma. El archivo anterior no se
+   * borra: las aprobaciones ya hechas lo siguen referenciando como evidencia.
+   */
+  async registerSignature(dto: RegisterSignatureDto, request: AuthenticatedRequest) {
+    const userId = this.userId(request);
+    const fullName = dto.fullName.trim().replace(/\s+/g, ' ');
+    if (fullName.length < 3) throw new BadRequestException('Escribe tu nombre completo.');
+    const match = /^data:image\/png;base64,([A-Za-z0-9+/=]+)$/.exec(dto.signatureDataUrl);
+    const content = match ? Buffer.from(match[1], 'base64') : null;
+    if (!content || content.length < 100 || content.length > 1_000_000 || content[0] !== 0x89 || content[1] !== 0x50) {
+      throw new BadRequestException('La firma debe ser una imagen PNG válida.');
+    }
+    const stored = await this.storage.putObject({
+      objectKey: `signatures/users/${randomUUID()}.png`,
+      body: content,
+      mimeType: 'image/png',
+    });
+    try {
+      const updatedAt = new Date();
+      await this.prisma.$transaction(async (tx) => {
+        const file = await tx.fileObject.create({
+          data: {
+            storageProvider: stored.storageProvider,
+            bucket: stored.bucket,
+            objectKey: stored.objectKey.replace(/\\/g, '/'),
+            originalName: `firma-usuario-${userId}.png`,
+            mimeType: 'image/png',
+            sizeBytes: stored.sizeBytes,
+            sha256: stored.sha256,
+            createdById: userId,
+          },
+        });
+        await tx.user.update({
+          where: { id: userId },
+          data: { fullName, signatureFileId: file.id, signatureUpdatedAt: updatedAt },
+        });
+        await tx.auditEvent.create({
+          data: {
+            actorUserId: userId,
+            action: 'REGISTER_SIGNATURE',
+            entityType: 'USER',
+            entityId: userId,
+            afterJson: { fullName, fileId: file.id, sha256: stored.sha256 },
+            ip: request.ip,
+            userAgent: request.header('user-agent'),
+            correlationId: request.correlationId ?? 'unknown',
+          },
+        });
+      });
+      return { fullName, updatedAt };
+    } catch (error) {
+      await this.storage.deleteObject(stored.objectKey).catch(() => undefined);
+      throw error;
+    }
+  }
+
+  private userId(request: AuthenticatedRequest): string {
+    if (request.principal?.kind !== 'USER') throw new ForbiddenException();
+    return request.principal.userId;
+  }
 
   async changeOwnPassword(dto: ChangeOwnPasswordDto, request: AuthenticatedRequest) {
     const userId = request.principal?.kind === 'USER' ? request.principal.userId : undefined;
@@ -96,6 +180,8 @@ export class UsersService {
         email: true,
         status: true,
         forcePasswordChange: true,
+        fullName: true,
+        signatureFileId: true,
         roles: {
           select: {
             role: {
@@ -105,8 +191,10 @@ export class UsersService {
         },
       },
     });
+    const { signatureFileId, ...datos } = user;
     return {
-      ...user,
+      ...datos,
+      hasSignature: Boolean(signatureFileId),
       roles: user.roles.map(({ role }) => ({ code: role.code, name: role.name })),
       permissions: [
         ...new Set(user.roles.flatMap(({ role }) => role.permissions.map(({ permission }) => permission.code))),

@@ -67,7 +67,7 @@ import { RouterLink } from '@angular/router';
         padding-bottom: 48px;
       }
       .banda {
-        padding: clamp(32px, 6vw, 64px) 20px clamp(120px, 14vw, 150px);
+        padding: calc(clamp(32px, 6vw, 64px) + env(safe-area-inset-top)) 20px clamp(120px, 14vw, 150px);
         background: var(--banda-marina);
         color: #fff;
       }

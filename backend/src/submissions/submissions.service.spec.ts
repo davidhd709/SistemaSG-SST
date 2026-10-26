@@ -86,6 +86,7 @@ function setup() {
     resolve: jest.fn().mockResolvedValue({ templatePath: '/template.pdf', mappingPath: '/mapping.json' }),
   };
   const pdf = { generateFinalPdf: jest.fn().mockResolvedValue('pdf-file-1') };
+  const notifications = { notifyPermission: jest.fn().mockResolvedValue(undefined) };
   const service = new SubmissionsService(
     prisma as never,
     storage as never,
@@ -94,8 +95,9 @@ function setup() {
     templateRegistry as never,
     jwt as never,
     config as never,
+    notifications as never,
   );
-  return { service, prisma, tx, storage, jwt, templateRegistry, pdf };
+  return { service, prisma, tx, storage, jwt, templateRegistry, pdf, notifications };
 }
 
 describe('Secreto dedicado de charla de seguridad (AUD-022)', () => {
@@ -189,7 +191,10 @@ describe('SubmissionsService permit safeguards', () => {
       workDate: businessDate(new Date()),
       answersJson: {},
       members: [{ collaboratorId }],
-      formVersion: { schemaJson: { fields: [{ id: 'inicio', type: 'auto', source: 'startedAt' }] } },
+      formVersion: {
+        form: { code: 'HSE-FO-016' },
+        schemaJson: { fields: [{ id: 'inicio', type: 'auto', source: 'startedAt' }] },
+      },
     };
     prisma.formSubmission.findUnique.mockResolvedValue(current);
     const result = await service.startWorkday('permit', request as never);
@@ -209,7 +214,10 @@ describe('SubmissionsService permit safeguards', () => {
       answersJson: {},
       members: [{ collaboratorId }],
       approval: { id: 'approval-1' },
-      formVersion: { schemaJson: { fields: [{ id: 'hora_fin', type: 'auto', source: 'closedAt' }] } },
+      formVersion: {
+        form: { code: 'HSE-FO-016' },
+        schemaJson: { fields: [{ id: 'hora_fin', type: 'auto', source: 'closedAt' }] },
+      },
     });
 
     await service.closeWorkday('submission-1', { notes: ' Sin novedades de seguridad ' }, request as never);
@@ -516,5 +524,259 @@ describe('SubmissionsService permit safeguards', () => {
       expect(ok.id).toBe('submission-1');
       expect(tx.formSubmission.create).toHaveBeenCalledTimes(1);
     });
+  });
+});
+
+describe('Corrección de un permiso rechazado', () => {
+  const rejectedId = '44444444-4444-4444-8444-444444444444';
+  const signature = Buffer.alloc(100);
+  signature[0] = 0x89;
+  signature[1] = 0x50;
+  const dto = {
+    answers: {},
+    safetyTalkConfirmed: true,
+    safetyTalkToken: 'challenge',
+    previousSubmissionId: rejectedId,
+    members: [
+      {
+        collaboratorId,
+        jobPositionId: leadPositionId,
+        signatureDataUrl: `data:image/png;base64,${signature.toString('base64')}`,
+      },
+    ],
+  };
+  const rechazado = (overrides: Record<string, unknown> = {}) => ({
+    id: rejectedId,
+    collaboratorId,
+    status: 'REJECTED',
+    workDate: new Date('2026-10-21T00:00:00Z'),
+    answersJson: { lugar: 'Subestación norte', fecha_auto: '21/10/2026', inventado: 'x' },
+    approval: { reason: 'Falta describir el punto de anclaje.' },
+    correction: null,
+    formVersion: {
+      form: { code: 'HSE-FO-016' },
+      schemaJson: {
+        fields: [
+          { id: 'lugar', type: 'text' },
+          { id: 'fecha_auto', type: 'auto', source: 'workDate' },
+        ],
+      },
+    },
+    members: [{ collaboratorId, jobPositionId: leadPositionId, isLead: true }],
+    ...overrides,
+  });
+
+  it('entrega motivo, cuadrilla y solo las respuestas editables del formato', async () => {
+    const { service, prisma } = setup();
+    prisma.formSubmission.findUnique.mockResolvedValue(rechazado());
+    const fuente = await service.correctionSource(rejectedId, request as never);
+    expect(fuente.reason).toBe('Falta describir el punto de anclaje.');
+    expect(fuente.answers).toEqual({ lugar: 'Subestación norte' });
+    expect(fuente.members).toEqual([{ collaboratorId, jobPositionId: leadPositionId, isLead: true }]);
+  });
+
+  it('solo la corrige el oficial que la diligenció, si está rechazada y una sola vez', async () => {
+    const { service, prisma } = setup();
+    prisma.formSubmission.findUnique.mockResolvedValueOnce(
+      rechazado({ collaboratorId: '55555555-5555-4555-8555-555555555555' }),
+    );
+    await expect(service.correctionSource(rejectedId, request as never)).rejects.toThrow(ForbiddenException);
+    prisma.formSubmission.findUnique.mockResolvedValueOnce(rechazado({ status: 'CLOSED' }));
+    await expect(service.correctionSource(rejectedId, request as never)).rejects.toThrow(ConflictException);
+    prisma.formSubmission.findUnique.mockResolvedValueOnce(rechazado({ correction: { id: 'otro' } }));
+    await expect(service.correctionSource(rejectedId, request as never)).rejects.toThrow(ConflictException);
+  });
+
+  it('enlaza el reenvío con el permiso rechazado', async () => {
+    const { service, prisma, tx, storage } = setup();
+    prisma.formSubmission.findUnique.mockResolvedValue(rechazado());
+    storage.putObject.mockResolvedValue({
+      storageProvider: 'LOCAL',
+      bucket: 'local',
+      objectKey: 'signatures/a.png',
+      sizeBytes: 100,
+      sha256: 'abc',
+    });
+    await service.submit('HSE-FO-016', dto, request as never);
+    expect(tx.formSubmission.create.mock.calls[0][0].data.previousSubmissionId).toBe(rejectedId);
+    expect(tx.auditEvent.create.mock.calls[0][0].data.afterJson.previousSubmissionId).toBe(rejectedId);
+  });
+
+  it('rechaza un segundo reenvío concurrente del mismo permiso y limpia las firmas', async () => {
+    const { service, prisma, tx, storage } = setup();
+    prisma.formSubmission.findUnique.mockResolvedValue(rechazado());
+    storage.putObject.mockResolvedValue({
+      storageProvider: 'LOCAL',
+      bucket: 'local',
+      objectKey: 'signatures/b.png',
+      sizeBytes: 100,
+      sha256: 'abc',
+    });
+    tx.formSubmission.create.mockRejectedValue(Object.assign(new Error('unique'), { code: 'P2002' }));
+    await expect(service.submit('HSE-FO-016', dto, request as never)).rejects.toThrow(
+      'Este permiso rechazado ya fue corregido.',
+    );
+    expect(storage.deleteObject).toHaveBeenCalledWith('signatures/b.png');
+  });
+
+  it('marca como corregible el último permiso rechazado del oficial', async () => {
+    const { service, prisma } = setup();
+    prisma.formSubmission.findFirst.mockResolvedValue({
+      id: rejectedId,
+      status: 'REJECTED',
+      collaboratorId,
+      correction: null,
+      members: [],
+    });
+    expect(await service.latest(request as never)).toMatchObject({ id: rejectedId, correctable: true });
+  });
+});
+
+describe('Formatos oficiales sueltos (ATS, eléctrico, escalera)', () => {
+  const firma = Buffer.alloc(120);
+  firma[0] = 0x89;
+  firma[1] = 0x50;
+  const firmaDataUrl = `data:image/png;base64,${firma.toString('base64')}`;
+  const otroId = '44444444-4444-4444-8444-444444444444';
+  const esquemaAts = {
+    fields: [
+      { id: 'obra', type: 'text', required: true },
+      { id: 'entrega_operacion_segura', type: 'yes_no', required: true, stage: 'close' },
+      {
+        id: 'entrega_medidas',
+        type: 'textarea',
+        required: false,
+        stage: 'close',
+        requiredWhen: { field: 'entrega_operacion_segura', equals: 'NO' },
+      },
+    ],
+  };
+
+  function conFormato(code: string, schemaJson: unknown) {
+    const ctx = setup();
+    ctx.prisma.form.findUnique.mockResolvedValue({
+      code,
+      name: code,
+      status: 'PUBLISHED',
+      currentVersion: { id: 'version', active: true, versionNumber: 1, schemaJson },
+    });
+    ctx.storage.putObject.mockImplementation(({ objectKey }: { objectKey: string }) =>
+      Promise.resolve({ objectKey, storageProvider: 'local', bucket: 'b', sizeBytes: 120, sha256: 'x' }),
+    );
+    return ctx;
+  }
+
+  it('envía un ATS sin charla de seguridad y solo choca con otro ATS abierto', async () => {
+    const { service, prisma, tx, jwt } = conFormato('HSE-FO-018', esquemaAts);
+    await service.submit(
+      'HSE-FO-018',
+      {
+        answers: { obra: 'Subestación norte' },
+        members: [{ collaboratorId, jobPositionId: leadPositionId, signatureDataUrl: firmaDataUrl }],
+      },
+      request as never,
+    );
+    expect(jwt.verifyAsync).not.toHaveBeenCalled();
+    const abierta = prisma.formSubmission.findFirst.mock.calls[0][0] as { where: Record<string, unknown> };
+    expect(abierta.where.formVersion).toEqual({ form: { code: 'HSE-FO-018' } });
+    const creado = tx.formSubmission.create.mock.calls[0][0] as { data: Record<string, unknown> };
+    expect(creado.data).toMatchObject({ safetyTalkConfirmed: false });
+    expect(creado.data.safetyTalkChallengeId).toBeUndefined();
+  });
+
+  it('no acepta al enviar los campos que el formato pide al terminar la tarea', async () => {
+    const { service } = conFormato('HSE-FO-018', esquemaAts);
+    await expect(
+      service.submit(
+        'HSE-FO-018',
+        {
+          answers: { obra: 'Subestación norte', entrega_operacion_segura: 'SI' },
+          members: [{ collaboratorId, jobPositionId: leadPositionId, signatureDataUrl: firmaDataUrl }],
+        },
+        request as never,
+      ),
+    ).rejects.toThrow(BadRequestException);
+  });
+
+  it('la inspección de escalera admite solo a quien inspecciona', async () => {
+    const { service } = conFormato('HSE-FO-023', { fields: [] });
+    await expect(
+      service.submit(
+        'HSE-FO-023',
+        {
+          answers: {},
+          members: [
+            { collaboratorId, jobPositionId: leadPositionId, signatureDataUrl: firmaDataUrl },
+            { collaboratorId: otroId, jobPositionId: leadPositionId, signatureDataUrl: firmaDataUrl },
+          ],
+        },
+        request as never,
+      ),
+    ).rejects.toThrow('admite hasta 1 persona');
+  });
+
+  function jornadaAbierta(code: string, schemaJson: unknown, members = [{ id: 'm-1', collaboratorId }]) {
+    const ctx = conFormato(code, schemaJson);
+    ctx.prisma.formSubmission.findUnique.mockResolvedValue({
+      status: 'APPROVED',
+      startedAt: new Date('2026-10-21T13:00:00Z'),
+      answersJson: { obra: 'Subestación norte' },
+      members,
+      approval: { id: 'approval-1' },
+      formVersion: { form: { code }, schemaJson },
+    });
+    (ctx.tx as unknown as { submissionMember: { update: jest.Mock } }).submissionMember.update = jest
+      .fn()
+      .mockResolvedValue({});
+    return ctx;
+  }
+
+  it('exige la entrega de la tarea del ATS al cerrar y la guarda con las respuestas', async () => {
+    const { service, tx } = jornadaAbierta('HSE-FO-018', esquemaAts);
+    await expect(
+      service.closeWorkday('submission-1', { answers: { entrega_operacion_segura: 'NO' } }, request as never),
+    ).rejects.toThrow('entrega_medidas es obligatorio');
+
+    await service.closeWorkday(
+      'submission-1',
+      { answers: { entrega_operacion_segura: 'NO', entrega_medidas: 'Retirar escombros' } },
+      request as never,
+    );
+    const update = tx.formSubmission.updateMany.mock.calls[0][0] as { data: { answersJson: Record<string, unknown> } };
+    expect(update.data.answersJson).toMatchObject({
+      obra: 'Subestación norte',
+      entrega_operacion_segura: 'NO',
+      entrega_medidas: 'Retirar escombros',
+    });
+  });
+
+  it('el permiso eléctrico no se cierra sin la firma de término de cada integrante', async () => {
+    const members = [
+      { id: 'm-1', collaboratorId },
+      { id: 'm-2', collaboratorId: otroId },
+    ];
+    const { service, tx, storage } = jornadaAbierta('FORSG-03', { fields: [] }, members);
+    await expect(
+      service.closeWorkday(
+        'submission-1',
+        { signatures: [{ collaboratorId, signatureDataUrl: firmaDataUrl }] },
+        request as never,
+      ),
+    ).rejects.toThrow('firmar el término');
+    expect(storage.putObject).not.toHaveBeenCalled();
+
+    await service.closeWorkday(
+      'submission-1',
+      {
+        signatures: [
+          { collaboratorId, signatureDataUrl: firmaDataUrl },
+          { collaboratorId: otroId, signatureDataUrl: firmaDataUrl },
+        ],
+      },
+      request as never,
+    );
+    const actualizar = (tx as unknown as { submissionMember: { update: jest.Mock } }).submissionMember.update;
+    expect(actualizar).toHaveBeenCalledTimes(2);
+    expect(actualizar).toHaveBeenCalledWith({ where: { id: 'm-2' }, data: { closingSignatureId: 'sig-1' } });
   });
 });

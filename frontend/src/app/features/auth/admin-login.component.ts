@@ -79,7 +79,7 @@ import { destinoPorRoles, type PerfilInterno } from '../../core/destino';
             <p class="mensaje error" role="alert">{{ error() }}</p>
           }
 
-          <button class="boton bloque" [disabled]="form.invalid || loading()">
+          <button class="boton completo" [disabled]="form.invalid || loading()">
             {{ loading() ? 'Ingresando…' : 'Ingresar' }}
           </button>
         </form>

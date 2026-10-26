@@ -3,6 +3,9 @@ import { resolve } from 'node:path';
 import { existsSync } from 'node:fs';
 import { PrismaClient } from '@prisma/client';
 import { workAtHeightSchema } from './seed-data/work-at-height';
+import { safeWorkAnalysisSchema } from './seed-data/safe-work-analysis';
+import { electricalPermitSchema } from './seed-data/electrical-permit';
+import { ladderInspectionSchema } from './seed-data/ladder-inspection';
 
 const envPath = resolve(__dirname, '../../.env');
 if (existsSync(envPath)) process.loadEnvFile(envPath);
@@ -20,6 +23,7 @@ const roles: Record<string, { name: string; permissions: string[] }> = {
       'collaborators:create',
       'collaborators:read',
       'collaborators:manage',
+      'job-positions:manage',
       'arl:read',
       'arl:manage',
       'forms:manage',
@@ -31,6 +35,7 @@ const roles: Record<string, { name: string; permissions: string[] }> = {
       'compliance:manage',
       'settings:manage',
       'audit:read',
+      'reports:read',
     ],
   },
   COORDINATOR: {
@@ -44,11 +49,12 @@ const roles: Record<string, { name: string; permissions: string[] }> = {
       'arl:read',
       'compliance:read',
       'compliance:manage',
+      'reports:read',
     ],
   },
   LEGAL: {
     name: 'Legal',
-    permissions: ['collaborators:read', 'arl:read', 'files:read', 'legal:read', 'compliance:read'],
+    permissions: ['collaborators:read', 'arl:read', 'files:read', 'legal:read', 'compliance:read', 'reports:read'],
   },
   ARL_MANAGER: {
     name: 'Gestor de ARL',
@@ -81,19 +87,17 @@ async function main(): Promise<void> {
       where: { roleId: role.id, permission: { code: { notIn: definition.permissions } } },
     });
   }
-  // Cargos de la cuadrilla. Solo el oficial eléctrico abre permisos de trabajo.
+  // Cargos iniciales de la cuadrilla. Solo el oficial eléctrico abre permisos
+  // de trabajo y requiere certificado de alturas. Después del primer seed el
+  // catálogo se administra desde la aplicación, así que aquí solo se crean.
   const cargos = [
-    { code: 'OFICIAL_ELECTRICO', name: 'Oficial eléctrico', canLead: true },
-    { code: 'AUXILIAR_ELECTRICO', name: 'Auxiliar eléctrico', canLead: false },
-    { code: 'AYUDANTE', name: 'Ayudante', canLead: false },
-    { code: 'SUPERVISOR', name: 'Supervisor', canLead: false },
+    { code: 'OFICIAL_ELECTRICO', name: 'Oficial eléctrico', canLead: true, requiresHeightCertificate: true },
+    { code: 'AUXILIAR_ELECTRICO', name: 'Auxiliar eléctrico', canLead: false, requiresHeightCertificate: false },
+    { code: 'AYUDANTE', name: 'Ayudante', canLead: false, requiresHeightCertificate: false },
+    { code: 'SUPERVISOR', name: 'Supervisor', canLead: false, requiresHeightCertificate: false },
   ];
   for (const cargo of cargos) {
-    await prisma.jobPosition.upsert({
-      where: { code: cargo.code },
-      update: { name: cargo.name, canLead: cargo.canLead },
-      create: cargo,
-    });
+    await prisma.jobPosition.upsert({ where: { code: cargo.code }, update: {}, create: cargo });
   }
 
   await prisma.systemSetting.upsert({
@@ -132,6 +136,8 @@ async function main(): Promise<void> {
     });
     await prisma.form.update({ where: { id: form.id }, data: { status: 'PUBLISHED', currentVersionId: version.id } });
   }
+  for (const formato of formatosOficiales) await publicarFormato(formato);
+
   const email = process.env.BOOTSTRAP_ADMIN_EMAIL?.trim().toLowerCase();
   const password = process.env.BOOTSTRAP_ADMIN_PASSWORD;
   if (!email || !password)
@@ -147,6 +153,56 @@ async function main(): Promise<void> {
     update: {},
     create: { userId: admin.id, roleId: adminRole.id },
   });
+}
+
+/** Formatos oficiales que se diligencian sueltos, cada uno con su plantilla PDF intacta. */
+const formatosOficiales = [
+  {
+    code: 'HSE-FO-018',
+    name: 'Análisis de trabajo seguro (ATS)',
+    description: 'Formato HSE-FO-018, versión 02 del 15/08/2025.',
+    schema: safeWorkAnalysisSchema,
+  },
+  {
+    code: 'FORSG-03',
+    name: 'Permiso de trabajo - riesgo eléctrico',
+    description: 'Formato FORSG-03, versión 002 de enero de 2020.',
+    schema: electricalPermitSchema,
+  },
+  {
+    code: 'HSE-FO-023',
+    name: 'Inspección de escaleras',
+    description: 'Formato HSE-FO-023, versión 00 del 29/06/2022.',
+    schema: ladderInspectionSchema,
+  },
+];
+
+/**
+ * Crea el formato con su versión digital 1 publicada. Si ya existe no lo
+ * toca: una versión publicada es inmutable y sus cambios se hacen desde
+ * Administración → Formatos.
+ */
+async function publicarFormato(formato: (typeof formatosOficiales)[number]) {
+  const form = await prisma.form.upsert({
+    where: { code: formato.code },
+    update: {},
+    create: { code: formato.code, name: formato.name, description: formato.description },
+  });
+  const version = await prisma.formVersion.upsert({
+    where: { formId_versionNumber: { formId: form.id, versionNumber: 1 } },
+    update: {},
+    create: {
+      formId: form.id,
+      versionNumber: 1,
+      schemaJson: formato.schema,
+      changeReason: `Versión digital del formato oficial ${formato.code}.`,
+      active: true,
+      publishedAt: new Date(),
+    },
+  });
+  if (!form.currentVersionId) {
+    await prisma.form.update({ where: { id: form.id }, data: { status: 'PUBLISHED', currentVersionId: version.id } });
+  }
 }
 
 main().finally(async () => prisma.$disconnect());

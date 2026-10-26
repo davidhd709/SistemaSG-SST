@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import type { AuthenticatedRequest } from '../common/request-context';
 import { PrismaService } from '../prisma/prisma.service';
 import { StorageService } from '../files/storage.service';
-import { ComplianceService } from './compliance.service';
+import { ComplianceService, exigeCertificadoAlturas } from './compliance.service';
 import { CreatePayrollDto } from './dto/create-payroll.dto';
 import { UpdatePayrollDto } from './dto/update-payroll.dto';
 import { CreateHeightCertificateDto } from './dto/create-height-certificate.dto';
@@ -40,6 +40,28 @@ export class ComplianceAdminService {
       rows: filas,
       aptos: filas.filter((fila) => fila.cumplimiento.apto).length,
       bloqueados: filas.filter((fila) => !fila.cumplimiento.apto).length,
+    };
+  }
+
+  /**
+   * Requisitos vencidos o por vencer de la plantilla activa, del más urgente
+   * al menos urgente, para renovarlos antes de que alguien quede bloqueado.
+   */
+  async expirations(days: number) {
+    const colaboradores = await this.prisma.collaborator.findMany({
+      where: { status: 'ACTIVE' },
+      select: { id: true, firstName: true, lastName: true, documentNumber: true, jobTitle: true, team: true },
+    });
+    const personas = new Map(colaboradores.map((persona) => [persona.id, persona]));
+    const vencimientos = await this.compliance.vencimientos([...personas.keys()], days);
+    return {
+      days,
+      rows: vencimientos.map(({ collaboratorId, ...vencimiento }) => ({
+        ...vencimiento,
+        collaborator: personas.get(collaboratorId)!,
+      })),
+      vencidos: vencimientos.filter((item) => item.estado === 'VENCIDO').length,
+      porVencer: vencimientos.filter((item) => item.estado === 'POR_VENCER').length,
     };
   }
 
@@ -204,11 +226,11 @@ export class ComplianceAdminService {
     if (expiresAt < issuedAt) throw new BadRequestException('El vencimiento no puede ser anterior a la expedición.');
     const colaborador = await this.prisma.collaborator.findUnique({
       where: { id: dto.collaboratorId },
-      select: { jobTitle: true },
+      select: { jobTitle: true, jobPosition: { select: { requiresHeightCertificate: true } } },
     });
     if (!colaborador) throw new BadRequestException('El colaborador no existe.');
-    if (!this.esOficialElectrico(colaborador.jobTitle)) {
-      throw new BadRequestException('El certificado de alturas solo aplica para Oficiales eléctricos.');
+    if (!exigeCertificadoAlturas(colaborador)) {
+      throw new BadRequestException('El cargo de este colaborador no requiere certificado de alturas.');
     }
     const actorUserId = this.actor(request);
 
@@ -309,16 +331,6 @@ export class ComplianceAdminService {
     const unicos = [...new Set(ids)];
     const existentes = await this.prisma.collaborator.count({ where: { id: { in: unicos } } });
     if (existentes !== unicos.length) throw new BadRequestException('Uno o más colaboradores no existen.');
-  }
-
-  private esOficialElectrico(cargo: string | null | undefined): boolean {
-    return (
-      (cargo ?? '')
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .trim()
-        .toUpperCase() === 'OFICIAL ELECTRICO'
-    );
   }
 
   private fecha(valor: string): Date {

@@ -10,6 +10,21 @@ export type Campo = {
   section?: string;
   /** Para los campos `auto`: de dónde toma el sistema el valor. */
   source?: string;
+  /** `close`: se diligencia al cerrar la jornada, no al enviar. */
+  stage?: 'open' | 'close';
+  /** Se vuelve obligatorio cuando otro campo tiene este valor. */
+  requiredWhen?: { field: string; equals: string };
+};
+
+/** Cómo se recorre cada formato; lo define la API. */
+export type PerfilFormato = {
+  code: string;
+  maxIntegrantes: number;
+  charla: boolean;
+  certificadoAlturas: boolean;
+  jornada: boolean;
+  firmaCierre: boolean;
+  firmaCoordinacion: boolean;
 };
 
 export type Definicion = { name: string; versionNumber: number; schemaJson: { fields: Campo[] } };
@@ -26,6 +41,7 @@ export type Flujo = {
   /** Permiso autorizado y aún sin cerrar, si lo hay. */
   jornadaAbierta?: { id: string; workDate: string | null; startedAt: string | null } | false | null;
   canContinue: boolean;
+  perfil: PerfilFormato;
 };
 
 export type Envio = {
@@ -36,7 +52,22 @@ export type Envio = {
   startedAt?: string | null;
   closedAt?: string | null;
   approval?: { reason?: string | null } | null;
+  /** El oficial puede corregir y reenviar este permiso rechazado. */
+  correctable?: boolean;
+  members?: {
+    isLead: boolean;
+    collaborator: { id: string; firstName: string; lastName: string; documentNumber?: string };
+  }[];
 } | null;
+
+/** Permiso rechazado que el oficial está corrigiendo. */
+export type Correccion = {
+  id: string;
+  workDate: string | null;
+  reason: string | null;
+  answers: Record<string, unknown>;
+  members: { collaboratorId: string; jobPositionId: string | null; isLead: boolean }[];
+};
 
 /** Un paso del formulario: una sección del esquema publicado. */
 export type Bloque = { titulo: string; campos: Campo[] };
@@ -74,8 +105,16 @@ export type Integrante = {
 
 export const BORRADOR = 'sg-sst.borrador';
 
-/** Filas de integrantes del formato oficial HSE-FO-016; la API aplica el mismo límite. */
-export const MAX_INTEGRANTES = 5;
+/** Campos que se diligencian al enviar; los de cierre se piden al terminar la tarea. */
+export function esCampoDeApertura(campo: Campo): boolean {
+  return campo.stage !== 'close';
+}
+
+/** Obligatorio por sí mismo o porque otra respuesta lo activa. */
+export function esObligatorio(campo: Campo, valor: (id: string) => unknown): boolean {
+  if (campo.required) return true;
+  return Boolean(campo.requiredWhen && valor(campo.requiredWhen.field) === campo.requiredWhen.equals);
+}
 
 export function agruparCamposEnBloques(fields: Campo[] = []): Bloque[] {
   const campos = fields.slice().sort((a, b) => a.order - b.order);

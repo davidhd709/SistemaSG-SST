@@ -56,8 +56,14 @@ model User {
   forcePasswordChange    Boolean                 @default(false)
   failedLoginAttempts    Int                     @default(0)
   lockedUntil            DateTime?
+  // Nombre y firma que Coordinación registra una sola vez y que se estampan
+  // en los formatos que aprueba. Cambiarla no altera aprobaciones pasadas.
+  fullName               String?
+  signatureFileId        String?                 @unique @db.Uuid
+  signatureUpdatedAt     DateTime?
   createdAt              DateTime                @default(now())
   updatedAt              DateTime                @updatedAt
+  signatureFile          FileObject?             @relation("UserSignature", fields: [signatureFileId], references: [id], onDelete: Restrict)
   roles                  UserRole[]
   refreshSessions        RefreshSession[]
   auditEvents            AuditEvent[]            @relation("AuditActorUser")
@@ -68,6 +74,8 @@ model User {
   closedSubmissions      FormSubmission[]        @relation("SubmissionClosedByUser")
   createdPayrolls        SocialSecurityPayroll[] @relation("PayrollCreatedBy")
   createdHeightCerts     HeightCertificate[]     @relation("HeightCertificateCreatedBy")
+  notifications          Notification[]
+  pushSubscriptions      PushSubscription[]
 
   @@map("users")
 }
@@ -164,6 +172,8 @@ model Collaborator {
   payrollMemberships  PayrollMembership[]
   heightCertificates  HeightCertificate[]
   refreshSessions     RefreshSession[]
+  notifications       Notification[]
+  pushSubscriptions   PushSubscription[]
 
   @@index([status])
   @@index([jobPositionId])
@@ -206,6 +216,8 @@ model FileObject {
   payrolls           SocialSecurityPayroll[] @relation("PayrollFile")
   heightCertificates HeightCertificate[]     @relation("HeightCertificateFile")
   finalPdfFor        FormSubmission?         @relation("SubmissionPdf")
+  userSignature      User?                   @relation("UserSignature")
+  approvalSignatures Approval[]              @relation("ApprovalSignature")
 
   @@map("file_objects")
 }
@@ -278,14 +290,15 @@ model FormSubmission {
   closedById            String?            @db.Uuid
   closedByUserId        String?            @db.Uuid
   closureNotes          String?
-  previousSubmissionId  String?            @db.Uuid
+  // Permiso rechazado que este envío corrige. Cada rechazo admite una sola corrección.
+  previousSubmissionId  String?            @unique @db.Uuid
   createdAt             DateTime           @default(now())
   collaborator          Collaborator       @relation(fields: [collaboratorId], references: [id], onDelete: Restrict)
   closedBy              Collaborator?      @relation("SubmissionClosedBy", fields: [closedById], references: [id], onDelete: Restrict)
   closedByUser          User?              @relation("SubmissionClosedByUser", fields: [closedByUserId], references: [id], onDelete: Restrict)
   formVersion           FormVersion        @relation(fields: [formVersionId], references: [id], onDelete: Restrict)
   previousSubmission    FormSubmission?    @relation("SubmissionCorrections", fields: [previousSubmissionId], references: [id], onDelete: Restrict)
-  correctionAttempts    FormSubmission[]   @relation("SubmissionCorrections")
+  correction            FormSubmission?    @relation("SubmissionCorrections")
   members               SubmissionMember[]
   signatures            Signature[]
   finalPdfFileId        String?            @unique @db.Uuid
@@ -305,17 +318,21 @@ model FormSubmission {
 /// de cada persona en el momento del envío: dentro de seis meses hay que poder
 /// demostrar que quien subió estaba al día, no solo el oficial.
 model SubmissionMember {
-  id             String         @id @default(uuid()) @db.Uuid
-  submissionId   String         @db.Uuid
-  collaboratorId String         @db.Uuid
-  jobPositionId  String?        @db.Uuid
-  isLead         Boolean        @default(false)
-  complianceJson Json
-  createdAt      DateTime       @default(now())
-  submission     FormSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
-  collaborator   Collaborator   @relation(fields: [collaboratorId], references: [id], onDelete: Restrict)
-  jobPosition    JobPosition?   @relation(fields: [jobPositionId], references: [id], onDelete: Restrict)
-  signature      Signature?
+  id                 String         @id @default(uuid()) @db.Uuid
+  submissionId       String         @db.Uuid
+  collaboratorId     String         @db.Uuid
+  jobPositionId      String?        @db.Uuid
+  isLead             Boolean        @default(false)
+  complianceJson     Json
+  createdAt          DateTime       @default(now())
+  submission         FormSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  collaborator       Collaborator   @relation(fields: [collaboratorId], references: [id], onDelete: Restrict)
+  jobPosition        JobPosition?   @relation(fields: [jobPositionId], references: [id], onDelete: Restrict)
+  signature          Signature?
+  // Firma de término: algunos formatos exigen que cada integrante firme
+  // también al cerrar la jornada.
+  closingSignatureId String?        @unique @db.Uuid
+  closingSignature   Signature?     @relation("MemberClosingSignature", fields: [closingSignatureId], references: [id], onDelete: Restrict)
 
   @@unique([submissionId, collaboratorId])
   @@index([collaboratorId])
@@ -323,14 +340,19 @@ model SubmissionMember {
 }
 
 model Approval {
-  id           String           @id @default(uuid()) @db.Uuid
-  submissionId String           @unique @db.Uuid
-  decision     ApprovalDecision
-  decidedById  String           @db.Uuid
-  decidedAt    DateTime         @default(now())
-  reason       String?
-  submission   FormSubmission   @relation(fields: [submissionId], references: [id], onDelete: Restrict)
-  decidedBy    User             @relation("ApprovalDecidedBy", fields: [decidedById], references: [id], onDelete: Restrict)
+  id              String           @id @default(uuid()) @db.Uuid
+  submissionId    String           @unique @db.Uuid
+  decision        ApprovalDecision
+  decidedById     String           @db.Uuid
+  decidedAt       DateTime         @default(now())
+  reason          String?
+  // Nombre y firma de quien aprobó, fijados al decidir: el documento final
+  // muestra los de ese momento aunque Coordinación cambie su firma después.
+  signerName      String?
+  signatureFileId String?          @db.Uuid
+  submission      FormSubmission   @relation(fields: [submissionId], references: [id], onDelete: Restrict)
+  decidedBy       User             @relation("ApprovalDecidedBy", fields: [decidedById], references: [id], onDelete: Restrict)
+  signatureFile   FileObject?      @relation("ApprovalSignature", fields: [signatureFileId], references: [id], onDelete: Restrict)
 
   @@index([decidedById, decidedAt])
   @@map("approvals")
@@ -350,6 +372,7 @@ model Signature {
   submission   FormSubmission    @relation(fields: [submissionId], references: [id], onDelete: Restrict)
   member       SubmissionMember? @relation(fields: [memberId], references: [id], onDelete: Cascade)
   file         FileObject        @relation(fields: [fileId], references: [id], onDelete: Restrict)
+  closingFor   SubmissionMember? @relation("MemberClosingSignature")
 
   @@index([submissionId])
   @@map("signatures")
@@ -358,16 +381,18 @@ model Signature {
 /// Catálogo de cargos de la cuadrilla. Evita que el cargo sea texto libre y
 /// permite distinguir quién puede diligenciar el permiso.
 model JobPosition {
-  id            String             @id @default(uuid()) @db.Uuid
-  code          String             @unique
-  name          String
+  id                        String             @id @default(uuid()) @db.Uuid
+  code                      String             @unique
+  name                      String
   /// Solo los cargos marcados así pueden abrir un permiso de trabajo.
-  canLead       Boolean            @default(false)
-  active        Boolean            @default(true)
-  createdAt     DateTime           @default(now())
-  updatedAt     DateTime           @updatedAt
-  members       SubmissionMember[]
-  collaborators Collaborator[]
+  canLead                   Boolean            @default(false)
+  /// Exige certificado de trabajo seguro en alturas vigente (REQ-001).
+  requiresHeightCertificate Boolean            @default(false)
+  active                    Boolean            @default(true)
+  createdAt                 DateTime           @default(now())
+  updatedAt                 DateTime           @updatedAt
+  members                   SubmissionMember[]
+  collaborators             Collaborator[]
 
   @@map("job_positions")
 }
@@ -448,4 +473,52 @@ model AuditEvent {
   @@index([entityType, entityId, createdAt])
   @@index([createdAt])
   @@map("audit_events")
+}
+
+/// Aviso para una persona: un permiso por revisar, una decisión o un
+/// vencimiento próximo. Se muestra en la bandeja de la aplicación y, si la
+/// persona lo activó, también como notificación push en su dispositivo.
+model Notification {
+  id                      String        @id @default(uuid()) @db.Uuid
+  recipientUserId         String?       @db.Uuid
+  recipientCollaboratorId String?       @db.Uuid
+  type                    String
+  title                   String
+  body                    String
+  /// Ruta interna de la aplicación a la que lleva el aviso.
+  link                    String?
+  entityType              String?
+  entityId                String?
+  /// Evita repetir un aviso periódico, por ejemplo el resumen diario.
+  dedupeKey               String?       @unique
+  readAt                  DateTime?
+  createdAt               DateTime      @default(now())
+  recipientUser           User?         @relation(fields: [recipientUserId], references: [id], onDelete: Cascade)
+  recipientCollaborator   Collaborator? @relation(fields: [recipientCollaboratorId], references: [id], onDelete: Cascade)
+
+  @@index([recipientUserId, readAt, createdAt])
+  @@index([recipientCollaboratorId, readAt, createdAt])
+  @@index([createdAt])
+  @@map("notifications")
+}
+
+/// Suscripción Web Push de un dispositivo. El endpoint lo entrega el
+/// navegador y pertenece a un servicio de push conocido.
+model PushSubscription {
+  id             String        @id @default(uuid()) @db.Uuid
+  userId         String?       @db.Uuid
+  collaboratorId String?       @db.Uuid
+  endpoint       String        @unique
+  p256dh         String
+  auth           String
+  userAgent      String?
+  failures       Int           @default(0)
+  lastSuccessAt  DateTime?
+  createdAt      DateTime      @default(now())
+  user           User?         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  collaborator   Collaborator? @relation(fields: [collaboratorId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([collaboratorId])
+  @@map("push_subscriptions")
 }

@@ -89,3 +89,17 @@ form.bloque {
   display: grid;
   gap: 18px;
 }
+
+/* Cierre: entrega de la tarea y firmas de término, dentro del bloque de jornada. */
+.cierre,
+.firmas-cierre {
+  display: grid;
+  gap: 12px;
+  margin: 16px 0;
+}
+
+.cierre h3,
+.firmas-cierre h3 {
+  margin: 0;
+  font-size: 1rem;
+}

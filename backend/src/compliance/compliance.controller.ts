@@ -9,6 +9,7 @@ import { ComplianceAdminService } from './compliance-admin.service';
 import { CreatePayrollDto } from './dto/create-payroll.dto';
 import { UpdatePayrollDto } from './dto/update-payroll.dto';
 import { CreateHeightCertificateDto } from './dto/create-height-certificate.dto';
+import { ExpirationsQueryDto } from './dto/expirations-query.dto';
 
 type Subida = { originalname: string; mimetype: string; size: number; buffer: Buffer } | undefined;
 
@@ -20,6 +21,11 @@ export class ComplianceController {
   /** Quién está al día y quién no, para toda la plantilla. */
   @Get('overview') @RequirePermissions('compliance:read') overview() {
     return this.admin.overview();
+  }
+
+  /** ARL, planillas y certificados vencidos o que vencen dentro del plazo. */
+  @Get('expirations') @RequirePermissions('compliance:read') expirations(@Query() query: ExpirationsQueryDto) {
+    return this.admin.expirations(query.days);
   }
 
   // ── Planillas de seguridad social ──

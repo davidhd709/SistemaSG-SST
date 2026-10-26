@@ -1,0 +1,656 @@
+{
+  "meta": {
+    "formCode": "HSE-FO-023",
+    "templateVersion": "v00",
+    "pageCount": 1,
+    "pageSize": {
+      "width": 612,
+      "height": 792
+    },
+    "orientation": "portrait",
+    "templateSha256": "1f23af5f8eb850c5a1126c6be1f1354658efb725f6074905f320e5b9614a71d4",
+    "_calibration": "v00 — coordenadas medidas sobre el PDF oficial HSE-FO-023 (líneas vectoriales de la tabla)."
+  },
+  "fields": {
+    "fecha_hora": {
+      "type": "TEXT",
+      "page": 0,
+      "x": 155,
+      "y": 666.5,
+      "width": 376,
+      "height": 12,
+      "fontSize": 8.5,
+      "minFontSize": 5.5,
+      "align": "left",
+      "overflow": "truncate",
+      "maxLines": 1
+    },
+    "lugar": {
+      "type": "TEXT",
+      "page": 0,
+      "x": 155,
+      "y": 650.3,
+      "width": 376,
+      "height": 12,
+      "fontSize": 8.5,
+      "minFontSize": 5.5,
+      "align": "left",
+      "overflow": "truncate",
+      "maxLines": 1
+    },
+    "tipo_escalera": {
+      "type": "TEXT",
+      "page": 0,
+      "x": 155,
+      "y": 634.1,
+      "width": 376,
+      "height": 12,
+      "fontSize": 8.5,
+      "minFontSize": 5.5,
+      "align": "left",
+      "overflow": "truncate",
+      "maxLines": 1
+    },
+    "parte_01_correcto": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 394.5,
+      "y": 596.1,
+      "size": 8,
+      "mark": "√",
+      "checkedWhen": {
+        "field": "parte_01",
+        "equals": "Correcto"
+      }
+    },
+    "parte_01_incorrecto": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 395.6,
+      "y": 596.7,
+      "size": 8,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "parte_01",
+        "equals": "Incorrecto"
+      }
+    },
+    "parte_01_na": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 393.2,
+      "y": 596.7,
+      "size": 8,
+      "mark": "NA",
+      "checkedWhen": {
+        "field": "parte_01",
+        "equals": "No aplica"
+      }
+    },
+    "parte_01_obs": {
+      "type": "TEXT",
+      "page": 0,
+      "x": 433,
+      "y": 595.5,
+      "width": 99,
+      "height": 9.6,
+      "fontSize": 7,
+      "minFontSize": 5,
+      "align": "left",
+      "overflow": "truncate",
+      "maxLines": 1
+    },
+    "parte_02_correcto": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 394.5,
+      "y": 583.5,
+      "size": 8,
+      "mark": "√",
+      "checkedWhen": {
+        "field": "parte_02",
+        "equals": "Correcto"
+      }
+    },
+    "parte_02_incorrecto": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 395.6,
+      "y": 584.1,
+      "size": 8,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "parte_02",
+        "equals": "Incorrecto"
+      }
+    },
+    "parte_02_na": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 393.2,
+      "y": 584.1,
+      "size": 8,
+      "mark": "NA",
+      "checkedWhen": {
+        "field": "parte_02",
+        "equals": "No aplica"
+      }
+    },
+    "parte_02_obs": {
+      "type": "TEXT",
+      "page": 0,
+      "x": 433,
+      "y": 582.9,
+      "width": 99,
+      "height": 9.6,
+      "fontSize": 7,
+      "minFontSize": 5,
+      "align": "left",
+      "overflow": "truncate",
+      "maxLines": 1
+    },
+    "parte_03_correcto": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 394.5,
+      "y": 570.9,
+      "size": 8,
+      "mark": "√",
+      "checkedWhen": {
+        "field": "parte_03",
+        "equals": "Correcto"
+      }
+    },
+    "parte_03_incorrecto": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 395.6,
+      "y": 571.5,
+      "size": 8,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "parte_03",
+        "equals": "Incorrecto"
+      }
+    },
+    "parte_03_na": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 393.2,
+      "y": 571.5,
+      "size": 8,
+      "mark": "NA",
+      "checkedWhen": {
+        "field": "parte_03",
+        "equals": "No aplica"
+      }
+    },
+    "parte_03_obs": {
+      "type": "TEXT",
+      "page": 0,
+      "x": 433,
+      "y": 570.3,
+      "width": 99,
+      "height": 9.6,
+      "fontSize": 7,
+      "minFontSize": 5,
+      "align": "left",
+      "overflow": "truncate",
+      "maxLines": 1
+    },
+    "parte_04_correcto": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 394.5,
+      "y": 558.3,
+      "size": 8,
+      "mark": "√",
+      "checkedWhen": {
+        "field": "parte_04",
+        "equals": "Correcto"
+      }
+    },
+    "parte_04_incorrecto": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 395.6,
+      "y": 558.9,
+      "size": 8,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "parte_04",
+        "equals": "Incorrecto"
+      }
+    },
+    "parte_04_na": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 393.2,
+      "y": 558.9,
+      "size": 8,
+      "mark": "NA",
+      "checkedWhen": {
+        "field": "parte_04",
+        "equals": "No aplica"
+      }
+    },
+    "parte_04_obs": {
+      "type": "TEXT",
+      "page": 0,
+      "x": 433,
+      "y": 557.7,
+      "width": 99,
+      "height": 9.6,
+      "fontSize": 7,
+      "minFontSize": 5,
+      "align": "left",
+      "overflow": "truncate",
+      "maxLines": 1
+    },
+    "parte_05_correcto": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 394.5,
+      "y": 545.7,
+      "size": 8,
+      "mark": "√",
+      "checkedWhen": {
+        "field": "parte_05",
+        "equals": "Correcto"
+      }
+    },
+    "parte_05_incorrecto": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 395.6,
+      "y": 546.3,
+      "size": 8,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "parte_05",
+        "equals": "Incorrecto"
+      }
+    },
+    "parte_05_na": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 393.2,
+      "y": 546.3,
+      "size": 8,
+      "mark": "NA",
+      "checkedWhen": {
+        "field": "parte_05",
+        "equals": "No aplica"
+      }
+    },
+    "parte_05_obs": {
+      "type": "TEXT",
+      "page": 0,
+      "x": 433,
+      "y": 545.1,
+      "width": 99,
+      "height": 9.6,
+      "fontSize": 7,
+      "minFontSize": 5,
+      "align": "left",
+      "overflow": "truncate",
+      "maxLines": 1
+    },
+    "parte_06_correcto": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 394.5,
+      "y": 533.1,
+      "size": 8,
+      "mark": "√",
+      "checkedWhen": {
+        "field": "parte_06",
+        "equals": "Correcto"
+      }
+    },
+    "parte_06_incorrecto": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 395.6,
+      "y": 533.7,
+      "size": 8,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "parte_06",
+        "equals": "Incorrecto"
+      }
+    },
+    "parte_06_na": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 393.2,
+      "y": 533.7,
+      "size": 8,
+      "mark": "NA",
+      "checkedWhen": {
+        "field": "parte_06",
+        "equals": "No aplica"
+      }
+    },
+    "parte_06_obs": {
+      "type": "TEXT",
+      "page": 0,
+      "x": 433,
+      "y": 532.5,
+      "width": 99,
+      "height": 9.6,
+      "fontSize": 7,
+      "minFontSize": 5,
+      "align": "left",
+      "overflow": "truncate",
+      "maxLines": 1
+    },
+    "parte_07_correcto": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 394.5,
+      "y": 520.5,
+      "size": 8,
+      "mark": "√",
+      "checkedWhen": {
+        "field": "parte_07",
+        "equals": "Correcto"
+      }
+    },
+    "parte_07_incorrecto": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 395.6,
+      "y": 521.1,
+      "size": 8,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "parte_07",
+        "equals": "Incorrecto"
+      }
+    },
+    "parte_07_na": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 393.2,
+      "y": 521.1,
+      "size": 8,
+      "mark": "NA",
+      "checkedWhen": {
+        "field": "parte_07",
+        "equals": "No aplica"
+      }
+    },
+    "parte_07_obs": {
+      "type": "TEXT",
+      "page": 0,
+      "x": 433,
+      "y": 519.9,
+      "width": 99,
+      "height": 9.6,
+      "fontSize": 7,
+      "minFontSize": 5,
+      "align": "left",
+      "overflow": "truncate",
+      "maxLines": 1
+    },
+    "parte_08_correcto": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 394.5,
+      "y": 507.9,
+      "size": 8,
+      "mark": "√",
+      "checkedWhen": {
+        "field": "parte_08",
+        "equals": "Correcto"
+      }
+    },
+    "parte_08_incorrecto": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 395.6,
+      "y": 508.5,
+      "size": 8,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "parte_08",
+        "equals": "Incorrecto"
+      }
+    },
+    "parte_08_na": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 393.2,
+      "y": 508.5,
+      "size": 8,
+      "mark": "NA",
+      "checkedWhen": {
+        "field": "parte_08",
+        "equals": "No aplica"
+      }
+    },
+    "parte_08_obs": {
+      "type": "TEXT",
+      "page": 0,
+      "x": 433,
+      "y": 507.3,
+      "width": 99,
+      "height": 9.6,
+      "fontSize": 7,
+      "minFontSize": 5,
+      "align": "left",
+      "overflow": "truncate",
+      "maxLines": 1
+    },
+    "parte_09_correcto": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 394.5,
+      "y": 495.3,
+      "size": 8,
+      "mark": "√",
+      "checkedWhen": {
+        "field": "parte_09",
+        "equals": "Correcto"
+      }
+    },
+    "parte_09_incorrecto": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 395.6,
+      "y": 495.9,
+      "size": 8,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "parte_09",
+        "equals": "Incorrecto"
+      }
+    },
+    "parte_09_na": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 393.2,
+      "y": 495.9,
+      "size": 8,
+      "mark": "NA",
+      "checkedWhen": {
+        "field": "parte_09",
+        "equals": "No aplica"
+      }
+    },
+    "parte_09_obs": {
+      "type": "TEXT",
+      "page": 0,
+      "x": 433,
+      "y": 494.7,
+      "width": 99,
+      "height": 9.6,
+      "fontSize": 7,
+      "minFontSize": 5,
+      "align": "left",
+      "overflow": "truncate",
+      "maxLines": 1
+    },
+    "parte_10_correcto": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 394.5,
+      "y": 482.7,
+      "size": 8,
+      "mark": "√",
+      "checkedWhen": {
+        "field": "parte_10",
+        "equals": "Correcto"
+      }
+    },
+    "parte_10_incorrecto": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 395.6,
+      "y": 483.3,
+      "size": 8,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "parte_10",
+        "equals": "Incorrecto"
+      }
+    },
+    "parte_10_na": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 393.2,
+      "y": 483.3,
+      "size": 8,
+      "mark": "NA",
+      "checkedWhen": {
+        "field": "parte_10",
+        "equals": "No aplica"
+      }
+    },
+    "parte_10_obs": {
+      "type": "TEXT",
+      "page": 0,
+      "x": 433,
+      "y": 482.1,
+      "width": 99,
+      "height": 9.6,
+      "fontSize": 7,
+      "minFontSize": 5,
+      "align": "left",
+      "overflow": "truncate",
+      "maxLines": 1
+    },
+    "parte_11_correcto": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 394.5,
+      "y": 470.1,
+      "size": 8,
+      "mark": "√",
+      "checkedWhen": {
+        "field": "parte_11",
+        "equals": "Correcto"
+      }
+    },
+    "parte_11_incorrecto": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 395.6,
+      "y": 470.7,
+      "size": 8,
+      "mark": "X",
+      "checkedWhen": {
+        "field": "parte_11",
+        "equals": "Incorrecto"
+      }
+    },
+    "parte_11_na": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 393.2,
+      "y": 470.7,
+      "size": 8,
+      "mark": "NA",
+      "checkedWhen": {
+        "field": "parte_11",
+        "equals": "No aplica"
+      }
+    },
+    "parte_11_obs": {
+      "type": "TEXT",
+      "page": 0,
+      "x": 433,
+      "y": 469.5,
+      "width": 99,
+      "height": 9.6,
+      "fontSize": 7,
+      "minFontSize": 5,
+      "align": "left",
+      "overflow": "truncate",
+      "maxLines": 1
+    },
+    "conclusion_apta_si": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 264.6,
+      "y": 446.4,
+      "size": 11.5,
+      "width": 17.8,
+      "mark": "O",
+      "checkedWhen": {
+        "field": "conclusion_apta",
+        "equals": "SI"
+      }
+    },
+    "conclusion_apta_no": {
+      "type": "CHECKBOX",
+      "page": 0,
+      "x": 285.6,
+      "y": 446.4,
+      "size": 11.5,
+      "width": 22.5,
+      "mark": "O",
+      "checkedWhen": {
+        "field": "conclusion_apta",
+        "equals": "NO"
+      }
+    },
+    "justificacion": {
+      "type": "MULTILINE_TEXT",
+      "page": 0,
+      "x": 369,
+      "y": 437,
+      "width": 162,
+      "height": 19.5,
+      "fontSize": 7,
+      "minFontSize": 5,
+      "align": "left",
+      "overflow": "truncate"
+    },
+    "responsable_nombre": {
+      "type": "TEXT",
+      "page": 0,
+      "x": 168,
+      "y": 413.2,
+      "width": 194,
+      "height": 9,
+      "fontSize": 8.5,
+      "minFontSize": 5.5,
+      "align": "left",
+      "overflow": "truncate",
+      "maxLines": 1
+    },
+    "responsable_firma": {
+      "type": "SIGNATURE",
+      "page": 0,
+      "x": 433,
+      "y": 404,
+      "width": 99,
+      "height": 30,
+      "fit": "contain",
+      "align": "center",
+      "memberIndex": 0
+    }
+  }
+}

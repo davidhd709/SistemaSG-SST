@@ -94,6 +94,18 @@ Después de copiarla a GitHub, borre la clave privada local.
    La API aplica las migraciones al iniciar. El seed sincroniza los permisos vigentes con los roles iniciales. Cambie las credenciales de bootstrap después de crear los usuarios reales.
 3. Compruebe `https://sst.opainn.com/api/health` y haga login.
 
+### Notificaciones push (opcional)
+
+Sin llaves VAPID los avisos quedan solo en la bandeja de la aplicación. Para activar el push, genere las llaves una sola vez y agréguelas al `.env` del VPS:
+
+```bash
+docker compose run --rm api ./node_modules/.bin/web-push generate-vapid-keys
+```
+
+Defina `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` y `VAPID_SUBJECT` (un `mailto:` de contacto) y reinicie la API. No cambie las llaves después: hacerlo invalida las suscripciones de todos los dispositivos. La API solo envía a servicios de push conocidos (Google, Mozilla, Microsoft y Apple), por HTTPS de salida.
+
+Cada hora, la API vence los permisos que no iniciaron en su fecha, envía desde las 6 a. m. el resumen diario de vencimientos y jornadas sin cerrar, y borra avisos con más de 90 días. Con varias instancias, la deduplicación en base de datos evita resúmenes repetidos. Se desactiva con `NOTIFICATIONS_DIGEST_ENABLED=false`.
+
 ### Actualizaciones y rollback
 
 - **Actualizar:** haga merge a `main`. `scripts/deploy.sh` descarga las imágenes nuevas. Si ya había una versión corriendo, ejecuta `scripts/backup.sh` en `$BACKUP_DIR` (por defecto `~/sgsst-backups`). Luego levanta los servicios y espera a que `/api/health` responda en `127.0.0.1:8080`.

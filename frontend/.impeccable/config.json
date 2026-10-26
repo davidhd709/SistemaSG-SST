@@ -9,6 +9,15 @@
         "value": "montserrat",
         "createdAt": "2026-10-22T14:10:03.608Z",
         "reason": "user confirmed: chose to bundle the logo's own typeface (Montserrat) locally; brand-pinned"
+      },
+      {
+        "rule": "broken-image",
+        "value": "*",
+        "files": [
+          "src/app/features/auth/my-signature.component.ts"
+        ],
+        "createdAt": "2026-10-23T19:39:10.946Z",
+        "reason": "Claude: the img src is bound to the registered signature data URL ([src]) and only renders inside @if (actual.dataUrl)"
       }
     ]
   }

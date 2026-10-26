@@ -9,7 +9,10 @@
         <span class="lema">Autorización de inicio de labores</span>
       </span>
     </div>
-    <sg-logout-button />
+    <div class="acciones">
+      <a class="boton secundario compacto" routerLink="/administracion/mi-firma">Mi firma</a>
+      <sg-logout-button />
+    </div>
   </div>
 </header>
 
@@ -29,6 +32,17 @@
       <button role="tab" [attr.aria-selected]="pestana() === 'jornadas'" (click)="verJornadas()" type="button">
         Cuadrillas activas
       </button>
+      <button
+        role="tab"
+        [attr.aria-selected]="pestana() === 'vencimientos'"
+        (click)="pestana.set('vencimientos')"
+        type="button"
+      >
+        Vencimientos
+        @if (vencimientosProximos()) {
+          <span class="globo">{{ vencimientosProximos() }}</span>
+        }
+      </button>
       <button role="tab" [attr.aria-selected]="pestana() === 'cumplimiento'" (click)="verCumplimiento()" type="button">
         Curso de alturas
       </button>
@@ -42,6 +56,14 @@
       </button>
       <button role="tab" [attr.aria-selected]="pestana() === 'custodia'" (click)="verCustodia()" type="button">
         Custodia documental
+      </button>
+      <button
+        role="tab"
+        [attr.aria-selected]="pestana() === 'reportes'"
+        (click)="pestana.set('reportes')"
+        type="button"
+      >
+        Reportes
       </button>
     </div>
   </section>
@@ -506,6 +528,16 @@
         </p>
       }
     </section>
+  }
+
+  <!-- ══════════════ REPORTES ══════════════ -->
+  @if (pestana() === 'reportes') {
+    <sg-reports-panel />
+  }
+
+  <!-- ══════════════ VENCIMIENTOS ══════════════ -->
+  @if (pestana() === 'vencimientos') {
+    <sg-expirations-panel (renovar)="verCumplimiento()" />
   }
 
   <!-- ══════════════ REQUISITOS ══════════════ -->
