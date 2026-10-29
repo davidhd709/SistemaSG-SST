@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { SEDES, type Sede } from '../../core/sedes';
 
 type Periodo = 'mes-actual' | 'mes-anterior' | 'ultimos-90' | 'anio' | 'personalizado';
 
@@ -47,7 +48,15 @@ function sumarDias(dia: string, dias: number): string {
             <option value="personalizado">Personalizado</option>
           </select>
         </label>
-        <div></div>
+        <label class="campo">
+          <span>Sede</span>
+          <select [value]="sede()" (change)="sede.set($any($event.target).value)">
+            <option value="">Todas las sedes</option>
+            @for (opcion of sedes; track opcion.valor) {
+              <option [value]="opcion.valor">{{ opcion.nombre }}</option>
+            }
+          </select>
+        </label>
         <label class="campo">
           <span>Desde</span>
           <input type="date" [value]="desde()" (change)="ajustar('desde', $any($event.target).value)" />
@@ -77,6 +86,8 @@ export class ReportsPanelComponent {
   readonly periodo = signal<Periodo>('mes-actual');
   readonly desde = signal('');
   readonly hasta = signal('');
+  readonly sede = signal<Sede | ''>('');
+  readonly sedes = SEDES;
   readonly descargando = signal(false);
   readonly error = signal('');
 
@@ -121,7 +132,7 @@ export class ReportsPanelComponent {
     this.error.set('');
     this.http
       .get('/api/reports/submissions.xlsx', {
-        params: { from: this.desde(), to: this.hasta() },
+        params: { from: this.desde(), to: this.hasta(), ...(this.sede() ? { site: this.sede() } : {}) },
         responseType: 'blob',
       })
       .subscribe({
@@ -129,7 +140,8 @@ export class ReportsPanelComponent {
           const url = URL.createObjectURL(blob);
           const enlace = document.createElement('a');
           enlace.href = url;
-          enlace.download = `reporte-permisos-${this.desde()}_${this.hasta()}.xlsx`;
+          const sufijo = this.sede() ? `-${this.sede().toLowerCase()}` : '';
+          enlace.download = `reporte-permisos${sufijo}-${this.desde()}_${this.hasta()}.xlsx`;
           enlace.click();
           URL.revokeObjectURL(url);
           this.descargando.set(false);

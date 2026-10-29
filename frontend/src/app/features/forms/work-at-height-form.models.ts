@@ -31,6 +31,8 @@ export type Definicion = { name: string; versionNumber: number; schemaJson: { fi
 
 export type Flujo = {
   collaborator: { firstName: string; lastName: string; documentNumber: string };
+  /** En Alcalá la charla se ve en video; en Montelíbano se dicta en persona. */
+  sede?: { code: string; nombre: string; charlaEnVideo: boolean };
   arl: { status: string; providerName?: string; endDate?: string };
   cumplimiento?: {
     apto: boolean;

@@ -4,6 +4,7 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { AuthSessionService } from '../../core/auth-session.service';
 import { diasHasta, fechaCalendario, textoVencimiento } from '../../core/fechas';
 import { LogoutButtonComponent } from '../../core/logout-button.component';
+import { SEDES, nombreSede, type Sede } from '../../core/sedes';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 
 type EstadoArl = 'VIGENTE' | 'PROXIMA_A_VENCER' | 'VENCIDA';
@@ -29,6 +30,7 @@ type Fila = {
     jobPositionId: string | null;
     jobPosition: Cargo | null;
     team: string | null;
+    site: Sede;
     status: string;
   };
   affiliation: Afiliacion | null;
@@ -44,6 +46,7 @@ type CrearColaborador = {
   firstName: string;
   lastName: string;
   jobPositionId: string;
+  site: Sede | '';
   team: string;
   email: string;
   phone: string;
@@ -122,6 +125,14 @@ type CrearColaborador = {
                 <option value="">Selecciona un cargo</option>
                 @for (cargo of cargos(); track cargo.id) {
                   <option [value]="cargo.id">{{ cargo.name }}</option>
+                }
+              </select>
+            </label>
+            <label class="campo">
+              <span>Sede</span>
+              <select formControlName="site">
+                @for (sede of sedes; track sede.valor) {
+                  <option [value]="sede.valor">{{ sede.nombre }}</option>
                 }
               </select>
             </label>
@@ -289,6 +300,15 @@ type CrearColaborador = {
                   }
                 </select></label
               >
+              <label class="campo"
+                ><span>Sede</span
+                ><select formControlName="site">
+                  <option value="">Selecciona la sede</option>
+                  @for (sede of sedes; track sede.valor) {
+                    <option [value]="sede.valor">{{ sede.nombre }}</option>
+                  }
+                </select></label
+              >
               <label class="campo"><span>Equipo</span><input formControlName="team" placeholder="Opcional" /></label>
               <label class="campo"
                 ><span>Correo</span><input formControlName="email" type="email" placeholder="Opcional"
@@ -336,10 +356,20 @@ type CrearColaborador = {
         <div class="titulo-seccion lista-arl-cabecera">
           <h2>
             Colaboradores
-            <span class="conteo">({{ visibles().length }} de {{ filas().length }})</span>
+            <span class="conteo">({{ visibles().length }} de {{ filasSede().length }})</span>
           </h2>
           <button class="boton secundario compacto" type="button" (click)="cargar()">Actualizar</button>
         </div>
+
+        <label class="campo filtro-sede">
+          <span>Sede</span>
+          <select [value]="filtroSede()" (change)="filtroSede.set($any($event.target).value)">
+            <option value="">Todas las sedes</option>
+            @for (sede of sedes; track sede.valor) {
+              <option [value]="sede.valor">{{ sede.nombre }}</option>
+            }
+          </select>
+        </label>
 
         <div class="pestanas" role="tablist">
           @for (opcion of filtros; track opcion.valor) {
@@ -350,7 +380,7 @@ type CrearColaborador = {
               (click)="filtro.set(opcion.valor)"
             >
               {{ opcion.etiqueta }}
-              <span class="globo">{{ opcion.valor ? conteo(opcion.valor) : filas().length }}</span>
+              <span class="globo">{{ opcion.valor ? conteo(opcion.valor) : filasSede().length }}</span>
             </button>
           }
         </div>
@@ -374,7 +404,9 @@ type CrearColaborador = {
                   <tr>
                     <td>
                       <strong>{{ fila.collaborator.firstName }} {{ fila.collaborator.lastName }}</strong>
-                      <span class="secundario">{{ fila.collaborator.documentNumber }}</span>
+                      <span class="secundario"
+                        >{{ fila.collaborator.documentNumber }} · {{ nombreSede(fila.collaborator.site) }}</span
+                      >
                     </td>
                     <td>{{ fila.affiliation?.providerName || '—' }}</td>
                     <td>
@@ -413,6 +445,10 @@ type CrearColaborador = {
   `,
   styles: [
     `
+      .filtro-sede {
+        max-width: 260px;
+        margin-bottom: 12px;
+      }
       h3 {
         margin: 28px 0 10px;
         font-size: 1.0625rem;
@@ -481,6 +517,9 @@ export class ArlListComponent {
   readonly historial = signal<AfiliacionHistorial[]>([]);
   readonly seleccionada = signal<Fila | null>(null);
   readonly filtro = signal<EstadoArl | null>(null);
+  readonly filtroSede = signal<Sede | ''>('');
+  readonly sedes = SEDES;
+  readonly nombreSede = nombreSede;
   readonly cargando = signal(false);
   readonly guardando = signal(false);
   readonly subiendo = signal(false);
@@ -510,6 +549,7 @@ export class ArlListComponent {
     firstName: '',
     lastName: '',
     jobPositionId: '',
+    site: '',
     team: '',
     email: '',
     phone: '',
@@ -521,6 +561,7 @@ export class ArlListComponent {
     firstName: ['', [Validators.required, Validators.maxLength(100)]],
     lastName: ['', [Validators.required, Validators.maxLength(100)]],
     jobPositionId: ['', Validators.required],
+    site: ['' as Sede | '', Validators.required],
     team: ['', Validators.maxLength(100)],
     email: ['', Validators.email],
     phone: ['', Validators.maxLength(30)],
@@ -530,15 +571,21 @@ export class ArlListComponent {
     firstName: ['', [Validators.required, Validators.maxLength(100)]],
     lastName: ['', [Validators.required, Validators.maxLength(100)]],
     jobPositionId: ['', Validators.required],
+    site: ['ALCALA' as Sede, Validators.required],
     team: ['', Validators.maxLength(100)],
     email: ['', Validators.email],
     phone: ['', Validators.maxLength(30)],
     pin: [''],
   });
 
+  readonly filasSede = computed(() => {
+    const sede = this.filtroSede();
+    return sede ? this.filas().filter((fila) => fila.collaborator.site === sede) : this.filas();
+  });
+
   readonly visibles = computed(() => {
     const estado = this.filtro();
-    return estado ? this.filas().filter((fila) => fila.arlStatus === estado) : this.filas();
+    return estado ? this.filasSede().filter((fila) => fila.arlStatus === estado) : this.filasSede();
   });
 
   constructor() {
@@ -641,7 +688,7 @@ export class ArlListComponent {
   }
 
   conteo(estado: EstadoArl): number {
-    return this.filas().filter((fila) => fila.arlStatus === estado).length;
+    return this.filasSede().filter((fila) => fila.arlStatus === estado).length;
   }
 
   abrirFicha(fila: Fila): void {
@@ -658,6 +705,7 @@ export class ArlListComponent {
       firstName: fila.collaborator.firstName,
       lastName: fila.collaborator.lastName,
       jobPositionId: fila.collaborator.jobPositionId ?? '',
+      site: fila.collaborator.site,
       team: fila.collaborator.team ?? '',
       email: fila.collaborator.email ?? '',
       phone: fila.collaborator.phone ?? '',

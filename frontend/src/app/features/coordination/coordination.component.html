@@ -128,6 +128,12 @@
             <dt>Cargo</dt>
             <dd>{{ item.collaborator.jobTitle || '—' }}</dd>
           </div>
+          @if (item.site) {
+            <div>
+              <dt>Sede</dt>
+              <dd>{{ nombreSede(item.site) }}</dd>
+            </div>
+          }
           <div>
             <dt>Formulario</dt>
             <dd>{{ item.formVersion.form.code }} · versión {{ item.formVersion.versionNumber }}</dd>
@@ -138,7 +144,9 @@
           </div>
           <div>
             <dt>Charla de seguridad</dt>
-            <dd>Confirmada · {{ fecha(item.safetyTalkConfirmedAt) }}</dd>
+            <dd>
+              {{ item.safetyTalkVideo ? 'Vista en video' : 'Presencial' }} · {{ fecha(item.safetyTalkConfirmedAt) }}
+            </dd>
           </div>
           <div>
             <dt>ARL al momento del envío</dt>
@@ -285,7 +293,9 @@
                 <tr>
                   <td>
                     <strong>{{ item.collaborator.firstName }} {{ item.collaborator.lastName }}</strong>
-                    <span class="secundario">{{ item.collaborator.documentNumber }}</span>
+                    <span class="secundario"
+                      >{{ item.collaborator.documentNumber }}{{ item.site ? ' · ' + nombreSede(item.site) : '' }}</span
+                    >
                   </td>
                   <td>
                     {{ item.form.code }}
@@ -340,7 +350,10 @@
               <tr [class.fila-alerta]="jornada.overdue">
                 <td>
                   <strong>{{ jornada.collaborator.firstName }} {{ jornada.collaborator.lastName }}</strong>
-                  <span class="secundario">{{ jornada.collaborator.documentNumber }}</span>
+                  <span class="secundario"
+                    >{{ jornada.collaborator.documentNumber
+                    }}{{ jornada.site ? ' · ' + nombreSede(jornada.site) : '' }}</span
+                  >
                 </td>
                 <td>
                   {{ jornada.crewSize }} {{ jornada.crewSize === 1 ? 'persona' : 'personas' }}
@@ -426,6 +439,15 @@
       <form [formGroup]="formCustodia" (ngSubmit)="cargarCustodia()" class="rejilla-campos dos">
         <label class="campo"><span>Mes</span><input type="month" formControlName="month" /></label>
         <label class="campo"><span>Fecha específica</span><input type="date" formControlName="date" /></label>
+        <label class="campo"
+          ><span>Sede</span
+          ><select formControlName="site">
+            <option value="">Todas las sedes</option>
+            @for (sede of sedes; track sede.valor) {
+              <option [value]="sede.valor">{{ sede.nombre }}</option>
+            }
+          </select></label
+        >
         <div class="acciones ancho-total">
           <button class="boton" type="submit">Consultar formularios</button>
           <button class="boton secundario" type="button" (click)="limpiarCustodia()">Limpiar filtros</button>
@@ -459,7 +481,9 @@
                   <td>
                     <strong>{{ documento.collaborator.firstName }} {{ documento.collaborator.lastName }}</strong>
                     <span class="secundario"
-                      >{{ documento.collaborator.documentNumber }} · {{ integrantesTexto(documento.members) }}</span
+                      >{{ documento.collaborator.documentNumber
+                      }}{{ documento.site ? ' · ' + nombreSede(documento.site) : '' }} ·
+                      {{ integrantesTexto(documento.members) }}</span
                     >
                   </td>
                   <td>{{ intervaloJornada(documento.startedAt, documento.closedAt) }}</td>
@@ -833,9 +857,7 @@
                   </td>
                   <td>
                     {{ c.jobTitle || '—' }}
-                    @if (c.team) {
-                      <span class="secundario">{{ c.team }}</span>
-                    }
+                    <span class="secundario">{{ nombreSede(c.site) }}{{ c.team ? ' · ' + c.team : '' }}</span>
                   </td>
                   <td>
                     <span class="distintivo" [class]="claseArl(arlDe(c.id))">{{ textoArl(arlDe(c.id)) }}</span>

@@ -5,6 +5,7 @@ import { AuthSessionService } from '../../core/auth-session.service';
 import { LogoutButtonComponent } from '../../core/logout-button.component';
 import { ReportsPanelComponent } from '../reports/reports-panel.component';
 import { diasHasta, fechaCalendario, fechaHora } from '../../core/fechas';
+import { nombreSede, type Sede } from '../../core/sedes';
 
 type Resultado = {
   id: string;
@@ -32,7 +33,9 @@ type Envio = {
   id: string;
   status: 'DRAFT' | 'PENDING_APPROVAL' | 'APPROVED' | 'CLOSED' | 'REJECTED' | 'EXPIRED';
   submittedAt: string | null;
+  site: Sede | null;
   safetyTalkConfirmedAt: string | null;
+  safetyTalkVideo: string | null;
   arlSnapshotJson: { providerName?: string; endDate?: string; status?: string };
   formVersion: { versionNumber: number; form: { code: string; name: string } };
   signature: { sha256: string; signedAt: string; file: Archivo } | null;
@@ -48,6 +51,7 @@ type Expediente = {
   documentNumber: string;
   jobTitle: string | null;
   team: string | null;
+  site: Sede;
   status: string;
   createdAt: string;
   arlAffiliations: Afiliacion[];
@@ -116,6 +120,10 @@ const ESTADOS: Record<string, string> = {
               <dd>{{ ficha.jobTitle || '—' }}</dd>
             </div>
             <div>
+              <dt>Sede</dt>
+              <dd>{{ nombreSede(ficha.site) }}</dd>
+            </div>
+            <div>
               <dt>Equipo</dt>
               <dd>{{ ficha.team || '—' }}</dd>
             </div>
@@ -163,7 +171,15 @@ const ESTADOS: Record<string, string> = {
                     </div>
                     <div>
                       <dt>Charla confirmada</dt>
-                      <dd>{{ momento(envio.safetyTalkConfirmedAt) }}</dd>
+                      <dd>
+                        {{ momento(envio.safetyTalkConfirmedAt) }}
+                        @if (envio.safetyTalkConfirmedAt) {
+                          <span class="secundario">
+                            {{ envio.safetyTalkVideo ? 'en video' : 'presencial' }}
+                            {{ envio.site ? '· ' + nombreSede(envio.site) : '' }}
+                          </span>
+                        }
+                      </dd>
                     </div>
                     <div>
                       <dt>ARL al momento del envío</dt>
@@ -491,6 +507,7 @@ const ESTADOS: Record<string, string> = {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class LegalSearchComponent {
+  readonly nombreSede = nombreSede;
   private readonly http = inject(HttpClient);
   private readonly session = inject(AuthSessionService);
 

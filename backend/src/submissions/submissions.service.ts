@@ -21,6 +21,7 @@ import { SubmitFormDto, type CrewMemberDto } from './dto/submit-form.dto';
 import { CloseWorkdayDto } from './dto/close-workday.dto';
 import { MySubmissionsQueryDto } from './dto/my-submissions-query.dto';
 import { businessDate, businessDay } from '../common/business-date';
+import { SEDES } from '../common/sites';
 import {
   EDITABLE_FIELD_TYPES,
   RESERVED_AUTOMATIC_FIELD_IDS,
@@ -151,6 +152,8 @@ export class SubmissionsService {
         lastName: collaborator.lastName,
         documentNumber: collaborator.documentNumber,
       },
+      // La sede decide si la charla se ve en video o se dio en persona.
+      sede: SEDES[collaborator.site],
       arl: {
         providerName: cumplimiento.arl.providerName,
         endDate: cumplimiento.arl.endDate,
@@ -169,10 +172,13 @@ export class SubmissionsService {
    * tres requisitos no aparece: el oficial no debería poder elegirlo por error.
    */
   async crewCandidates(request: AuthenticatedRequest, formCode = 'HSE-FO-016') {
-    this.collaboratorId(request);
+    const oficialId = this.collaboratorId(request);
     const perfil = this.perfil(formCode);
+    const oficial = await this.prisma.collaborator.findUnique({ where: { id: oficialId }, select: { site: true } });
+    if (!oficial) throw new NotFoundException();
+    // La cuadrilla sale de la misma sede del oficial.
     const activos = await this.prisma.collaborator.findMany({
-      where: { status: 'ACTIVE' },
+      where: { status: 'ACTIVE', site: oficial.site },
       select: { id: true, firstName: true, lastName: true, documentNumber: true, jobTitle: true, team: true },
       orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
     });
@@ -201,10 +207,19 @@ export class SubmissionsService {
   async submit(formCode: string, dto: SubmitFormDto, request: AuthenticatedRequest) {
     const oficialId = this.collaboratorId(request);
     const perfil = this.perfil(formCode);
-    if (perfil.charla && (!dto.safetyTalkConfirmed || !dto.safetyTalkToken)) {
+    const oficial = await this.prisma.collaborator.findUnique({ where: { id: oficialId }, select: { site: true } });
+    if (!oficial) throw new NotFoundException();
+    // En Alcalá la charla se ve en video; en Montelíbano se dicta en persona y
+    // el oficial solo declara haberla recibido.
+    const charlaEnVideo = perfil.charla && SEDES[oficial.site].charlaEnVideo;
+    if (perfil.charla && !dto.safetyTalkConfirmed) {
       throw new ForbiddenException('Completa la charla antes de confirmar el permiso.');
     }
-    const charla = perfil.charla ? await this.validateSafetyTalk(dto.safetyTalkToken!, oficialId) : null;
+    if (charlaEnVideo && !dto.safetyTalkToken) {
+      throw new ForbiddenException('Completa la charla antes de confirmar el permiso.');
+    }
+    const charla = charlaEnVideo ? await this.validateSafetyTalk(dto.safetyTalkToken!, oficialId) : null;
+    const charlaConfirmada = perfil.charla;
     if (dto.members.length > perfil.maxIntegrantes) {
       throw new BadRequestException(
         `El formato ${formCode} admite hasta ${perfil.maxIntegrantes} ${perfil.maxIntegrantes === 1 ? 'persona' : 'integrantes'}.`,
@@ -233,9 +248,15 @@ export class SubmissionsService {
 
     const integrantes = this.normalizarCuadrilla(dto.members, oficialId);
     const integrantesIds = integrantes.map((persona) => persona.collaboratorId);
-    const activos = await this.prisma.collaborator.count({ where: { id: { in: integrantesIds }, status: 'ACTIVE' } });
-    if (activos !== integrantesIds.length) {
+    const activos = await this.prisma.collaborator.findMany({
+      where: { id: { in: integrantesIds }, status: 'ACTIVE' },
+      select: { site: true },
+    });
+    if (activos.length !== integrantesIds.length) {
       throw new ForbiddenException('Todos los integrantes de la cuadrilla deben estar activos.');
+    }
+    if (activos.some((persona) => persona.site !== oficial.site)) {
+      throw new ForbiddenException(`Toda la cuadrilla debe pertenecer a la sede ${SEDES[oficial.site].nombre}.`);
     }
     const cumplimientos = await this.compliance.evaluar(integrantesIds);
     const incumplen = integrantes.filter((persona) => !aptoPara(cumplimientos.get(persona.collaboratorId), perfil));
@@ -274,12 +295,13 @@ export class SubmissionsService {
             formVersionId: form.currentVersion!.id,
             templateVersion,
             status: 'PENDING_APPROVAL',
+            site: oficial.site,
             answersJson: this.completarAutomaticos(form.currentVersion!.schemaJson, dto.answers, {
               momento: ahora,
               cumplimiento: cumplimientos.get(oficialId),
             }) as Prisma.InputJsonValue,
-            safetyTalkConfirmed: Boolean(charla),
-            safetyTalkConfirmedAt: charla ? ahora : null,
+            safetyTalkConfirmed: charlaConfirmada,
+            safetyTalkConfirmedAt: charlaConfirmada ? ahora : null,
             safetyTalkChallengeId: charla?.jti,
             safetyTalkVideo: charla?.videoId,
             safetyTalkVideoSha256: charla?.videoSha256,
@@ -335,6 +357,8 @@ export class SubmissionsService {
               formVersion: form.currentVersion!.versionNumber,
               status: 'PENDING_APPROVAL',
               crewSize: guardadas.length,
+              site: oficial.site,
+              ...(charlaConfirmada && !charla ? { safetyTalkMode: 'PRESENCIAL' } : {}),
               ...(charla ? { safetyTalkVideo: charla.videoId, safetyTalkVideoSha256: charla.videoSha256 } : {}),
               ...(dto.previousSubmissionId ? { previousSubmissionId: dto.previousSubmissionId } : {}),
             },

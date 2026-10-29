@@ -37,6 +37,7 @@ function permiso(overrides: Record<string, unknown>) {
     closedBy: { firstName: 'Oscar', lastName: 'Prueba' },
     closedByUser: null,
     correction: null,
+    site: 'ALCALA',
     formVersion: { versionNumber: 4, form: { code: 'HSE-FO-016', name: 'Permiso de trabajo en altura' } },
     ...overrides,
   };
@@ -54,6 +55,7 @@ function setup(permisos: unknown[]) {
           documentNumber: '100',
           jobTitle: 'Oficial',
           team: null,
+          site: 'MONTELIBANO',
         },
       ]),
     },
@@ -171,5 +173,24 @@ describe('ReportsService', () => {
     }
     expect(prisma.formSubmission.findMany).not.toHaveBeenCalled();
     await expect(service.submissionsWorkbook('2024-01-01', '2024-12-31', request as never)).resolves.toBeDefined();
+  });
+});
+
+describe('Reporte por sede', () => {
+  it('filtra permisos y cumplimiento por la sede pedida y la muestra en cada hoja', async () => {
+    const { service, prisma } = setup([permiso({})]);
+    const { buffer, filename } = await service.submissionsWorkbook(
+      '2026-10-01',
+      '2026-10-31',
+      request as never,
+      'MONTELIBANO',
+    );
+    expect(filename).toBe('reporte-permisos-montelibano-2026-10-01_2026-10-31.xlsx');
+    expect(prisma.formSubmission.findMany.mock.calls[0][0].where.site).toBe('MONTELIBANO');
+    expect(prisma.collaborator.findMany.mock.calls[0][0].where).toEqual({ status: 'ACTIVE', site: 'MONTELIBANO' });
+
+    const libro = await leer(buffer);
+    expect(celda(libro.getWorksheet('Permisos')!, 2, 'Sede')).toBe('Alcalá');
+    expect(celda(libro.getWorksheet('Cumplimiento hoy')!, 2, 'Sede')).toBe('Montelíbano');
   });
 });

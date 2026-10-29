@@ -29,7 +29,10 @@
         <div class="mensaje alerta" role="status">
           <strong>Estás corrigiendo un permiso rechazado.</strong>
           Motivo: {{ anterior.reason || 'sin motivo registrado' }}. Tus respuestas y tu cuadrilla ya están cargadas;
-          revisa lo señalado{{ perfil()?.charla ? ', mira la charla' : '' }} y vuelvan a firmar.
+          revisa lo señalado{{
+            perfil()?.charla ? (charlaEnVideo() ? ', mira la charla' : ', confirma la charla') : ''
+          }}
+          y vuelvan a firmar.
           @if (omitidosCorreccion() > 0) {
             {{ omitidosCorreccion() }}
             {{ omitidosCorreccion() === 1 ? 'integrante ya no cumple' : 'integrantes ya no cumplen' }} los requisitos y
@@ -85,7 +88,27 @@
   }
 
   <!-- ═══ 2. Charla de seguridad ═══ -->
-  @if (etapa() === 'charla') {
+  @if (etapa() === 'charla' && !charlaEnVideo()) {
+    <h1 class="paso-titulo">Charla de seguridad</h1>
+    <p class="paso-ayuda">
+      En la sede {{ flujo()?.sede?.nombre }} la charla se da de forma presencial antes de iniciar labores.
+    </p>
+
+    <div class="bloque">
+      <label class="casilla declaracion-charla">
+        <input
+          type="checkbox"
+          [checked]="charlaConfirmada()"
+          (change)="charlaConfirmada.set($any($event.target).checked)"
+        />
+        <span>
+          Declaro que la cuadrilla recibió hoy la charla de seguridad presencial y entendió sus indicaciones.
+        </span>
+      </label>
+    </div>
+  }
+
+  @if (etapa() === 'charla' && charlaEnVideo()) {
     <h1 class="paso-titulo">Charla de seguridad</h1>
     <p class="paso-ayuda">Mira la charla completa antes de continuar con el permiso.</p>
 

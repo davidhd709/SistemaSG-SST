@@ -50,7 +50,11 @@ function setup() {
         currentVersion: { id: 'version', active: true, versionNumber: 1, schemaJson: { fields: [] } },
       }),
     },
-    collaborator: { count: jest.fn().mockResolvedValue(1) },
+    collaborator: {
+      count: jest.fn().mockResolvedValue(1),
+      findUnique: jest.fn().mockResolvedValue({ site: 'ALCALA' }),
+      findMany: jest.fn().mockResolvedValue([{ site: 'ALCALA' }]),
+    },
     jobPosition: { findMany: jest.fn().mockResolvedValue([{ id: leadPositionId, canLead: true }]) },
     $transaction: jest.fn((callback: (client: typeof tx) => Promise<unknown>) => callback(tx)),
   };
@@ -106,7 +110,7 @@ describe('Secreto dedicado de charla de seguridad (AUD-022)', () => {
     await service.safetyTalkChallenge('charla-03', request as never);
     expect(jwt.signAsync.mock.calls[0][1]).toEqual({ secret: 'talk-secret', expiresIn: 43_200 });
 
-    prisma.collaborator.count.mockResolvedValue(0);
+    prisma.collaborator.findMany.mockResolvedValue([]);
     await expect(
       service.submit(
         'HSE-FO-016',
@@ -142,7 +146,7 @@ describe('SubmissionsService permit safeguards', () => {
 
   it('rejects inactive crew members before saving signatures', async () => {
     const { service, prisma, storage } = setup();
-    prisma.collaborator.count.mockResolvedValue(0);
+    prisma.collaborator.findMany.mockResolvedValue([]);
     await expect(service.submit('HSE-FO-016', dto, request as never)).rejects.toThrow(ForbiddenException);
     expect(storage.putObject).not.toHaveBeenCalled();
   });
@@ -778,5 +782,89 @@ describe('Formatos oficiales sueltos (ATS, eléctrico, escalera)', () => {
     const actualizar = (tx as unknown as { submissionMember: { update: jest.Mock } }).submissionMember.update;
     expect(actualizar).toHaveBeenCalledTimes(2);
     expect(actualizar).toHaveBeenCalledWith({ where: { id: 'm-2' }, data: { closingSignatureId: 'sig-1' } });
+  });
+});
+
+describe('Sedes: charla en video en Alcalá y presencial en Montelíbano', () => {
+  const firma = Buffer.alloc(120);
+  firma[0] = 0x89;
+  firma[1] = 0x50;
+  const firmaDataUrl = `data:image/png;base64,${firma.toString('base64')}`;
+  const ayudanteId = '55555555-5555-4555-8555-555555555555';
+
+  function enMontelibano() {
+    const ctx = setup();
+    ctx.prisma.collaborator.findUnique.mockResolvedValue({ site: 'MONTELIBANO' });
+    ctx.prisma.collaborator.findMany.mockResolvedValue([{ site: 'MONTELIBANO' }]);
+    ctx.storage.putObject.mockImplementation(({ objectKey }: { objectKey: string }) =>
+      Promise.resolve({ objectKey, storageProvider: 'local', bucket: 'b', sizeBytes: 120, sha256: 'x' }),
+    );
+    return ctx;
+  }
+
+  it('en Montelíbano acepta la charla presencial declarada sin video', async () => {
+    const { service, tx, jwt } = enMontelibano();
+    await service.submit(
+      'HSE-FO-016',
+      {
+        answers: {},
+        safetyTalkConfirmed: true,
+        members: [{ collaboratorId, jobPositionId: leadPositionId, signatureDataUrl: firmaDataUrl }],
+      },
+      request as never,
+    );
+    expect(jwt.verifyAsync).not.toHaveBeenCalled();
+    const creado = tx.formSubmission.create.mock.calls[0][0] as { data: Record<string, unknown> };
+    expect(creado.data).toMatchObject({ site: 'MONTELIBANO', safetyTalkConfirmed: true });
+    expect(creado.data.safetyTalkVideo).toBeUndefined();
+    expect(tx.auditEvent.create.mock.calls[0][0].data.afterJson).toMatchObject({ safetyTalkMode: 'PRESENCIAL' });
+  });
+
+  it('en Montelíbano sigue exigiendo la declaración de la charla', async () => {
+    const { service, tx } = enMontelibano();
+    await expect(
+      service.submit(
+        'HSE-FO-016',
+        { answers: {}, members: [{ collaboratorId, jobPositionId: leadPositionId, signatureDataUrl: firmaDataUrl }] },
+        request as never,
+      ),
+    ).rejects.toThrow(ForbiddenException);
+    expect(tx.formSubmission.create).not.toHaveBeenCalled();
+  });
+
+  it('en Alcalá no basta la declaración: exige haber visto el video', async () => {
+    const { service, storage } = setup();
+    await expect(
+      service.submit(
+        'HSE-FO-016',
+        {
+          answers: {},
+          safetyTalkConfirmed: true,
+          members: [{ collaboratorId, jobPositionId: leadPositionId, signatureDataUrl: firmaDataUrl }],
+        },
+        request as never,
+      ),
+    ).rejects.toThrow(ForbiddenException);
+    expect(storage.putObject).not.toHaveBeenCalled();
+  });
+
+  it('no deja mezclar en la cuadrilla personas de otra sede', async () => {
+    const { service, prisma, storage } = enMontelibano();
+    prisma.collaborator.findMany.mockResolvedValue([{ site: 'MONTELIBANO' }, { site: 'ALCALA' }]);
+    await expect(
+      service.submit(
+        'HSE-FO-016',
+        {
+          answers: {},
+          safetyTalkConfirmed: true,
+          members: [
+            { collaboratorId, jobPositionId: leadPositionId, signatureDataUrl: firmaDataUrl },
+            { collaboratorId: ayudanteId, jobPositionId: leadPositionId, signatureDataUrl: firmaDataUrl },
+          ],
+        },
+        request as never,
+      ),
+    ).rejects.toThrow('Toda la cuadrilla debe pertenecer a la sede Montelíbano.');
+    expect(storage.putObject).not.toHaveBeenCalled();
   });
 });

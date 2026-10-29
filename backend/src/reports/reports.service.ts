@@ -1,8 +1,9 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
-import type { Prisma } from '@prisma/client';
+import type { Prisma, Site } from '@prisma/client';
 import ExcelJS from 'exceljs';
 import type { AuthenticatedRequest } from '../common/request-context';
 import { businessDate } from '../common/business-date';
+import { SEDES } from '../common/sites';
 import { AuditService } from '../audit/audit.service';
 import { ComplianceService, type RequisitoEstado } from '../compliance/compliance.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -29,7 +30,7 @@ const REQUISITOS: Record<RequisitoEstado, string> = {
   NO_APLICA: 'No aplica',
 };
 
-type Rango = { desde: Date; hasta: Date; from: string; to: string };
+type Rango = { desde: Date; hasta: Date; from: string; to: string; site?: Site };
 
 const PERMISO_INCLUDE = {
   collaborator: { select: { firstName: true, lastName: true, documentNumber: true } },
@@ -65,10 +66,11 @@ export class ReportsService {
     from: string,
     to: string,
     request: AuthenticatedRequest,
+    site?: Site,
   ): Promise<{ buffer: Buffer; filename: string }> {
-    const rango = this.rango(from, to);
+    const rango = { ...this.rango(from, to), site };
     const permisos = await this.prisma.formSubmission.findMany({
-      where: { status: { not: 'DRAFT' }, workDate: { gte: rango.desde, lte: rango.hasta } },
+      where: { status: { not: 'DRAFT' }, workDate: { gte: rango.desde, lte: rango.hasta }, ...(site ? { site } : {}) },
       include: PERMISO_INCLUDE,
       orderBy: [{ workDate: 'asc' }, { submittedAt: 'asc' }],
     });
@@ -80,7 +82,7 @@ export class ReportsService {
     this.hojaResumen(libro, rango, permisos);
     this.hojaPermisos(libro, permisos);
     this.hojaRechazos(libro, permisos);
-    await this.hojaCumplimiento(libro);
+    await this.hojaCumplimiento(libro, site);
 
     const buffer = Buffer.from(await libro.xlsx.writeBuffer());
     // Exporta datos personales de la plantilla: queda constancia de quién y qué.
@@ -88,13 +90,14 @@ export class ReportsService {
       actorUserId: request.principal?.kind === 'USER' ? request.principal.userId : undefined,
       action: 'EXPORT_SUBMISSIONS_REPORT',
       entityType: 'REPORT',
-      entityId: `submissions:${rango.from}:${rango.to}`,
-      afterJson: { from: rango.from, to: rango.to, submissions: permisos.length },
+      entityId: `submissions:${rango.from}:${rango.to}${site ? `:${site}` : ''}`,
+      afterJson: { from: rango.from, to: rango.to, ...(site ? { site } : {}), submissions: permisos.length },
       ip: request.ip,
       userAgent: request.header('user-agent'),
       correlationId: request.correlationId ?? 'unknown',
     });
-    return { buffer, filename: `reporte-permisos-${rango.from}_${rango.to}.xlsx` };
+    const sufijo = site ? `-${site.toLowerCase()}` : '';
+    return { buffer, filename: `reporte-permisos${sufijo}-${rango.from}_${rango.to}.xlsx` };
   }
 
   private rango(from: string, to: string): Rango {
@@ -121,6 +124,7 @@ export class ReportsService {
     hoja.columns = [{ width: 44 }, { width: 18 }, { width: 14 }, { width: 14 }, { width: 14 }];
     hoja.addRow(['Reporte de permisos de trabajo en altura']).font = { bold: true, size: 14 };
     hoja.addRow([`Fechas de trabajo del ${this.diaTexto(rango.desde)} al ${this.diaTexto(rango.hasta)}`]);
+    hoja.addRow([rango.site ? `Sede ${SEDES[rango.site].nombre}` : 'Todas las sedes']);
     hoja.addRow([`Generado el ${this.instanteTexto(new Date())} (hora de Colombia)`]);
     hoja.addRow([]);
 
@@ -182,6 +186,7 @@ export class ReportsService {
     hoja.columns = [
       { header: 'Fecha de trabajo', key: 'workDate', width: 14, style: { numFmt: 'dd/mm/yyyy' } },
       { header: 'Estado', key: 'estado', width: 24 },
+      { header: 'Sede', key: 'sede', width: 14 },
       { header: 'Oficial', key: 'oficial', width: 28 },
       { header: 'Documento', key: 'documento', width: 14 },
       { header: 'Cuadrilla', key: 'cuadrilla', width: 50 },
@@ -212,6 +217,7 @@ export class ReportsService {
       hoja.addRow({
         workDate: permiso.workDate ?? undefined,
         estado: ESTADOS[permiso.status] ?? permiso.status,
+        sede: permiso.site ? SEDES[permiso.site].nombre : '',
         oficial: `${permiso.collaborator.firstName} ${permiso.collaborator.lastName}`,
         documento: permiso.collaborator.documentNumber,
         cuadrilla: permiso.members
@@ -250,6 +256,7 @@ export class ReportsService {
     const hoja = libro.addWorksheet('Rechazos', { views: [{ state: 'frozen', ySplit: 1 }] });
     hoja.columns = [
       { header: 'Fecha de trabajo', key: 'workDate', width: 14, style: { numFmt: 'dd/mm/yyyy' } },
+      { header: 'Sede', key: 'sede', width: 14 },
       { header: 'Oficial', key: 'oficial', width: 28 },
       { header: 'Documento', key: 'documento', width: 14 },
       { header: 'Motivo', key: 'motivo', width: 60 },
@@ -261,6 +268,7 @@ export class ReportsService {
     for (const permiso of permisos.filter((item) => item.approval?.decision === 'REJECTED')) {
       hoja.addRow({
         workDate: permiso.workDate ?? undefined,
+        sede: permiso.site ? SEDES[permiso.site].nombre : '',
         oficial: `${permiso.collaborator.firstName} ${permiso.collaborator.lastName}`,
         documento: permiso.collaborator.documentNumber,
         motivo: permiso.approval?.reason ?? '',
@@ -272,10 +280,18 @@ export class ReportsService {
   }
 
   /** Foto del cumplimiento al momento de exportar, no del periodo consultado. */
-  private async hojaCumplimiento(libro: ExcelJS.Workbook) {
+  private async hojaCumplimiento(libro: ExcelJS.Workbook, site?: Site) {
     const colaboradores = await this.prisma.collaborator.findMany({
-      where: { status: 'ACTIVE' },
-      select: { id: true, firstName: true, lastName: true, documentNumber: true, jobTitle: true, team: true },
+      where: { status: 'ACTIVE', ...(site ? { site } : {}) },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        documentNumber: true,
+        jobTitle: true,
+        team: true,
+        site: true,
+      },
       orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
     });
     const cumplimientos = await this.compliance.evaluar(colaboradores.map((persona) => persona.id));
@@ -284,6 +300,7 @@ export class ReportsService {
       { header: 'Colaborador', key: 'nombre', width: 28 },
       { header: 'Documento', key: 'documento', width: 14 },
       { header: 'Cargo', key: 'cargo', width: 22 },
+      { header: 'Sede', key: 'sede', width: 14 },
       { header: 'Equipo', key: 'equipo', width: 16 },
       { header: 'ARL', key: 'arl', width: 16 },
       { header: 'ARL hasta', key: 'arlHasta', width: 13, style: { numFmt: 'dd/mm/yyyy' } },
@@ -302,6 +319,7 @@ export class ReportsService {
         nombre: `${persona.firstName} ${persona.lastName}`,
         documento: persona.documentNumber,
         cargo: persona.jobTitle ?? '',
+        sede: SEDES[persona.site].nombre,
         equipo: persona.team ?? '',
         arl: REQUISITOS[cumplimiento.arl.estado],
         arlHasta: fecha(cumplimiento.arl.endDate),

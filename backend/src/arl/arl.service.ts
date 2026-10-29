@@ -40,6 +40,7 @@ export class ArlService {
           jobPositionId: collaborator.jobPositionId,
           jobPosition: collaborator.jobPosition,
           team: collaborator.team,
+          site: collaborator.site,
           status: collaborator.status,
         },
         affiliation: affiliation ? this.serialize(affiliation, days) : null,

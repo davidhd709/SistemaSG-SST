@@ -74,6 +74,7 @@ export class ApprovalsService {
       id: item.id,
       workDate: item.workDate,
       startedAt: item.startedAt,
+      site: item.site,
       collaborator: item.collaborator,
       crewSize: item.members.length,
       members: item.members.map((member) => ({
@@ -102,6 +103,7 @@ export class ApprovalsService {
     return submissions.map((item) => ({
       id: item.id,
       submittedAt: item.submittedAt,
+      site: item.site,
       collaborator: item.collaborator,
       form: {
         code: item.formVersion.form.code,
@@ -114,8 +116,8 @@ export class ApprovalsService {
   /** Formularios custodiados: cada fila conserva su PDF final cuando ya existe. */
   async custody(query: CustodyQueryDto) {
     await this.submissions.expireStalePermits();
-    const { month, date, page = 1, pageSize = 50 } = query;
-    const where: Prisma.FormSubmissionWhereInput = { status: { not: 'DRAFT' } };
+    const { month, date, site, page = 1, pageSize = 50 } = query;
+    const where: Prisma.FormSubmissionWhereInput = { status: { not: 'DRAFT' }, ...(site ? { site } : {}) };
     const day = date && /^\d{4}-\d{2}-\d{2}$/.test(date) ? new Date(`${date}T00:00:00.000Z`) : undefined;
     if (day && !Number.isNaN(day.getTime())) {
       const next = new Date(day);
@@ -155,6 +157,7 @@ export class ApprovalsService {
         submittedAt: item.submittedAt,
         startedAt: item.startedAt,
         closedAt: item.closedAt,
+        site: item.site,
         collaborator: item.collaborator,
         members: item.members.map((member) => ({ collaborator: member.collaborator, jobPosition: member.jobPosition })),
         form: {

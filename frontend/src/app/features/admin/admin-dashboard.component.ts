@@ -5,6 +5,7 @@ import { RouterLink } from '@angular/router';
 import { AuthSessionService } from '../../core/auth-session.service';
 import { LogoutButtonComponent } from '../../core/logout-button.component';
 import { fechaHora } from '../../core/fechas';
+import { SEDES, nombreSede, type Sede } from '../../core/sedes';
 import { JobPositionsPanelComponent } from './job-positions-panel.component';
 import { FormEditorComponent } from './form-editor.component';
 
@@ -57,6 +58,7 @@ type Colaborador = {
   jobPositionId: string | null;
   jobPosition: Cargo | null;
   team: string | null;
+  site: Sede;
   status: 'ACTIVE' | 'INACTIVE';
   createdAt: string;
 };
@@ -307,7 +309,15 @@ const ENTIDADES: Record<string, string> = {
                       }
                     </select></label
                   >
-                  <label class="campo ancho-total"><span>Equipo</span><input formControlName="team" /></label>
+                  <label class="campo"
+                    ><span>Sede</span
+                    ><select formControlName="site">
+                      @for (sede of sedes; track sede.valor) {
+                        <option [value]="sede.valor">{{ sede.nombre }}</option>
+                      }
+                    </select></label
+                  >
+                  <label class="campo"><span>Equipo</span><input formControlName="team" /></label>
                 }
                 <label class="campo"><span>Correo</span><input formControlName="email" type="email" /></label>
                 <label class="campo"
@@ -1164,8 +1174,10 @@ export class AdminDashboardComponent {
     lastName: [''],
     phone: [''],
     jobPositionId: [''],
+    site: ['ALCALA' as Sede],
     team: [''],
   });
+  readonly sedes = SEDES;
 
   readonly visibles = computed(() => {
     const accion = this.filtroAccion();
@@ -1194,7 +1206,7 @@ export class AdminDashboardComponent {
       tipo: 'COLABORADOR',
       nombre: `${colaborador.firstName} ${colaborador.lastName}`,
       email: colaborador.email || `Documento ${colaborador.documentNumber}`,
-      detalle: colaborador.jobTitle || colaborador.team || 'Colaborador',
+      detalle: [colaborador.jobTitle || colaborador.team || 'Colaborador', nombreSede(colaborador.site)].join(' · '),
       status: colaborador.status,
       ultimoAcceso: null,
       colaborador,
@@ -1245,6 +1257,7 @@ export class AdminDashboardComponent {
       lastName: cuenta.colaborador?.lastName || '',
       phone: cuenta.colaborador?.phone || '',
       jobPositionId: cuenta.colaborador?.jobPositionId || '',
+      site: cuenta.colaborador?.site ?? 'ALCALA',
       team: cuenta.colaborador?.team || '',
     });
   }
@@ -1267,6 +1280,7 @@ export class AdminDashboardComponent {
             lastName: value.lastName,
             phone: value.phone,
             jobPositionId: value.jobPositionId || null,
+            site: value.site,
             team: value.team,
           };
     this.guardando.set(true);

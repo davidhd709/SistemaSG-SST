@@ -1,3 +1,5 @@
+import type { Sede } from '../../core/sedes';
+
 export type Dashboard = {
   pending: number;
   inProgress: number;
@@ -13,6 +15,7 @@ export type JornadaAbierta = {
   id: string;
   workDate: string | null;
   startedAt: string | null;
+  site: Sede | null;
   collaborator: { firstName: string; lastName: string; documentNumber: string };
   crewSize: number;
   members: { collaborator: { firstName: string; lastName: string }; jobPosition: { name: string } | null }[];
@@ -27,6 +30,7 @@ export type DocumentoCustodia = {
   submittedAt: string | null;
   startedAt: string | null;
   closedAt: string | null;
+  site: Sede | null;
   collaborator: { firstName: string; lastName: string; documentNumber: string };
   members: {
     collaborator: { firstName: string; lastName: string; documentNumber: string };
@@ -93,6 +97,7 @@ export type Integrante = {
 export type Submission = {
   id: string;
   submittedAt: string;
+  site: Sede | null;
   collaborator: { firstName: string; lastName: string; documentNumber: string };
   form: { code: string; name: string; version: number };
 };
@@ -102,7 +107,10 @@ export type Campo = { id: string; label: string; order: number; section?: string
 export type Detail = {
   id: string;
   submittedAt: string | null;
+  site: Sede | null;
   safetyTalkConfirmedAt: string | null;
+  /** Sin video, la charla se dictó en persona (sede Montelíbano). */
+  safetyTalkVideo: string | null;
   answersJson: Record<string, unknown>;
   arlSnapshotJson: { providerName?: string; startDate?: string; endDate?: string; status?: string };
   collaborator: { firstName: string; lastName: string; documentNumber: string; jobTitle?: string; team?: string };
@@ -123,6 +131,7 @@ export type Colaborador = {
   lastName: string;
   jobTitle: string | null;
   team: string | null;
+  site: Sede;
   status: 'ACTIVE' | 'INACTIVE';
   createdAt: string;
 };

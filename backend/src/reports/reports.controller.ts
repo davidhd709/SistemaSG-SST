@@ -21,7 +21,7 @@ export class ReportsController {
     @Req() request: AuthenticatedRequest,
     @Res() response: Response,
   ): Promise<void> {
-    const { buffer, filename } = await this.reports.submissionsWorkbook(query.from, query.to, request);
+    const { buffer, filename } = await this.reports.submissionsWorkbook(query.from, query.to, request, query.site);
     response.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     response.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
     response.setHeader('Cache-Control', 'no-store');

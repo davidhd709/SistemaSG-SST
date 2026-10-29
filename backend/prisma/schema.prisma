@@ -43,6 +43,13 @@ enum SubmissionStatus {
   EXPIRED
 }
 
+/// Sede donde trabaja el colaborador. Comparten administración, coordinación,
+/// legal y gestión ARL; cambia la forma de dar la charla de seguridad.
+enum Site {
+  MONTELIBANO
+  ALCALA
+}
+
 enum ApprovalDecision {
   APPROVED
   REJECTED
@@ -155,6 +162,7 @@ model Collaborator {
   jobTitle            String?
   jobPositionId       String?             @db.Uuid
   team                String?
+  site                Site                @default(ALCALA)
   pinHash             String?
   status              CollaboratorStatus  @default(ACTIVE)
   failedLoginAttempts Int                 @default(0)
@@ -177,6 +185,7 @@ model Collaborator {
 
   @@index([status])
   @@index([jobPositionId])
+  @@index([site, status])
   @@map("collaborators")
 }
 
@@ -274,6 +283,8 @@ model FormSubmission {
   collaboratorId        String             @db.Uuid
   formVersionId         String             @db.Uuid
   status                SubmissionStatus   @default(DRAFT)
+  // Sede del oficial al enviar: el permiso no cambia de sede si él se traslada.
+  site                  Site?
   answersJson           Json
   safetyTalkConfirmed   Boolean
   safetyTalkConfirmedAt DateTime?
@@ -311,6 +322,7 @@ model FormSubmission {
   @@index([status, createdAt])
   @@index([status, workDate])
   @@index([closedByUserId])
+  @@index([site, workDate])
   @@map("form_submissions")
 }
 

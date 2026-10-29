@@ -6,6 +6,7 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { AuthSessionService } from '../../core/auth-session.service';
 import { fechaCalendario, fechaHora } from '../../core/fechas';
 import { LogoutButtonComponent } from '../../core/logout-button.component';
+import { SEDES, nombreSede } from '../../core/sedes';
 import { ExpirationsPanelComponent } from './expirations-panel.component';
 import { ReportsPanelComponent } from '../reports/reports-panel.component';
 
@@ -90,7 +91,9 @@ export class CoordinationComponent {
     expiresAt: ['', Validators.required],
     trainingEntity: [''],
   });
-  readonly formCustodia = this.fb.nonNullable.group({ month: [''], date: [''] });
+  readonly formCustodia = this.fb.nonNullable.group({ month: [''], date: [''], site: [''] });
+  readonly sedes = SEDES;
+  readonly nombreSede = nombreSede;
   readonly aviso = signal('');
 
   /** Estado de ARL por colaborador, para mostrarlo junto a cada perfil. */
@@ -225,10 +228,11 @@ export class CoordinationComponent {
   }
 
   cargarCustodia(page = 1): void {
-    const { month, date } = this.formCustodia.getRawValue();
+    const { month, date, site } = this.formCustodia.getRawValue();
     const parametros = new URLSearchParams();
     if (date) parametros.set('date', date);
     else if (month) parametros.set('month', month);
+    if (site) parametros.set('site', site);
     parametros.set('page', String(page));
     parametros.set('pageSize', String(this.tamanoPaginaCustodia));
     this.http.get<PaginaCustodia>(`/api/coordination/submissions?${parametros.toString()}`).subscribe({
@@ -260,7 +264,7 @@ export class CoordinationComponent {
   }
 
   limpiarCustodia(): void {
-    this.formCustodia.reset({ month: '', date: '' });
+    this.formCustodia.reset({ month: '', date: '', site: '' });
     this.cargarCustodia();
   }
 

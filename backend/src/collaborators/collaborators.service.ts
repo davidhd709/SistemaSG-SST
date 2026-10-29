@@ -35,6 +35,7 @@ export class CollaboratorsService {
           jobTitle: position?.name,
           jobPositionId: position?.id,
           team: dto.team?.trim(),
+          site: dto.site,
           pinHash: position?.canLead && dto.pin ? await argon2.hash(dto.pin, { type: argon2.argon2id }) : null,
           createdById: actorUserId,
         },
@@ -104,6 +105,7 @@ export class CollaboratorsService {
           ...(dto.phone !== undefined ? { phone: dto.phone.trim() || null } : {}),
           ...(positionChanged ? { jobTitle: position?.name ?? null, jobPositionId: position?.id ?? null } : {}),
           ...(dto.team !== undefined ? { team: dto.team.trim() || null } : {}),
+          ...(dto.site ? { site: dto.site } : {}),
           ...(dto.status ? { status: dto.status } : {}),
           ...(positionChanged && !position?.canLead
             ? { pinHash: null, failedLoginAttempts: 0, lockedUntil: null }
@@ -157,6 +159,7 @@ export class CollaboratorsService {
       jobPositionId: collaborator.jobPositionId,
       hasPin: Boolean(collaborator.pinHash),
       team: collaborator.team,
+      site: collaborator.site,
       status: collaborator.status,
     };
   }

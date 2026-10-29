@@ -34,7 +34,7 @@ import { AuthSessionService } from '../../core/auth-session.service';
               <rect x="3" y="5" width="18" height="14" rx="3" />
               <path d="m10 9 5 3-5 3V9Z" />
             </svg>
-            Ves la charla de seguridad del día
+            Confirmas la charla de seguridad del día
           </li>
           <li>
             <svg viewBox="0 0 24 24" aria-hidden="true">

@@ -113,6 +113,8 @@ export class WorkAtHeightFormComponent implements OnDestroy {
   readonly firmante = computed<Integrante | null>(() => this.integrantes()[this.indiceFirma()] ?? null);
   readonly firmadas = computed(() => this.integrantes().filter((persona) => persona.firmaDataUrl).length);
   readonly perfil = computed(() => this.flujo()?.perfil ?? null);
+  /** Sin video (Montelíbano), el oficial solo declara haber recibido la charla presencial. */
+  readonly charlaEnVideo = computed(() => this.flujo()?.sede?.charlaEnVideo !== false);
   /** Filas de integrantes que imprime el formato; la API aplica el mismo límite. */
   readonly maxIntegrantes = computed(() => this.perfil()?.maxIntegrantes ?? 1);
   readonly cuadrillaCompleta = computed(() => this.integrantes().length >= this.maxIntegrantes());
@@ -195,7 +197,10 @@ export class WorkAtHeightFormComponent implements OnDestroy {
   puedeAvanzar(): boolean {
     const etapa = this.etapa();
     if (etapa === 'arl') return this.flujo()?.canContinue === true;
-    if (etapa === 'charla') return this.charlaTerminada() && this.charlaConfirmada() && !!this.charlaToken();
+    if (etapa === 'charla')
+      return this.charlaEnVideo()
+        ? this.charlaTerminada() && this.charlaConfirmada() && !!this.charlaToken()
+        : this.charlaConfirmada();
     // Al menos el oficial; el resto de la cuadrilla es opcional.
     if (etapa === 'cuadrilla') return this.integrantes().length > 0;
     return true;
@@ -615,14 +620,16 @@ export class WorkAtHeightFormComponent implements OnDestroy {
   enviar(): void {
     const cuadrilla = this.integrantes();
     const conCharla = this.perfil()?.charla === true;
-    if (this.enviando() || (conCharla && !this.charlaToken()) || !cuadrilla.every((persona) => persona.firmaDataUrl))
-      return;
+    const charlaEnVideo = conCharla && this.charlaEnVideo();
+    const charlaLista = !conCharla || (charlaEnVideo ? !!this.charlaToken() : this.charlaConfirmada());
+    if (this.enviando() || !charlaLista || !cuadrilla.every((persona) => persona.firmaDataUrl)) return;
     this.enviando.set(true);
     this.error.set('');
     this.http
       .post<Envio>(`/api/submissions/forms/${this.codigo}`, {
         answers: this.respuestasNormalizadas(),
-        ...(conCharla ? { safetyTalkConfirmed: true, safetyTalkToken: this.charlaToken() } : {}),
+        ...(conCharla ? { safetyTalkConfirmed: true } : {}),
+        ...(charlaEnVideo ? { safetyTalkToken: this.charlaToken() } : {}),
         previousSubmissionId: this.correccion()?.id,
         members: cuadrilla.map((persona) => ({
           collaboratorId: persona.candidato.id,
